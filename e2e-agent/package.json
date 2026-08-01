@@ -1,0 +1,30 @@
+{
+  "name": "cloudatlas-e2e-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-agent driven E2E tests for CloudAtlas using Claude + Playwright",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "run": "node --loader ts-node/esm src/index.ts",
+    "agent": "tsx src/index.ts",
+    "agent:smoke": "tsx src/index.ts --tags smoke",
+    "agent:auth": "tsx src/index.ts --suite auth",
+    "agent:dashboard": "tsx src/index.ts --suite dashboard",
+    "agent:finops": "tsx src/index.ts --suite finops",
+    "agent:cmdb": "tsx src/index.ts --suite cmdb",
+    "agent:report": "open reports/latest.html"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "playwright": "^1.45.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.15.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

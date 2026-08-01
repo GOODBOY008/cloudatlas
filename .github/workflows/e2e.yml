@@ -1,0 +1,336 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  # Allow manual trigger with options
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - smoke
+          - regression
+      browser:
+        description: 'Browser to run tests in'
+        required: false
+        default: 'chromium'
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - all
+  # Run nightly full regression at 02:00 UTC
+  schedule:
+    - cron: '0 2 * * *'
+
+env:
+  # Playwright version must match e2e/package.json
+  PLAYWRIGHT_VERSION: '1.45.0'
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────
+  # Build images once; reuse in e2e job
+  # ─────────────────────────────────────────────────────────────────
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    outputs:
+      backend-tag: ${{ steps.meta.outputs.backend-tag }}
+      frontend-tag: ${{ steps.meta.outputs.frontend-tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate image tags
+        id: meta
+        run: |
+          SHA="${{ github.sha }}"
+          echo "backend-tag=cloudatlas/backend:${SHA}" >> "$GITHUB_OUTPUT"
+          echo "frontend-tag=cloudatlas/frontend:${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: cloudatlas
+          file: cloudatlas/docker/backend.Dockerfile
+          push: false
+          tags: cloudatlas/backend:${{ github.sha }}
+          outputs: type=docker,dest=/tmp/backend.tar
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: cloudatlas
+          file: cloudatlas/docker/frontend.Dockerfile
+          push: false
+          tags: cloudatlas/frontend:${{ github.sha }}
+          outputs: type=docker,dest=/tmp/frontend.tar
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Upload image tarballs
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images-${{ github.sha }}
+          path: /tmp/*.tar
+          retention-days: 1
+
+  # ─────────────────────────────────────────────────────────────────
+  # E2E — Smoke (runs on every push/PR, fast)
+  # ─────────────────────────────────────────────────────────────────
+  e2e-smoke:
+    name: E2E Smoke Tests
+    runs-on: ubuntu-latest
+    needs: build-images
+    # Skip smoke on nightly schedule (full regression covers it)
+    if: github.event_name != 'schedule'
+
+    defaults:
+      run:
+        working-directory: cloudatlas
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Docker images
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images-${{ github.sha }}
+          path: /tmp
+
+      - name: Load Docker images
+        run: |
+          docker load -i /tmp/backend.tar
+          docker load -i /tmp/frontend.tar
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: cloudatlas/e2e/package-lock.json
+
+      - name: Install Playwright + dependencies
+        working-directory: cloudatlas/e2e
+        run: |
+          npm ci
+          npx playwright install chromium --with-deps
+
+      - name: Start application stack
+        run: |
+          cp .env.example .env 2>/dev/null || true
+          # Inject pre-built images into compose
+          export BACKEND_IMAGE="cloudatlas/backend:${{ github.sha }}"
+          export FRONTEND_IMAGE="cloudatlas/frontend:${{ github.sha }}"
+          docker compose -f docker-compose.yml up -d postgres migrate
+          # Wait for migrate to complete
+          docker compose -f docker-compose.yml up -d api frontend
+
+      - name: Wait for backend health
+        run: |
+          echo "Waiting for backend to become healthy..."
+          for i in $(seq 1 24); do
+            if curl -sf http://localhost:8080/health; then
+              echo "✓ Backend healthy after ${i} attempts"
+              break
+            fi
+            if [ "$i" -eq 24 ]; then
+              echo "✗ Backend did not become healthy"
+              docker compose -f docker-compose.yml logs api
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Wait for frontend
+        run: |
+          for i in $(seq 1 12); do
+            if curl -sf http://localhost:3000; then
+              echo "✓ Frontend healthy"
+              break
+            fi
+            sleep 5
+          done
+
+      - name: Run smoke tests
+        working-directory: cloudatlas/e2e
+        env:
+          CI: true
+          E2E_BASE_URL: http://localhost:3000
+          E2E_API_URL: http://localhost:8080
+          E2E_ADMIN_EMAIL: admin@acme.com
+          E2E_ADMIN_PASS: Password123!
+        run: npx playwright test --grep @smoke --project=chromium
+
+      - name: Upload smoke report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-smoke-report-${{ github.sha }}
+          path: |
+            cloudatlas/e2e/playwright-report/
+            cloudatlas/e2e/test-results/
+          retention-days: 7
+
+      - name: Collect Docker logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.yml logs --tail=200
+
+  # ─────────────────────────────────────────────────────────────────
+  # E2E — Full Regression (nightly + main merges + manual)
+  # ─────────────────────────────────────────────────────────────────
+  e2e-regression:
+    name: E2E Regression (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    needs: build-images
+    # On PRs, only run smoke (above). Full regression on main push + schedule + manual.
+    if: >
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser:
+          - chromium
+          - firefox
+          # webkit excluded from matrix — too slow on ubuntu-latest without Playwright's WebKit deps
+          # Add 'webkit' here once runner capacity allows
+
+    defaults:
+      run:
+        working-directory: cloudatlas
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Docker images
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images-${{ github.sha }}
+          path: /tmp
+
+      - name: Load Docker images
+        run: |
+          docker load -i /tmp/backend.tar
+          docker load -i /tmp/frontend.tar
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: cloudatlas/e2e/package-lock.json
+
+      - name: Install Playwright + dependencies
+        working-directory: cloudatlas/e2e
+        run: |
+          npm ci
+          npx playwright install ${{ matrix.browser }} --with-deps
+
+      - name: Start application stack
+        run: |
+          cp .env.example .env 2>/dev/null || true
+          docker compose -f docker-compose.yml up -d --build
+
+      - name: Wait for backend health
+        run: |
+          echo "Waiting for backend..."
+          for i in $(seq 1 24); do
+            if curl -sf http://localhost:8080/health; then
+              echo "✓ Backend healthy"
+              break
+            fi
+            if [ "$i" -eq 24 ]; then
+              docker compose -f docker-compose.yml logs api
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Wait for frontend
+        run: |
+          for i in $(seq 1 12); do
+            if curl -sf http://localhost:3000; then
+              echo "✓ Frontend healthy"
+              break
+            fi
+            sleep 5
+          done
+
+      - name: Run full regression
+        working-directory: cloudatlas/e2e
+        env:
+          CI: true
+          E2E_BASE_URL: http://localhost:3000
+          E2E_API_URL: http://localhost:8080
+          E2E_ADMIN_EMAIL: admin@acme.com
+          E2E_ADMIN_PASS: Password123!
+        run: |
+          GREP=""
+          if [ "${{ github.event.inputs.suite }}" = "smoke" ]; then
+            GREP="--grep @smoke"
+          elif [ "${{ github.event.inputs.suite }}" = "regression" ]; then
+            GREP="--grep @regression"
+          fi
+          npx playwright test $GREP --project=${{ matrix.browser }}
+
+      - name: Upload regression report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-regression-${{ matrix.browser }}-${{ github.sha }}
+          path: |
+            cloudatlas/e2e/playwright-report/
+            cloudatlas/e2e/test-results/
+          retention-days: 14
+
+      - name: Publish HTML report to GitHub Pages (chromium only, main branch)
+        if: >
+          always() &&
+          matrix.browser == 'chromium' &&
+          github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: cloudatlas/e2e/playwright-report
+          destination_dir: e2e-report/${{ github.sha }}
+          keep_files: false
+
+      - name: Collect Docker logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.yml logs --tail=200
+
+  # ─────────────────────────────────────────────────────────────────
+  # Summary gate — required status check for branch protection
+  # ─────────────────────────────────────────────────────────────────
+  e2e-status:
+    name: E2E Status Gate
+    runs-on: ubuntu-latest
+    needs: [e2e-smoke]
+    if: always()
+
+    steps:
+      - name: Check E2E smoke result
+        run: |
+          if [ "${{ needs.e2e-smoke.result }}" = "failure" ]; then
+            echo "✗ E2E smoke tests failed"
+            exit 1
+          fi
+          echo "✓ E2E smoke tests passed (result: ${{ needs.e2e-smoke.result }})"

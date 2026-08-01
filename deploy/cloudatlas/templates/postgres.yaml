@@ -1,0 +1,71 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "cloudatlas.fullname" . }}-postgres
+  labels:
+    app.kubernetes.io/name: {{ include "cloudatlas.name" . }}
+    app.kubernetes.io/component: postgres
+spec:
+  serviceName: {{ include "cloudatlas.fullname" . }}-postgres
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "cloudatlas.name" . }}
+      app.kubernetes.io/component: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "cloudatlas.name" . }}
+        app.kubernetes.io/component: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: {{ .Values.postgres.image }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.username | quote }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.postgres.password | quote }}
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "cloudatlas.fullname" . }}-postgres
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "cloudatlas.fullname" . }}-postgres
+  labels:
+    app.kubernetes.io/name: {{ include "cloudatlas.name" . }}
+    app.kubernetes.io/component: postgres
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  {{- if .Values.postgres.storageClass }}
+  storageClassName: {{ .Values.postgres.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.postgres.storage | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cloudatlas.fullname" . }}-postgres
+  labels:
+    app.kubernetes.io/name: {{ include "cloudatlas.name" . }}
+    app.kubernetes.io/component: postgres
+spec:
+  selector:
+    app.kubernetes.io/name: {{ include "cloudatlas.name" . }}
+    app.kubernetes.io/component: postgres
+  ports:
+    - name: postgres
+      port: 5432
+{{- end }}

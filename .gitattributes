@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+# Keep common binaries untouched
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary

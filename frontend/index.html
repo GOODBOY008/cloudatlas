@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>CloudAtlas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              brand: { DEFAULT: '#6366f1', dark: '#4f46e5' }
+            }
+          }
+        }
+      }
+    </script>
+    <!-- Restore theme before React hydrates to avoid flash -->
+    <script>
+      ;(function () {
+        try {
+          var stored = JSON.parse(localStorage.getItem('cloudatlas-theme') || '{}')
+          var theme = stored.state && stored.state.theme === 'light' ? 'light' : 'dark'
+          document.documentElement.classList.toggle('dark', theme === 'dark')
+        } catch (_) {
+          document.documentElement.classList.add('dark')
+        }
+      })()
+    </script>
+    <style>
+      /* ── Polished scrollbar ─────────────────────────────────── */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(99, 102, 241, 0.35);
+        border-radius: 9999px;
+      }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.6); }
+      * { scrollbar-width: thin; scrollbar-color: rgba(99,102,241,.35) transparent; }
+
+      /* ── Light-mode overrides for hardcoded dark Tailwind classes ── */
+      /* Background grays */
+      html:not(.dark) .bg-gray-950 { background-color: rgb(249 250 251) !important; }
+      html:not(.dark) .bg-gray-900 { background-color: rgb(255 255 255) !important; }
+      html:not(.dark) .bg-gray-800 { background-color: rgb(243 244 246) !important; }
+      html:not(.dark) .bg-gray-700 { background-color: rgb(229 231 235) !important; }
+      html:not(.dark) .bg-gray-600 { background-color: rgb(209 213 219) !important; }
+      html:not(.dark) .bg-gray-500 { background-color: rgb(156 163 175) !important; }
+
+      /* Colored dark badge backgrounds → light equivalents */
+      html:not(.dark) .bg-red-950   { background-color: rgb(255 241 242) !important; }
+      html:not(.dark) .bg-red-900   { background-color: rgb(254 226 226) !important; }
+      html:not(.dark) .bg-red-800   { background-color: rgb(254 202 202) !important; }
+      html:not(.dark) .bg-green-900 { background-color: rgb(220 252 231) !important; }
+      html:not(.dark) .bg-green-800 { background-color: rgb(187 247 208) !important; }
+      html:not(.dark) .bg-yellow-900{ background-color: rgb(254 249 195) !important; }
+      html:not(.dark) .bg-blue-900  { background-color: rgb(219 234 254) !important; }
+      html:not(.dark) .bg-indigo-900{ background-color: rgb(224 231 255) !important; }
+      html:not(.dark) .bg-orange-900{ background-color: rgb(255 237 213) !important; }
+      html:not(.dark) .bg-purple-900{ background-color: rgb(243 232 255) !important; }
+
+      /* Border grays */
+      html:not(.dark) .border-gray-800 { border-color: rgb(229 231 235) !important; }
+      html:not(.dark) .border-gray-700 { border-color: rgb(209 213 219) !important; }
+      html:not(.dark) .border-gray-600 { border-color: rgb(156 163 175) !important; }
+      html:not(.dark) .border-gray-500 { border-color: rgb(107 114 128) !important; }
+
+      /* Colored dark borders → lighter equivalents */
+      html:not(.dark) .border-red-900   { border-color: rgb(252 165 165) !important; }
+      html:not(.dark) .border-red-800   { border-color: rgb(252 165 165) !important; }
+      html:not(.dark) .border-red-700   { border-color: rgb(248 113 113) !important; }
+      html:not(.dark) .border-green-800 { border-color: rgb(134 239 172) !important; }
+      html:not(.dark) .border-green-700 { border-color: rgb(74 222 128) !important; }
+      html:not(.dark) .border-yellow-700{ border-color: rgb(253 224 71) !important; }
+      html:not(.dark) .border-orange-800{ border-color: rgb(253 186 116) !important; }
+      html:not(.dark) .border-orange-700{ border-color: rgb(251 146 60) !important; }
+      html:not(.dark) .border-orange-400{ border-color: rgb(234 88 12) !important; }
+
+      /* Text: near-white/light → readable dark equivalents */
+      html:not(.dark) .text-white    { color: rgb(17 24 39)   !important; }
+      html:not(.dark) .text-gray-100 { color: rgb(31 41 55)   !important; }
+      html:not(.dark) .text-gray-200 { color: rgb(55 65 81)   !important; }
+      html:not(.dark) .text-gray-300 { color: rgb(75 85 99)   !important; }
+
+      /* Colored light text designed for dark bgs → darker on light bgs */
+      html:not(.dark) .text-red-300    { color: rgb(185 28 28)  !important; }
+      html:not(.dark) .text-red-400    { color: rgb(220 38 38)  !important; }
+      html:not(.dark) .text-red-500    { color: rgb(220 38 38)  !important; }
+      html:not(.dark) .text-red-600    { color: rgb(185 28 28)  !important; }
+      html:not(.dark) .text-green-200  { color: rgb(15 118 110) !important; }
+      html:not(.dark) .text-green-300  { color: rgb(21 128 61)  !important; }
+      html:not(.dark) .text-green-400  { color: rgb(22 163 74)  !important; }
+      html:not(.dark) .text-green-500  { color: rgb(21 128 61)  !important; }
+      html:not(.dark) .text-green-600  { color: rgb(15 118 110) !important; }
+      html:not(.dark) .text-yellow-200 { color: rgb(133 77 14)  !important; }
+      html:not(.dark) .text-yellow-300 { color: rgb(161 98 7)   !important; }
+      html:not(.dark) .text-yellow-400 { color: rgb(180 83 9)   !important; }
+      html:not(.dark) .text-blue-300   { color: rgb(29 78 216)  !important; }
+      html:not(.dark) .text-blue-400   { color: rgb(37 99 235)  !important; }
+      html:not(.dark) .text-indigo-100 { color: rgb(55 48 163)  !important; }
+      html:not(.dark) .text-indigo-300 { color: rgb(67 56 202)  !important; }
+      html:not(.dark) .text-indigo-400 { color: rgb(79 70 229)  !important; }
+      html:not(.dark) .text-orange-300 { color: rgb(194 65 12)  !important; }
+      html:not(.dark) .text-orange-400 { color: rgb(234 88 12)  !important; }
+      html:not(.dark) .text-purple-300 { color: rgb(109 40 217) !important; }
+      html:not(.dark) .text-purple-400 { color: rgb(124 58 237) !important; }
+      html:not(.dark) .text-emerald-400{ color: rgb(5 150 105)  !important; }
+      html:not(.dark) .text-teal-300   { color: rgb(13 148 136) !important; }
+      html:not(.dark) .text-sky-200    { color: rgb(3 105 161)  !important; }
+      html:not(.dark) .text-cyan-300   { color: rgb(14 116 144) !important; }
+
+      /* Restore white text on saturated (non-gray) button backgrounds */
+      html:not(.dark) .bg-indigo-600 .text-white,
+      html:not(.dark) .bg-indigo-600.text-white,
+      html:not(.dark) .bg-indigo-500 .text-white,
+      html:not(.dark) .bg-indigo-500.text-white,
+      html:not(.dark) .bg-indigo-700 .text-white,
+      html:not(.dark) .bg-indigo-700.text-white,
+      html:not(.dark) .bg-red-500 .text-white,
+      html:not(.dark) .bg-red-500.text-white,
+      html:not(.dark) .bg-green-500 .text-white,
+      html:not(.dark) .bg-green-500.text-white,
+      html:not(.dark) .bg-green-700 .text-white,
+      html:not(.dark) .bg-green-700.text-white,
+      html:not(.dark) .bg-blue-600 .text-white,
+      html:not(.dark) .bg-blue-600.text-white,
+      html:not(.dark) .bg-blue-700 .text-white,
+      html:not(.dark) .bg-blue-700.text-white,
+      html:not(.dark) .bg-yellow-500 .text-white,
+      html:not(.dark) .bg-yellow-500.text-white,
+      html:not(.dark) .bg-yellow-600 .text-white,
+      html:not(.dark) .bg-yellow-600.text-white { color: rgb(255 255 255) !important; }
+
+      /* Hover states */
+      html:not(.dark) .hover\:bg-gray-800:hover { background-color: rgb(243 244 246) !important; }
+      html:not(.dark) .hover\:bg-gray-700:hover { background-color: rgb(229 231 235) !important; }
+      html:not(.dark) .hover\:bg-gray-600:hover { background-color: rgb(209 213 219) !important; }
+
+      /* Divide colors */
+      html:not(.dark) .divide-gray-800 > * + * { border-color: rgb(229 231 235) !important; }
+      html:not(.dark) .divide-gray-700 > * + * { border-color: rgb(209 213 219) !important; }
+    </style>
+  </head>
+  <body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

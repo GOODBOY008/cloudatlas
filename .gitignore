@@ -1,0 +1,56 @@
+
+# OS
+.DS_Store
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Rust
+/backend/target/
+**/target/
+
+# SQLx offline data (optional local cache)
+.sqlx/
+
+# Node.js / Vite
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+/frontend/coverage/
+
+# Test artifacts
+coverage/
+*.lcov
+e2e/playwright/.auth/
+
+# Runtime temp files
+tmp/
+*.tmp
+
+# Agent/tooling artifacts
+.codegraph/
+.qoder/
+.playwright-mcp/
+.root-info.md
+gui-test-screenshots/
+
+# Docker local overrides
+docker-compose.override.yml
+
+.superpowers/
+
+# Playwright output dirs
+test-results/
+playwright-report/
+/docs/

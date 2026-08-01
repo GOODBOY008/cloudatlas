@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "💬 Questions & Discussions"
+    url: https://github.com/GOODBOY008/cloudatlas/discussions
+    about: Ask questions, share ideas, or discuss the project with the community.
+  - name: "📖 Documentation"
+    url: https://github.com/GOODBOY008/cloudatlas/tree/main/docs
+    about: Read the design docs, ADRs, and user guide before opening an issue.
+  - name: "🔒 Security Vulnerability"
+    url: mailto:cloudatlas-project@example.com
+    about: Report security vulnerabilities privately via email — do NOT open a public issue.

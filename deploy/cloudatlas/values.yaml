@@ -1,0 +1,54 @@
+# CloudAtlas Helm values
+# `helm install cloudatlas ./deploy/cloudatlas --set backend.jwtSecret=...`
+
+image:
+  repository: cloudatlas
+  tag: latest
+  pullPolicy: IfNotPresent
+
+backend:
+  replicaCount: 1
+  port: 8080
+  resources:
+    requests: { cpu: 250m, memory: 256Mi }
+    limits: { cpu: "1", memory: 512Mi }
+  # Required secrets (generate: openssl rand -hex 64 / openssl rand -hex 32)
+  jwtSecret: ""
+  encryptionKey: ""
+  # Optional
+  openaiApiKey: ""
+  aiEnabled: "false"
+  smtpHost: ""
+  smtpPort: "587"
+  smtpUsername: ""
+  smtpPassword: ""
+  smtpFrom: ""
+  redisUrl: ""
+  sentryDsn: ""
+  corsOrigins: "http://localhost:3000,http://localhost:5173"
+  rateLimitMaxRequests: "120"
+  rateLimitWindowSecs: "60"
+
+frontend:
+  replicaCount: 1
+  port: 80
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 250m, memory: 128Mi }
+
+postgres:
+  enabled: true
+  image: postgres:15-alpine
+  database: cloudatlas
+  username: cloudatlas
+  password: cloudatlas   # override in production!
+  storage: 10Gi
+  storageClass: ""
+
+ingress:
+  enabled: true
+  className: nginx
+  host: cloudatlas.example.com
+  tls:
+    enabled: false
+    secretName: cloudatlas-tls

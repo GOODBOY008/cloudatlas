@@ -1,0 +1,100 @@
+# CloudAtlas E2E test stack
+# Spins up the full application in a clean state for automated testing.
+# All services use ephemeral storage — no persistent volumes.
+#
+# Usage:
+#   docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit
+#   docker compose -f docker-compose.e2e.yml down -v
+
+name: cloudatlas-e2e
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: e2e-postgres
+    environment:
+      POSTGRES_DB: cloudatlas
+      POSTGRES_USER: cloudatlas
+      POSTGRES_PASSWORD: cloudatlas
+    # Ephemeral — no named volume; data is lost after `down -v`
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cloudatlas -d cloudatlas"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/migrate.Dockerfile
+    container_name: e2e-migrate
+    environment:
+      DATABASE_URL: postgres://cloudatlas:cloudatlas@postgres:5432/cloudatlas
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: e2e-api
+    environment:
+      DATABASE_URL: postgres://cloudatlas:cloudatlas@postgres:5432/cloudatlas
+      APP_HOST: 0.0.0.0
+      APP_PORT: "8080"
+      JWT_SECRET: e2e-test-secret-at-least-32-chars-xxxxxxxxxxxx
+      ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+      CLOUD_MOCK_ENABLED: "true"
+      RUST_LOG: warn,cloudatlas=info
+      SCHEDULER_ENABLED: "false"
+    ports:
+      - "8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: e2e-frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080/api/v1
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # Playwright runner — executes E2E tests against the running stack
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.45.0-jammy
+    container_name: e2e-runner
+    working_dir: /e2e
+    environment:
+      E2E_BASE_URL: http://frontend:80
+      E2E_API_URL: http://api:8080
+      E2E_ADMIN_EMAIL: admin@acme.com
+      E2E_ADMIN_PASS: admin123
+      CI: "true"
+    command: >
+      sh -c "npm ci && npx playwright install --with-deps chromium && npx playwright test"
+    depends_on:
+      frontend:
+        condition: service_started
+      api:
+        condition: service_healthy
+    # Store test results and report on the host via bind mount
+    volumes:
+      - ./e2e:/e2e
+      - ./e2e/playwright-report:/e2e/playwright-report
+      - ./e2e/test-results:/e2e/test-results

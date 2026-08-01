@@ -1,0 +1,101 @@
+---
+name: "✨ Feature Request"
+description: Suggest a new feature or enhancement for CloudAtlas
+title: "feat: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please fill out the sections below to help us understand your idea.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem are you trying to solve? What pain point does this address?
+      placeholder: I'm frustrated when... / It would be useful to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe your ideal solution. How should it work? What should the user experience look like?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you considered other approaches? Why did you choose this one?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature area
+      description: Which area of CloudAtlas does this relate to?
+      options:
+        - FinOps — Cost management & optimization
+        - CMDB — Asset & configuration management
+        - Auth & RBAC — Authentication & authorization
+        - Alerts & Webhooks — Notifications
+        - Scheduling — Background jobs & automation
+        - UI / UX — Frontend experience
+        - API — Backend API design
+        - Deployment — Docker, CI/CD
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      description: How large is this feature?
+      options:
+        - Small (single endpoint / page)
+        - Medium (multiple endpoints / pages)
+        - Large (cross-cutting change)
+    validations:
+      required: false
+
+  - type: textarea
+    id: mockup
+    attributes:
+      label: Mockups / examples
+      description: If applicable, add screenshots, wireframes, or links to similar features in other tools.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Any other context, related issues, or references to external tools/specs.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Willingness to contribute
+      options:
+        - label: I would be willing to implement this feature (with guidance from maintainers)
+          required: false
+        - label: I can help with testing and validation
+          required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I have searched existing issues to avoid duplicates
+          required: true
+        - label: This feature aligns with CloudAtlas' scope (FinOps + CMDB platform)
+          required: true
