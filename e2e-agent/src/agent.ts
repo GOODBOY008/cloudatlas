@@ -277,6 +277,13 @@ export class AITestAgent {
         case 'screenshot': {
           const { base64, path: p } = await browser.screenshot();
           text = `Screenshot captured: ${p}`;
+          // Text-only model backends (e.g. OpenAI-compatible providers without
+          // vision) reject image blocks; AGENT_SEND_IMAGES=false keeps the PNG
+          // on disk for the report but describes it instead of attaching it.
+          if ((process.env.AGENT_SEND_IMAGES ?? 'true').toLowerCase() === 'false') {
+            content = `${text} (image not sent to model: AGENT_SEND_IMAGES=false). Current URL: ${browser.page.url()}`;
+            break;
+          }
           // Return screenshot as image content block — lets Claude see the page
           content = [
             {

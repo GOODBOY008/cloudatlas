@@ -3,7 +3,10 @@
 # ==============================================================================
 
 .PHONY: help dev build test lint clean migrate seed docker-up docker-down \
-        docker-build api-test fmt check
+        docker-build api-test fmt check \
+        e2e-install e2e e2e-smoke e2e-regression e2e-ui e2e-report e2e-docker \
+        agent-install agent-e2e agent-smoke agent-auth agent-finops agent-cmdb \
+        agent-headed agent-list agent-report
 
 COMPOSE_FILE := docker-compose.yml
 COMPOSE_DEV  := docker-compose.dev.yml
@@ -56,6 +59,63 @@ test-frontend: ## Run frontend tests
 api-test: ## Run API smoke tests against running server
 	@echo "Running API smoke tests..."
 	@./scripts/smoke_test.sh
+
+# ──────────────────────────────────────────────────────────────────────────────
+# E2E (Playwright) — see e2e/README.md
+# ──────────────────────────────────────────────────────────────────────────────
+
+e2e-install: ## Install Playwright deps + browsers for e2e/
+	cd e2e && npm ci && npx playwright install chromium firefox
+
+e2e: ## Run full Playwright e2e suite (requires stack: make dev-db + backend + frontend)
+	cd e2e && npx playwright test
+
+e2e-smoke: ## Run @smoke e2e tests only (~2 min)
+	cd e2e && npx playwright test --grep @smoke
+
+e2e-regression: ## Run @regression e2e tests only
+	cd e2e && npx playwright test --grep @regression
+
+e2e-ui: ## Open interactive Playwright UI
+	cd e2e && npx playwright test --ui
+
+e2e-report: ## Open last HTML report
+	cd e2e && npx playwright show-report
+
+e2e-docker: ## Run e2e suite in Docker against a clean ephemeral stack (CI equivalent)
+	docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit e2e
+	docker compose -f docker-compose.e2e.yml down
+
+# ──────────────────────────────────────────────────────────────────────────────
+# AI Agent E2E — see e2e-agent/README.md (requires ANTHROPIC_API_KEY in e2e-agent/.env)
+# ──────────────────────────────────────────────────────────────────────────────
+
+agent-install: ## Install AI agent e2e deps + chromium
+	cd e2e-agent && npm install && npx playwright install chromium
+
+agent-e2e: ## Run full AI agent e2e suite
+	cd e2e-agent && npm run agent
+
+agent-smoke: ## Run AI agent smoke scenarios only (~5 min)
+	cd e2e-agent && npm run agent:smoke
+
+agent-auth: ## Run AI agent auth suite
+	cd e2e-agent && npm run agent:auth
+
+agent-finops: ## Run AI agent finops suite
+	cd e2e-agent && npm run agent:finops
+
+agent-cmdb: ## Run AI agent cmdb suite
+	cd e2e-agent && npm run agent:cmdb
+
+agent-headed: ## Run AI agent e2e with visible browser
+	cd e2e-agent && npm run agent -- --headed
+
+agent-list: ## List all AI agent scenarios
+	cd e2e-agent && npm run agent -- --list
+
+agent-report: ## Open latest AI agent HTML report
+	cd e2e-agent && npm run agent:report
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Code Quality

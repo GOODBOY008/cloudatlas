@@ -51,6 +51,8 @@ services:
       CLOUD_MOCK_ENABLED: "true"
       RUST_LOG: warn,cloudatlas=info
       SCHEDULER_ENABLED: "false"
+      # Relaxed like prod compose — the suite bursts past the 120/min default.
+      RATE_LIMIT_MAX_REQUESTS: "600"
     ports:
       - "8080:8080"
     depends_on:
@@ -77,17 +79,17 @@ services:
 
   # Playwright runner — executes E2E tests against the running stack
   e2e:
-    image: mcr.microsoft.com/playwright:v1.45.0-jammy
+    image: mcr.microsoft.com/playwright:v1.58.0-jammy
     container_name: e2e-runner
     working_dir: /e2e
     environment:
       E2E_BASE_URL: http://frontend:80
       E2E_API_URL: http://api:8080
       E2E_ADMIN_EMAIL: admin@acme.com
-      E2E_ADMIN_PASS: admin123
+      E2E_ADMIN_PASS: Password123!
       CI: "true"
     command: >
-      sh -c "npm ci && npx playwright install --with-deps chromium && npx playwright test"
+      sh -c "npm ci && npx playwright install --with-deps chromium firefox && npx playwright test --project=chromium --project=firefox"
     depends_on:
       frontend:
         condition: service_started
