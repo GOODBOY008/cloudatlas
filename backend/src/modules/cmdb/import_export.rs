@@ -1,6 +1,6 @@
 //! CI CSV import / export / template (gap closure T7).
 //!
-//! - `GET /ci-types/:id/import-template` — CSV header + example row generated
+//! - `GET /ci-types/{id}/import-template` — CSV header + example row generated
 //!   from the type's attribute definitions.
 //! - `POST /cis/import` — multipart CSV upload, server-side parse; each row
 //!   runs the T1 attribute validator + T2 unique-constraint check, with a
@@ -41,7 +41,7 @@ const FIXED_COLUMNS: [&str; 4] = ["name", "display_name", "cloud_provider", "clo
 
 // ─── Import template ─────────────────────────────────────────────────────────
 
-/// GET /api/v1/orgs/:org_id/ci-types/:type_id/import-template
+/// GET /api/v1/orgs/{org_id}/ci-types/{type_id}/import-template
 ///
 /// Generates a CSV template for the CI type: fixed columns (name,
 /// display_name, cloud_provider, cloud_region) followed by one column per
@@ -84,10 +84,7 @@ pub async fn ci_import_template(
     let mut header: Vec<&str> = FIXED_COLUMNS.to_vec();
     header.extend(attrs.iter().map(|a| a.name.as_str()));
     // Header + example row (csv crate quotes as needed).
-    let example: Vec<String> = header
-        .iter()
-        .map(|h| example_value(h, &attrs))
-        .collect();
+    let example: Vec<String> = header.iter().map(|h| example_value(h, &attrs)).collect();
     w.write_record(&header)
         .map_err(|e| AppError::Internal(e.into()))?;
     w.write_record(&example)
@@ -116,10 +113,11 @@ pub async fn ci_import_template(
     w.write_record(&enum_doc)
         .map_err(|e| AppError::Internal(e.into()))?;
 
-    let body = w
-        .into_inner()
-        .map_err(|e| AppError::Internal(e.into()))?;
-    let filename = format!("{}_import_template.csv", type_name.to_lowercase().replace(' ', "_"));
+    let body = w.into_inner().map_err(|e| AppError::Internal(e.into()))?;
+    let filename = format!(
+        "{}_import_template.csv",
+        type_name.to_lowercase().replace(' ', "_")
+    );
 
     Ok((
         StatusCode::OK,
@@ -180,7 +178,7 @@ impl AttrDef {
 
 // ─── CSV import ──────────────────────────────────────────────────────────────
 
-/// POST /api/v1/orgs/:org_id/cis/import
+/// POST /api/v1/orgs/{org_id}/cis/import
 ///
 /// Multipart body: `file` = CSV following the import template layout, plus an
 /// optional `conflict_strategy` field (`skip` default | `upsert`) and an
@@ -236,10 +234,9 @@ pub async fn cis_import_csv(
                 ci_type_id = Uuid::parse_str(raw.trim()).ok();
             }
             "conflict_strategy" => {
-                let raw = field
-                    .text()
-                    .await
-                    .map_err(|e| AppError::Validation(format!("cannot read conflict_strategy: {e}")))?;
+                let raw = field.text().await.map_err(|e| {
+                    AppError::Validation(format!("cannot read conflict_strategy: {e}"))
+                })?;
                 let raw = raw.trim();
                 if raw == "upsert" || raw == "skip" {
                     strategy = raw.to_string();
@@ -338,7 +335,9 @@ pub async fn cis_import_csv(
 
         if name.is_empty() {
             failed += 1;
-            results.push(json!({ "row": row_idx, "status": "error", "error": "name column is required" }));
+            results.push(
+                json!({ "row": row_idx, "status": "error", "error": "name column is required" }),
+            );
             continue;
         }
 
@@ -348,21 +347,17 @@ pub async fn cis_import_csv(
         if let Err(errors) = validation::validate_meta(&attr_defs, &meta_value) {
             failed += 1;
             let msgs: Vec<Value> = errors.iter().map(|ve| ve.to_json()).collect();
-            results.push(json!({ "row": row_idx, "name": name, "status": "error", "errors": msgs }));
+            results
+                .push(json!({ "row": row_idx, "name": name, "status": "error", "errors": msgs }));
             continue;
         }
 
         // T2 unique check (create path; upsert resolves the conflict instead).
         // Falls back to a same-name match within the CI type when no unique
         // constraint is configured — a CSV re-run must not double-import.
-        let unique_hit = validation::check_unique_constraints(
-            &state.db,
-            org_id,
-            ci_type_id,
-            &meta_value,
-            None,
-        )
-        .await;
+        let unique_hit =
+            validation::check_unique_constraints(&state.db, org_id, ci_type_id, &meta_value, None)
+                .await;
         let existing_id: Option<Uuid> = match unique_hit {
             Ok(()) => sqlx::query_scalar::<_, Uuid>(
                 r#"SELECT id FROM cis
@@ -444,8 +439,11 @@ pub async fn cis_import_csv(
             Ok(Some(row)) => {
                 created += 1;
                 let id: Uuid = row.try_get("id").unwrap_or_default();
-                super::handlers::audit_import_row(&state.db, org_id, Some(user_id), id, &name).await;
-                results.push(json!({ "row": row_idx, "name": name, "status": "created", "ci_id": id }));
+                super::handlers::audit_import_row(&state.db, org_id, Some(user_id), id, &name)
+                    .await;
+                results.push(
+                    json!({ "row": row_idx, "name": name, "status": "created", "ci_id": id }),
+                );
             }
             Ok(None) => {
                 skipped += 1;
@@ -475,7 +473,9 @@ pub async fn cis_import_csv(
 /// impossible coercions so the row fails with a precise reason.
 fn coerce_csv_value(cell: &str, attr: &AttrDef) -> Result<Value, String> {
     match attr.attribute_type.as_str() {
-        "string" | "enum" | "url" | "ip_address" | "cidr" | "datetime" => Ok(Value::String(cell.to_string())),
+        "string" | "enum" | "url" | "ip_address" | "cidr" | "datetime" => {
+            Ok(Value::String(cell.to_string()))
+        }
         "integer" => cell
             .parse::<i64>()
             .map(|n| json!(n))
@@ -487,7 +487,10 @@ fn coerce_csv_value(cell: &str, attr: &AttrDef) -> Result<Value, String> {
         "boolean" => match cell.to_lowercase().as_str() {
             "true" | "1" | "yes" => Ok(json!(true)),
             "false" | "0" | "no" => Ok(json!(false)),
-            _ => Err(format!("attribute '{}' expects true/false, got '{cell}'", attr.name)),
+            _ => Err(format!(
+                "attribute '{}' expects true/false, got '{cell}'",
+                attr.name
+            )),
         },
         "list" => {
             let items: Vec<Value> = cell.split(',').map(|s| json!(s.trim())).collect();
@@ -513,7 +516,7 @@ pub struct CiExportQuery {
     pub limit: Option<i64>,
 }
 
-/// GET /api/v1/orgs/:org_id/cis/export
+/// GET /api/v1/orgs/{org_id}/cis/export
 ///
 /// Streams the CI list as CSV using the exact same filters as `GET /cis`
 /// (ci_type_id / lifecycle_state / cloud_account_id / cloud_provider /
@@ -549,7 +552,10 @@ pub async fn cis_export_csv(
     }
     let limit = q.limit.unwrap_or(5000).clamp(1, 20000);
 
-    let mut conditions = vec!["c.organization_id = $1".to_string(), "c.deleted_at IS NULL".to_string()];
+    let mut conditions = vec![
+        "c.organization_id = $1".to_string(),
+        "c.deleted_at IS NULL".to_string(),
+    ];
     let mut bind_idx = 2usize;
     if q.ci_type_id.is_some() {
         conditions.push(format!("c.ci_type_id = ${bind_idx}"));
@@ -568,7 +574,9 @@ pub async fn cis_export_csv(
         bind_idx += 1;
     }
     if q.search.is_some() {
-        conditions.push(format!("(c.name ILIKE ${bind_idx} OR c.cloud_resource_id ILIKE ${bind_idx})"));
+        conditions.push(format!(
+            "(c.name ILIKE ${bind_idx} OR c.cloud_resource_id ILIKE ${bind_idx})"
+        ));
         bind_idx += 1;
     }
 
@@ -583,7 +591,7 @@ pub async fn cis_export_csv(
         bind_idx
     );
 
-    let mut query = sqlx::query(&sql).bind(org_id);
+    let mut query = sqlx::query(sqlx::AssertSqlSafe(&*sql)).bind(org_id);
     if let Some(v) = q.ci_type_id {
         query = query.bind(v);
     }
@@ -621,17 +629,24 @@ pub async fn cis_export_csv(
         let tags: Value = r.try_get::<Value, _>("tags").unwrap_or_else(|_| json!({}));
         let meta: Value = r.try_get::<Value, _>("meta").unwrap_or_else(|_| json!({}));
         w.write_record(&[
-            r.try_get::<Uuid, _>("id").map(|u| u.to_string()).unwrap_or_default(),
+            r.try_get::<Uuid, _>("id")
+                .map(|u| u.to_string())
+                .unwrap_or_default(),
             r.try_get::<String, _>("name").unwrap_or_default(),
-            r.try_get::<Option<String>, _>("display_name").unwrap_or(None)
+            r.try_get::<Option<String>, _>("display_name")
+                .unwrap_or(None)
                 .unwrap_or_default(),
-            r.try_get::<Option<String>, _>("cloud_provider").unwrap_or(None)
+            r.try_get::<Option<String>, _>("cloud_provider")
+                .unwrap_or(None)
                 .unwrap_or_default(),
-            r.try_get::<Option<String>, _>("cloud_region").unwrap_or(None)
+            r.try_get::<Option<String>, _>("cloud_region")
+                .unwrap_or(None)
                 .unwrap_or_default(),
-            r.try_get::<Option<String>, _>("cloud_resource_id").unwrap_or(None)
+            r.try_get::<Option<String>, _>("cloud_resource_id")
+                .unwrap_or(None)
                 .unwrap_or_default(),
-            r.try_get::<String, _>("lifecycle_state").unwrap_or_default(),
+            r.try_get::<String, _>("lifecycle_state")
+                .unwrap_or_default(),
             serde_json::to_string(&tags).unwrap_or_default(),
             serde_json::to_string(&meta).unwrap_or_default(),
             r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
@@ -641,9 +656,7 @@ pub async fn cis_export_csv(
         .map_err(|e| AppError::Internal(e.into()))?;
     }
 
-    let body = w
-        .into_inner()
-        .map_err(|e| AppError::Internal(e.into()))?;
+    let body = w.into_inner().map_err(|e| AppError::Internal(e.into()))?;
 
     Ok((
         StatusCode::OK,

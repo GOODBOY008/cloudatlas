@@ -18,13 +18,14 @@ path = "src/lib.rs"
 tokio          = { version = "1.38", features = ["full"] }
 
 # ── Web framework ──────────────────────────────────────────────
-axum           = { version = "0.7", features = ["macros", "multipart"] }
-tower          = { version = "0.4", features = ["full"] }
-tower-http     = { version = "0.5", features = ["cors", "trace", "compression-gzip", "request-id", "timeout"] }
+axum           = { version = "0.8", features = ["macros", "multipart"] }
+tower          = { version = "0.5", features = ["full"] }
+tower-http     = { version = "0.7", features = ["cors", "trace", "compression-gzip", "request-id", "timeout"] }
 
 # ── Database ───────────────────────────────────────────────────
-sqlx           = { version = "0.7", features = [
-    "runtime-tokio-native-tls",
+sqlx           = { version = "0.9", features = [
+    "runtime-tokio",
+    "tls-native-tls",
     "postgres",
     "uuid",
     "chrono",
@@ -42,7 +43,7 @@ flate2         = "1"
 # ── Authentication ─────────────────────────────────────────────
 jsonwebtoken   = "9"
 argon2         = "0.5"
-rand           = "0.8"
+rand           = "0.10"
 hex            = "0.4"
 
 # ── UUID & time ────────────────────────────────────────────────
@@ -52,11 +53,11 @@ regex          = "1"
 
 # ── Config & env ───────────────────────────────────────────────
 dotenvy        = "0.15"
-config         = "0.14"
+config         = "0.15"
 
 # ── Error handling ─────────────────────────────────────────────
 anyhow         = "1"
-thiserror      = "1"
+thiserror      = "2"
 
 # ── Tracing / observability ────────────────────────────────────
 tracing                = "0.1"
@@ -81,8 +82,8 @@ hmac                 = "0.12"
 sha1                 = "0.10"
 
 # ── OpenAPI ────────────────────────────────────────────────────
-utoipa         = { version = "4", features = ["axum_extras", "uuid", "chrono"] }
-utoipa-swagger-ui = { version = "6", features = ["axum"] }
+utoipa         = { version = "5", features = ["axum_extras", "uuid", "chrono"] }
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
 
 # ── Crypto (credential encryption) ────────────────────────────
 aes-gcm        = "0.10"
@@ -92,7 +93,7 @@ base64         = "0.22"
 rust_decimal   = { version = "1", features = ["serde"] }
 
 # ── Scheduling ────────────────────────────────────────────────
-cron           = "0.12"
+cron           = "0.17"
 lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "builder", "rustls-tls", "pool"] }
 futures-util = "0.3"
 sentry = { version = "0.34", default-features = false, features = ["backtrace", "rustls"] }
@@ -103,5 +104,4 @@ base32 = "0.5"
 
 [dev-dependencies]
 tokio-test     = "0.4"
-axum-test      = "14"
 serde_urlencoded = "0.7"

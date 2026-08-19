@@ -4,8 +4,8 @@ use axum::{
     Json,
 };
 use serde::Deserialize;
-use sqlx::Row;
 use serde_json::{json, Value};
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::{
@@ -18,18 +18,16 @@ use crate::{
 use super::worker;
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct ImportRequest {
     pub cloud_account_id: Uuid,
     /// Days of billing data to import (1..=90, default 30).
@@ -38,7 +36,7 @@ pub struct ImportRequest {
 
 /// Trigger billing import for a cloud account — async since the
 /// async-jobs redesign (spec 2026-09-09 §4.4): responds `202` with the job
-/// handle; poll `GET /orgs/:org_id/jobs/:job_id` for phases and the terminal
+/// handle; poll `GET /orgs/{org_id}/jobs/{job_id}` for phases and the terminal
 /// `result` (provider / raw_rows_inserted / days_imported).
 #[utoipa::path(
     post,
@@ -84,7 +82,7 @@ pub async fn trigger_import(
         }
     }
 
-    let days = req.days.unwrap_or(30).min(90).max(1);
+    let days = req.days.unwrap_or(30).clamp(1, 90);
     let Some(job) = worker::launch_billing_import(
         &state,
         org_id,
@@ -100,7 +98,10 @@ pub async fn trigger_import(
         )));
     };
 
-    Ok((StatusCode::ACCEPTED, Json(json!({ "data": jobs::job_to_json(&job) }))))
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(json!({ "data": jobs::job_to_json(&job) })),
+    ))
 }
 
 #[cfg(test)]
@@ -127,7 +128,16 @@ pub async fn list_import_history(
 
     let bounds = page.resolve(50, 200);
 
-    let rows = sqlx::query_as::<_, (Uuid, String, i64, i64, Option<chrono::DateTime<chrono::Utc>>)>(
+    let rows = sqlx::query_as::<
+        _,
+        (
+            Uuid,
+            String,
+            i64,
+            i64,
+            Option<chrono::DateTime<chrono::Utc>>,
+        ),
+    >(
         r#"SELECT
                ca.id,
                ca.provider::text,
@@ -179,17 +189,19 @@ pub async fn list_import_history(
         })
         .collect();
 
-    Ok(Json(json!({ "data": history, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": history, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 // ─── Exchange rates (currency FX) ─────────────────────────────────────────────
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct UpsertRatesRequest {
     pub rates: Vec<RateInput>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct RateInput {
     pub from_currency: String,
     pub to_currency: String,

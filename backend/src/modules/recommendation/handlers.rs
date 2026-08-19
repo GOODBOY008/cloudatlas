@@ -17,19 +17,13 @@ use crate::{
 #[allow(unused_imports)]
 use super::dto::{RecommendationListQuery, RecommendationResponse, RecommendationSummaryResponse};
 
-async fn ensure_org_member(
-    db: &sqlx::PgPool,
-    org_id: Uuid,
-    user_id: Uuid,
-) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -57,7 +51,12 @@ pub async fn list(
     let (limit, offset) = (bounds.limit, bounds.offset);
     let status = q.status.as_deref();
     let rec_type = q.rec_type.as_deref();
-    let search = q.search.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty()).map(|s| s.to_string());
+    let search = q
+        .search
+        .as_ref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
 
     let rows = sqlx::query(
         r#"SELECT id, rec_type::text, status::text, title, description,
@@ -241,7 +240,10 @@ pub async fn dismiss(
         return Err(AppError::NotFound(format!("Recommendation {id} not found")));
     }
 
-    Ok((StatusCode::OK, Json(json!({ "data": { "id": id, "status": "dismissed" } }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "data": { "id": id, "status": "dismissed" } })),
+    ))
 }
 
 pub async fn trigger_run(
@@ -256,7 +258,7 @@ pub async fn trigger_run(
     let _ = sqlx::query(
         "INSERT INTO checklist (organization_id, run_status, last_run_at)
          VALUES ($1, 'running', NOW())
-         ON CONFLICT (organization_id) DO UPDATE SET run_status = 'running', last_run_at = NOW()"
+         ON CONFLICT (organization_id) DO UPDATE SET run_status = 'running', last_run_at = NOW()",
     )
     .bind(org_id)
     .execute(&state.db)
@@ -288,7 +290,10 @@ pub async fn trigger_run(
         }
     });
 
-    Ok((StatusCode::ACCEPTED, Json(json!({ "message": "Recommendation run started", "org_id": org_id }))))
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(json!({ "message": "Recommendation run started", "org_id": org_id })),
+    ))
 }
 
 pub async fn checklist_status(
@@ -309,7 +314,7 @@ pub async fn checklist_status(
     .await?;
 
     let active_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM recommendations WHERE organization_id = $1 AND status = 'active'"
+        "SELECT COUNT(*) FROM recommendations WHERE organization_id = $1 AND status = 'active'",
     )
     .bind(org_id)
     .fetch_one(&state.db)
@@ -317,7 +322,7 @@ pub async fn checklist_status(
     .unwrap_or(0);
 
     let dismissed_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM recommendations WHERE organization_id = $1 AND status = 'dismissed'"
+        "SELECT COUNT(*) FROM recommendations WHERE organization_id = $1 AND status = 'dismissed'",
     )
     .bind(org_id)
     .fetch_one(&state.db)
@@ -355,7 +360,7 @@ pub async fn checklist_status(
 
 // ─── patch_checklist_modules ──────────────────────────────────────────────────
 
-/// Request body for PATCH /orgs/:id/recommendations/checklist
+/// Request body for PATCH /orgs/{id}/recommendations/checklist
 ///
 /// Merges `modules_config` into the checklist row using jsonb `||` (object merge),
 /// so callers can update a single module without overwriting others.
@@ -422,7 +427,7 @@ pub async fn patch_checklist_modules(
 
 // ─── reactivate ───────────────────────────────────────────────────────────────
 
-/// POST /api/v1/orgs/:org_id/recommendations/:id/reactivate
+/// POST /api/v1/orgs/{org_id}/recommendations/{id}/reactivate
 ///
 /// Un-dismisses a recommendation, returning it to `active` status and clearing
 /// all dismissal fields. The unique-active-scope partial index from migration 012
@@ -456,7 +461,8 @@ pub async fn reactivate(
         if e.to_string().contains("unique") || e.to_string().contains("duplicate") {
             AppError::Conflict(
                 "A newer active recommendation already exists for this resource scope. \
-                 Dismiss it first or delete the duplicate before re-activating.".into(),
+                 Dismiss it first or delete the duplicate before re-activating."
+                    .into(),
             )
         } else {
             AppError::Database(e)
@@ -477,10 +483,9 @@ pub async fn reactivate(
     ))
 }
 
-
 // ─── Apply + verify (product gap C2) ──────────────────────────────────────────
 
-/// POST /orgs/:id/recommendations/:rec_id/apply — mark as applied (ManageRules).
+/// POST /orgs/{id}/recommendations/{rec_id}/apply — mark as applied (ManageRules).
 pub async fn apply_recommendation(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -504,7 +509,9 @@ pub async fn apply_recommendation(
             "Active recommendation {rec_id} not found"
         )));
     }
-    Ok(Json(json!({ "data": { "id": rec_id, "status": "applied" } })))
+    Ok(Json(
+        json!({ "data": { "id": rec_id, "status": "applied" } }),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -512,7 +519,7 @@ pub struct VerifyRecommendationRequest {
     pub actual_savings: f64,
 }
 
-/// POST /orgs/:id/recommendations/:rec_id/verify — record realized savings.
+/// POST /orgs/{id}/recommendations/{rec_id}/verify — record realized savings.
 pub async fn verify_recommendation(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -534,7 +541,9 @@ pub async fn verify_recommendation(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Recommendation {rec_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Recommendation {rec_id} not found"
+        )));
     }
     Ok(Json(json!({ "data": { "id": rec_id, "verified": true } })))
 }

@@ -59,7 +59,11 @@ impl ProgressReporter {
                 }
             }
         });
-        ProgressReporter { alive, tx: Some(tx), handle: Some(handle) }
+        ProgressReporter {
+            alive,
+            tx: Some(tx),
+            handle: Some(handle),
+        }
     }
 
     /// The sync closure handed to fetch/import functions. Owned captures
@@ -177,7 +181,14 @@ pub fn billing_conflict_error(existing_job_id: Uuid) -> AppError {
 /// `status = 'running'`; a zero rowcount means the job was cancelled — the
 /// worker returns without a terminal write so the cancelled state sticks.
 pub async fn run_import(state: AppState, job_id: Uuid, run: ImportRun) {
-    let ImportRun { org_id, account_id, provider_raw, credentials_enc, config, days } = run;
+    let ImportRun {
+        org_id,
+        account_id,
+        provider_raw,
+        credentials_enc,
+        config,
+        days,
+    } = run;
     if !jobs::claim_job(&state.db, job_id).await {
         tracing::info!(job_id = %job_id, "billing import cancelled while pending");
         return;
@@ -199,7 +210,9 @@ pub async fn run_import(state: AppState, job_id: Uuid, run: ImportRun) {
             "alibaba" => {
                 let items = if mock_enabled {
                     let Some(items) = fetch_mock_days(
-                        &state.db, job_id, days,
+                        &state.db,
+                        job_id,
+                        days,
                         aliyun_bss::generate_mock_bss_data_for_day,
                     )
                     .await
@@ -209,10 +222,17 @@ pub async fn run_import(state: AppState, job_id: Uuid, run: ImportRun) {
                     items
                 } else {
                     let items = {
-                        let reporter = ProgressReporter::spawn(state.db.clone(), job_id, "fetching");
+                        let reporter =
+                            ProgressReporter::spawn(state.db.clone(), job_id, "fetching");
                         let result = {
                             let mut hook = reporter.hook();
-                            aliyun_bss::fetch_recent_line_items(&creds(&state, &credentials_enc), &config, days, Some(&mut hook)).await
+                            aliyun_bss::fetch_recent_line_items(
+                                &creds(&state, &credentials_enc),
+                                &config,
+                                days,
+                                Some(&mut hook),
+                            )
+                            .await
                         };
                         // Drop the hook (it holds a channel sender clone) before
                         // draining the watcher, or finish() would block forever.
@@ -227,7 +247,14 @@ pub async fn run_import(state: AppState, job_id: Uuid, run: ImportRun) {
                     let reporter = ProgressReporter::spawn(state.db.clone(), job_id, "importing");
                     let result = {
                         let mut hook = reporter.hook();
-                        aliyun_bss::import_line_items(&state, org_id, account_id, items, Some(&mut hook)).await
+                        aliyun_bss::import_line_items(
+                            &state,
+                            org_id,
+                            account_id,
+                            items,
+                            Some(&mut hook),
+                        )
+                        .await
                     };
                     (reporter.finish().await, result?)
                 };
@@ -236,7 +263,9 @@ pub async fn run_import(state: AppState, job_id: Uuid, run: ImportRun) {
             "aws" => {
                 let items = if mock_enabled {
                     let Some(items) = fetch_mock_days(
-                        &state.db, job_id, days,
+                        &state.db,
+                        job_id,
+                        days,
                         aws_cur::generate_mock_cur_data_for_day,
                     )
                     .await
@@ -246,13 +275,26 @@ pub async fn run_import(state: AppState, job_id: Uuid, run: ImportRun) {
                     items
                 } else {
                     // CUR resolves to a single object — no fetch progress.
-                    aws_cur::fetch_cur_line_items(&creds(&state, &credentials_enc), &config, days, None).await?
+                    aws_cur::fetch_cur_line_items(
+                        &creds(&state, &credentials_enc),
+                        &config,
+                        days,
+                        None,
+                    )
+                    .await?
                 };
                 let (alive, inserted) = {
                     let reporter = ProgressReporter::spawn(state.db.clone(), job_id, "importing");
                     let result = {
                         let mut hook = reporter.hook();
-                        aws_cur::import_line_items(&state, org_id, account_id, items, Some(&mut hook)).await
+                        aws_cur::import_line_items(
+                            &state,
+                            org_id,
+                            account_id,
+                            items,
+                            Some(&mut hook),
+                        )
+                        .await
                     };
                     (reporter.finish().await, result?)
                 };
@@ -272,7 +314,15 @@ pub async fn run_import(state: AppState, job_id: Uuid, run: ImportRun) {
         }
         Ok((true, inserted)) => {
             if let Err(e) = phase_aggregate(&state, org_id, account_id, job_id, inserted).await {
-                jobs::finalize_job(&state.db, &job, "failed", Some(&e.to_string()), serde_json::json!({}), None).await;
+                jobs::finalize_job(
+                    &state.db,
+                    &job,
+                    "failed",
+                    Some(&e.to_string()),
+                    serde_json::json!({}),
+                    None,
+                )
+                .await;
                 return;
             }
             jobs::finalize_job(
@@ -292,7 +342,15 @@ pub async fn run_import(state: AppState, job_id: Uuid, run: ImportRun) {
         }
         Err(e) => {
             tracing::error!(job_id = %job_id, error = %e, "billing import failed");
-            jobs::finalize_job(&state.db, &job, "failed", Some(&e.to_string()), serde_json::json!({}), None).await;
+            jobs::finalize_job(
+                &state.db,
+                &job,
+                "failed",
+                Some(&e.to_string()),
+                serde_json::json!({}),
+                None,
+            )
+            .await;
         }
     }
 }
@@ -316,7 +374,8 @@ async fn fetch_mock_days<T>(
 ) -> Option<Vec<T>> {
     let mut items = Vec::new();
     for day in 0..days {
-        if !jobs::report_progress(db, job_id, "fetching", Some(day as i32), Some(days as i32)).await {
+        if !jobs::report_progress(db, job_id, "fetching", Some(day as i32), Some(days as i32)).await
+        {
             return None;
         }
         tokio::time::sleep(std::time::Duration::from_millis(40)).await;
@@ -341,13 +400,12 @@ async fn phase_aggregate(
     if !jobs::report_progress(&state.db, job_id, "aggregating", None, None).await {
         return Ok(());
     }
-    let provider = sqlx::query_scalar::<_, String>(
-        "SELECT provider::text FROM cloud_accounts WHERE id = $1",
-    )
-    .bind(account_id)
-    .fetch_optional(&state.db)
-    .await?
-    .unwrap_or_default();
+    let provider =
+        sqlx::query_scalar::<_, String>("SELECT provider::text FROM cloud_accounts WHERE id = $1")
+            .bind(account_id)
+            .fetch_optional(&state.db)
+            .await?
+            .unwrap_or_default();
 
     if normalize_provider(&provider) == "alibaba" {
         aliyun_bss::aggregate_to_expenses(state, org_id, account_id).await
@@ -363,8 +421,9 @@ mod tests {
     use super::*;
 
     async fn dev_pool() -> Option<sqlx::PgPool> {
-        let url = std::env::var("TEST_DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://cloudatlas:cloudatlas@localhost:5432/cloudatlas".into());
+        let url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
+            "postgres://cloudatlas:cloudatlas@localhost:5432/cloudatlas".into()
+        });
         match sqlx::PgPool::connect(&url).await {
             Ok(pool) => Some(pool),
             Err(e) => {
@@ -379,7 +438,10 @@ mod tests {
         // Config::from_env requires DATABASE_URL / JWT_SECRET — provide
         // throwaway values when the environment doesn't have them.
         if std::env::var("DATABASE_URL").is_err() {
-            std::env::set_var("DATABASE_URL", "postgres://cloudatlas:cloudatlas@localhost:5432/cloudatlas");
+            std::env::set_var(
+                "DATABASE_URL",
+                "postgres://cloudatlas:cloudatlas@localhost:5432/cloudatlas",
+            );
         }
         if std::env::var("JWT_SECRET").is_err() {
             std::env::set_var("JWT_SECRET", "test-secret-not-used-by-worker-tests");
@@ -425,7 +487,9 @@ mod tests {
     #[tokio::test]
     async fn mock_import_runs_to_succeeded_through_phases() {
         let Some(db) = dev_pool().await else { return };
-        let Some(state) = mock_state(db.clone()).await else { return };
+        let Some(state) = mock_state(db.clone()).await else {
+            return;
+        };
         let (org, account) = fixture(&db).await;
 
         let job = launch_billing_import(&state, org, account, "tester", 3)
@@ -434,7 +498,9 @@ mod tests {
             .expect("job row");
 
         // Second launch while active → friendly 409 with the job pointer.
-        let err = launch_billing_import(&state, org, account, "tester", 3).await.unwrap_err();
+        let err = launch_billing_import(&state, org, account, "tester", 3)
+            .await
+            .unwrap_err();
         assert!(matches!(err, AppError::ConflictWithDetails(_, _)));
 
         // Scheduler overlap is a silent skip.
@@ -461,13 +527,12 @@ mod tests {
         let rows = done.result["raw_rows_inserted"].as_i64().unwrap_or(0);
         assert!(rows > 0, "mock rows must be inserted, got {rows}");
         // Aggregation happened.
-        let expense_rows: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM expenses WHERE cloud_account_id = $1",
-        )
-        .bind(account)
-        .fetch_one(&db)
-        .await
-        .expect("expenses count");
+        let expense_rows: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM expenses WHERE cloud_account_id = $1")
+                .bind(account)
+                .fetch_one(&db)
+                .await
+                .expect("expenses count");
         assert!(expense_rows > 0, "aggregation must populate expenses");
 
         cleanup(&db, org).await;
@@ -476,7 +541,9 @@ mod tests {
     #[tokio::test]
     async fn cancel_during_import_sticks_and_allows_relaunch() {
         let Some(db) = dev_pool().await else { return };
-        let Some(state) = mock_state(db.clone()).await else { return };
+        let Some(state) = mock_state(db.clone()).await else {
+            return;
+        };
         let (org, account) = fixture(&db).await;
 
         let job = launch_billing_import(&state, org, account, "tester", 60)

@@ -1,10 +1,10 @@
+use crate::state::AppState;
 use axum::{
     extract::State,
     http::{HeaderValue, Request},
     middleware::Next,
     response::Response,
 };
-use crate::state::AppState;
 
 /// Adds baseline security headers to every response:
 /// - `X-Content-Type-Options: nosniff`
@@ -20,7 +20,10 @@ pub async fn security_headers_middleware(
     let mut response = next.run(req).await;
     let headers = response.headers_mut();
 
-    headers.insert("X-Content-Type-Options", HeaderValue::from_static("nosniff"));
+    headers.insert(
+        "X-Content-Type-Options",
+        HeaderValue::from_static("nosniff"),
+    );
     headers.insert("X-Frame-Options", HeaderValue::from_static("DENY"));
     headers.insert("Referrer-Policy", HeaderValue::from_static("no-referrer"));
     headers.insert(

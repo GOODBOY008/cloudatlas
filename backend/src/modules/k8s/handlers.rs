@@ -17,7 +17,10 @@ use crate::{
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
     sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
-        .bind(org_id).bind(user_id).fetch_optional(db).await?
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
         .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
@@ -65,7 +68,7 @@ pub struct UpsertWorkloadRequest {
 
 // ─── Clusters ─────────────────────────────────────────────────────────────────
 
-/// GET /api/v1/orgs/:org_id/k8s/clusters
+/// GET /api/v1/orgs/{org_id}/k8s/clusters
 pub async fn list_clusters(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -95,11 +98,12 @@ pub async fn list_clusters(
     .fetch_all(&state.db)
     .await?;
 
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM k8s_clusters WHERE organization_id = $1")
-        .bind(org_id)
-        .fetch_one(&state.db)
-        .await
-        .unwrap_or(0);
+    let total: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM k8s_clusters WHERE organization_id = $1")
+            .bind(org_id)
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(0);
 
     let data: Vec<Value> = rows.iter().map(|r| json!({
         "id":             r.try_get::<Uuid, _>("id").ok(),
@@ -115,10 +119,12 @@ pub async fn list_clusters(
         "last_synced_at": r.try_get::<Option<chrono::DateTime<Utc>>, _>("last_synced_at").unwrap_or(None),
     })).collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
-/// POST /api/v1/orgs/:org_id/k8s/clusters
+/// POST /api/v1/orgs/{org_id}/k8s/clusters
 pub async fn upsert_cluster(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -149,26 +155,32 @@ pub async fn upsert_cluster(
                updated_at       = NOW()
            RETURNING id, name, created_at"#,
     )
-    .bind(org_id).bind(body.cloud_account_id)
+    .bind(org_id)
+    .bind(body.cloud_account_id)
     .bind(body.name.trim())
     .bind(body.region.as_deref())
     .bind(body.provider.as_deref())
-    .bind(body.node_count).bind(body.total_vcpu).bind(body.total_memory_gb)
+    .bind(body.node_count)
+    .bind(body.total_vcpu)
+    .bind(body.total_memory_gb)
     .bind(body.monthly_cost)
     .fetch_one(&state.db)
     .await?;
 
-    Ok((StatusCode::OK, Json(json!({
-        "data": {
-            "id":   row.try_get::<Uuid, _>("id").ok(),
-            "name": row.try_get::<String, _>("name").unwrap_or_default(),
-        }
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "data": {
+                "id":   row.try_get::<Uuid, _>("id").ok(),
+                "name": row.try_get::<String, _>("name").unwrap_or_default(),
+            }
+        })),
+    ))
 }
 
 // ─── Workloads ────────────────────────────────────────────────────────────────
 
-/// GET /api/v1/orgs/:org_id/k8s/workloads
+/// GET /api/v1/orgs/{org_id}/k8s/workloads
 pub async fn list_workloads(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -242,10 +254,12 @@ pub async fn list_workloads(
         "evaluated_at":     r.try_get::<chrono::DateTime<Utc>, _>("evaluated_at").ok(),
     })).collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
-/// POST /api/v1/orgs/:org_id/k8s/workloads
+/// POST /api/v1/orgs/{org_id}/k8s/workloads
 pub async fn upsert_workload(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -256,7 +270,9 @@ pub async fn upsert_workload(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     if body.workload_name.trim().is_empty() || body.namespace.trim().is_empty() {
-        return Err(AppError::Validation("workload_name and namespace are required".into()));
+        return Err(AppError::Validation(
+            "workload_name and namespace are required".into(),
+        ));
     }
 
     let wt = body.workload_type.as_deref().unwrap_or("Deployment");
@@ -294,12 +310,15 @@ pub async fn upsert_workload(
     .fetch_one(&state.db)
     .await?;
 
-    Ok((StatusCode::OK, Json(json!({
-        "data": { "id": row.try_get::<Uuid, _>("id").ok() }
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "data": { "id": row.try_get::<Uuid, _>("id").ok() }
+        })),
+    ))
 }
 
-/// GET /api/v1/orgs/:org_id/k8s/summary
+/// GET /api/v1/orgs/{org_id}/k8s/summary
 pub async fn rightsizing_summary(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -335,12 +354,17 @@ pub async fn rightsizing_summary(
     .fetch_all(&state.db)
     .await?;
 
-    let ns_data: Vec<Value> = by_namespace.iter().map(|r| json!({
-        "namespace":       r.try_get::<String, _>("namespace").unwrap_or_default(),
-        "cluster_id":      r.try_get::<Uuid, _>("cluster_id").ok(),
-        "workload_count":  r.try_get::<i64, _>("workload_count").unwrap_or(0),
-        "potential_savings": r.try_get::<f64, _>("namespace_savings").unwrap_or(0.0),
-    })).collect();
+    let ns_data: Vec<Value> = by_namespace
+        .iter()
+        .map(|r| {
+            json!({
+                "namespace":       r.try_get::<String, _>("namespace").unwrap_or_default(),
+                "cluster_id":      r.try_get::<Uuid, _>("cluster_id").ok(),
+                "workload_count":  r.try_get::<i64, _>("workload_count").unwrap_or(0),
+                "potential_savings": r.try_get::<f64, _>("namespace_savings").unwrap_or(0.0),
+            })
+        })
+        .collect();
 
     Ok(Json(json!({
         "cluster_count":   totals.try_get::<i64, _>("cluster_count").unwrap_or(0),

@@ -1,6 +1,5 @@
 /// Unit tests for the recommendation engine module.
 /// Tests the RecEngine struct and public interface without requiring DB.
-
 use cloudatlas_lib::modules::recommendation::engine::RecEngine;
 
 /// Verify RecEngine is constructable and its interface is accessible.
@@ -46,7 +45,9 @@ fn test_recommendation_type_strings() {
     // All types should be non-empty strings (sanity check on the set itself)
     for t in &valid_types {
         assert!(!t.is_empty());
-        assert!(t.chars().all(|c| c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit()));
+        assert!(t
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit()));
     }
     assert_eq!(valid_types.len(), 26);
 }

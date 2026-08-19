@@ -16,7 +16,8 @@ pub struct FxTable {
 
 impl FxTable {
     pub fn insert(&mut self, from: &str, to: &str, rate: f64) {
-        self.rates.insert((from.to_uppercase(), to.to_uppercase()), rate);
+        self.rates
+            .insert((from.to_uppercase(), to.to_uppercase()), rate);
     }
 
     /// Convert `amount` from one currency to another.

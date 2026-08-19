@@ -17,7 +17,10 @@ use crate::{
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
     sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
-        .bind(org_id).bind(user_id).fetch_optional(db).await?
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
         .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
@@ -38,7 +41,7 @@ pub struct AckEventRequest {
     pub notes: Option<String>,
 }
 
-/// GET /api/v1/orgs/:org_id/lifecycle-policies
+/// GET /api/v1/orgs/{org_id}/lifecycle-policies
 pub async fn list_policies(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -86,10 +89,12 @@ pub async fn list_policies(
         "created_at":         r.try_get::<chrono::DateTime<Utc>, _>("created_at").ok(),
     })).collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
-/// POST /api/v1/orgs/:org_id/lifecycle-policies
+/// POST /api/v1/orgs/{org_id}/lifecycle-policies
 pub async fn create_policy(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -124,18 +129,21 @@ pub async fn create_policy(
     .fetch_one(&state.db)
     .await?;
 
-    Ok((StatusCode::CREATED, Json(json!({
-        "data": {
-            "id":          row.try_get::<Uuid, _>("id").ok(),
-            "name":        row.try_get::<String, _>("name").unwrap_or_default(),
-            "policy_type": row.try_get::<String, _>("policy_type").unwrap_or_default(),
-            "action":      row.try_get::<String, _>("action").unwrap_or_default(),
-            "created_at":  row.try_get::<chrono::DateTime<Utc>, _>("created_at").ok(),
-        }
-    }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "data": {
+                "id":          row.try_get::<Uuid, _>("id").ok(),
+                "name":        row.try_get::<String, _>("name").unwrap_or_default(),
+                "policy_type": row.try_get::<String, _>("policy_type").unwrap_or_default(),
+                "action":      row.try_get::<String, _>("action").unwrap_or_default(),
+                "created_at":  row.try_get::<chrono::DateTime<Utc>, _>("created_at").ok(),
+            }
+        })),
+    ))
 }
 
-/// DELETE /api/v1/orgs/:org_id/lifecycle-policies/:id
+/// DELETE /api/v1/orgs/{org_id}/lifecycle-policies/{id}
 pub async fn delete_policy(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -145,11 +153,14 @@ pub async fn delete_policy(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     sqlx::query("DELETE FROM resource_lifecycle_policies WHERE id = $1 AND organization_id = $2")
-        .bind(policy_id).bind(org_id).execute(&state.db).await?;
+        .bind(policy_id)
+        .bind(org_id)
+        .execute(&state.db)
+        .await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// GET /api/v1/orgs/:org_id/lifecycle-events
+/// GET /api/v1/orgs/{org_id}/lifecycle-events
 pub async fn list_events(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -200,10 +211,12 @@ pub async fn list_events(
         "created_at":       r.try_get::<chrono::DateTime<Utc>, _>("created_at").ok(),
     })).collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
-/// POST /api/v1/orgs/:org_id/lifecycle-policies/:id/evaluate
+/// POST /api/v1/orgs/{org_id}/lifecycle-policies/{id}/evaluate
 /// Evaluates the policy against current resources and creates lifecycle events.
 pub async fn evaluate_policy(
     State(state): State<AppState>,
@@ -233,8 +246,10 @@ pub async fn evaluate_policy(
                    WHERE organization_id = $1 AND active = true
                      AND last_seen < NOW() - ($2 || ' days')::interval"#,
             )
-            .bind(org_id).bind(days)
-            .fetch_all(&state.db).await?;
+            .bind(org_id)
+            .bind(days)
+            .fetch_all(&state.db)
+            .await?;
 
             let count = stale_resources.len() as i64;
             for res in &stale_resources {
@@ -265,8 +280,10 @@ pub async fn evaluate_policy(
                            AND date >= NOW()::date - ($2 || ' days')::interval
                      )"#,
             )
-            .bind(org_id).bind(days)
-            .fetch_all(&state.db).await?;
+            .bind(org_id)
+            .bind(days)
+            .fetch_all(&state.db)
+            .await?;
 
             let count = idle_resources.len() as i64;
             for res in &idle_resources {
@@ -290,8 +307,12 @@ pub async fn evaluate_policy(
     };
 
     // Update last_evaluated_at
-    let _ = sqlx::query("UPDATE resource_lifecycle_policies SET last_evaluated_at = NOW() WHERE id = $1")
-        .bind(policy_id).execute(&state.db).await;
+    let _ = sqlx::query(
+        "UPDATE resource_lifecycle_policies SET last_evaluated_at = NOW() WHERE id = $1",
+    )
+    .bind(policy_id)
+    .execute(&state.db)
+    .await;
 
     Ok(Json(json!({
         "flagged_count": flagged_count,

@@ -47,7 +47,10 @@ pub fn parse_kubeconfig(yaml: &str) -> AppResult<Kubeconfig> {
         .first()
         .ok_or_else(|| AppError::Validation("kubeconfig is empty".into()))?;
 
-    let clusters: &[Yaml] = root["clusters"].as_vec().map(|v| v.as_slice()).unwrap_or(&[]);
+    let clusters: &[Yaml] = root["clusters"]
+        .as_vec()
+        .map(|v| v.as_slice())
+        .unwrap_or(&[]);
     let cluster = clusters
         .first()
         .and_then(|c| c["cluster"].as_hash().map(|_| &c["cluster"]))
@@ -149,8 +152,9 @@ impl KubernetesAdapter {
         }
         if let (Some(cert), Some(key)) = (kc.client_cert_pem.as_ref(), kc.client_key_pem.as_ref()) {
             let pem = format!("{cert}\n{key}");
-            let identity = reqwest::Identity::from_pem(pem.as_bytes())
-                .map_err(|e| AppError::Validation(format!("invalid kubeconfig client cert: {e}")))?;
+            let identity = reqwest::Identity::from_pem(pem.as_bytes()).map_err(|e| {
+                AppError::Validation(format!("invalid kubeconfig client cert: {e}"))
+            })?;
             builder = builder.identity(identity);
         }
 
@@ -204,7 +208,10 @@ impl CloudAdapter for KubernetesAdapter {
         }
     }
 
-    async fn discover_resources(&self, _region: Option<&str>) -> AppResult<Vec<DiscoveredResource>> {
+    async fn discover_resources(
+        &self,
+        _region: Option<&str>,
+    ) -> AppResult<Vec<DiscoveredResource>> {
         let ns = self
             .namespace
             .as_deref()
@@ -290,7 +297,9 @@ impl KubernetesAdapter {
             .unwrap_or_default();
 
         // ReplicaSet -> (kind, workload) map for owner-chain resolution.
-        let rs_body = self.get(&format!("/apis/apps/v1{ns}/replicasets?limit=500")).await?;
+        let rs_body = self
+            .get(&format!("/apis/apps/v1{ns}/replicasets?limit=500"))
+            .await?;
         let mut rs_map = std::collections::HashMap::new();
         if let Some(items) = rs_body["items"].as_array() {
             for rs in items {
@@ -518,13 +527,11 @@ fn parse_nodes(body: &Value) -> Vec<K8sNodeInfo> {
             let region = n["metadata"]["labels"]["topology.kubernetes.io/region"]
                 .as_str()
                 .or_else(|| {
-                    n["metadata"]["labels"]["failure-domain.beta.kubernetes.io/region"]
-                        .as_str()
+                    n["metadata"]["labels"]["failure-domain.beta.kubernetes.io/region"].as_str()
                 })
                 .map(str::to_string);
-            let provider = provider_from_provider_id(
-                n["spec"]["providerID"].as_str().unwrap_or(""),
-            );
+            let provider =
+                provider_from_provider_id(n["spec"]["providerID"].as_str().unwrap_or(""));
             Some(K8sNodeInfo {
                 name,
                 cpu_cores: cpu,
@@ -614,16 +621,10 @@ fn parse_pod_usage(body: &Value) -> Vec<(String, f64, f64)> {
             let mut mem_mi = 0.0f64;
             if let Some(containers) = p["containers"].as_array() {
                 for c in containers {
-                    if let Some(v) = c["usage"]["cpu"]
-                        .as_str()
-                        .and_then(parse_cpu_millicores)
-                    {
+                    if let Some(v) = c["usage"]["cpu"].as_str().and_then(parse_cpu_millicores) {
                         cpu_m += v as f64;
                     }
-                    if let Some(v) = c["usage"]["memory"]
-                        .as_str()
-                        .and_then(parse_memory_mib)
-                    {
+                    if let Some(v) = c["usage"]["memory"].as_str().and_then(parse_memory_mib) {
                         mem_mi += v as f64;
                     }
                 }
@@ -756,7 +757,8 @@ mod tests {
             Some(("Deployment".into(), "web".into()))
         );
 
-        let pod_job = json!({ "metadata": { "ownerReferences": [ { "kind": "Job", "name": "backup-1" } ] }});
+        let pod_job =
+            json!({ "metadata": { "ownerReferences": [ { "kind": "Job", "name": "backup-1" } ] }});
         assert_eq!(
             resolve_workload(&pod_job, &rs_map),
             Some(("Job".into(), "backup-1".into()))
@@ -769,7 +771,10 @@ mod tests {
     #[test]
     fn provider_from_provider_id_maps_prefixes() {
         assert_eq!(provider_from_provider_id("aws:///us-east-1a/i-0"), "aws");
-        assert_eq!(provider_from_provider_id("azure:///subscriptions/x"), "azure");
+        assert_eq!(
+            provider_from_provider_id("azure:///subscriptions/x"),
+            "azure"
+        );
         assert_eq!(provider_from_provider_id("gce:///project/zone/inst"), "gcp");
         assert_eq!(provider_from_provider_id("aliyun://i-bp1abc"), "alibaba");
         assert_eq!(provider_from_provider_id(""), "on-prem");

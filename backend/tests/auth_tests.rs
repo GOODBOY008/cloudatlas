@@ -1,7 +1,6 @@
 /// Integration tests for the auth module.
 /// Unit-style tests for JWT creation/verification and password hashing.
-
-use cloudatlas_lib::modules::auth::service::{Claims, hash_password, verify_password};
+use cloudatlas_lib::modules::auth::service::{hash_password, verify_password, Claims};
 use uuid::Uuid;
 
 // ─── JWT round-trip ──────────────────────────────────────────────────────────
@@ -30,7 +29,9 @@ fn test_jwt_refresh_token_roundtrip() {
     let secret = "super_secret_test_key_at_least_32_chars";
 
     let claims = Claims::new_refresh(user_id, email, 86400);
-    let token = claims.encode_token(secret).expect("should encode refresh token");
+    let token = claims
+        .encode_token(secret)
+        .expect("should encode refresh token");
 
     let decoded = Claims::verify_refresh(&token, secret).expect("should verify refresh token");
     assert_eq!(decoded.token_type, "refresh");
@@ -40,7 +41,7 @@ fn test_jwt_refresh_token_roundtrip() {
 fn test_jwt_wrong_secret_rejected() {
     let user_id = Uuid::new_v4();
     let secret = "super_secret_test_key_at_least_32_chars";
-    let wrong  = "wrong_secret_key_also_at_least_32_cha!";
+    let wrong = "wrong_secret_key_also_at_least_32_cha!";
 
     let token = Claims::new_access(user_id, "x@y.com", 3600)
         .encode_token(secret)

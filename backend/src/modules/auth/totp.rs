@@ -3,7 +3,7 @@
 
 use base32::Alphabet;
 use hmac::{Hmac, Mac};
-use rand::RngCore;
+use rand::TryRng;
 use sha1::Sha1;
 
 type HmacSha1 = Hmac<Sha1>;
@@ -14,7 +14,7 @@ const DIGITS: u32 = 6;
 /// Generate a new base32 secret (20 random bytes).
 pub fn generate_secret() -> String {
     let mut bytes = [0u8; 20];
-    rand::thread_rng().fill_bytes(&mut bytes);
+    rand::rng().try_fill_bytes(&mut bytes).expect("infallible");
     base32::encode(Alphabet::Rfc4648 { padding: false }, &bytes)
 }
 
@@ -26,8 +26,17 @@ pub fn code_for(secret_b32: &str, ts_secs: u64) -> Option<String> {
     mac.update(&counter.to_be_bytes());
     let result = mac.finalize().into_bytes();
     let offset = (result[19] & 0x0f) as usize;
-    let bin_code = u32::from_be_bytes([result[offset], result[offset + 1], result[offset + 2], result[offset + 3]]) & 0x7fff_ffff;
-    Some(format!("{:0width$}", bin_code % 10u32.pow(DIGITS), width = DIGITS as usize))
+    let bin_code = u32::from_be_bytes([
+        result[offset],
+        result[offset + 1],
+        result[offset + 2],
+        result[offset + 3],
+    ]) & 0x7fff_ffff;
+    Some(format!(
+        "{:0width$}",
+        bin_code % 10u32.pow(DIGITS),
+        width = DIGITS as usize
+    ))
 }
 
 /// Verify a code against the current and adjacent time steps (±1 window).

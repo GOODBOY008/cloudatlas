@@ -5,12 +5,7 @@ use crate::state::AppState;
 
 /// Send a plain-text email. Returns `Ok(())` on success; logs and returns
 /// `Err(())` when SMTP is unconfigured or the send fails.
-pub async fn send_email(
-    state: &AppState,
-    to: &str,
-    subject: &str,
-    body: &str,
-) -> Result<(), ()> {
+pub async fn send_email(state: &AppState, to: &str, subject: &str, body: &str) -> Result<(), ()> {
     use lettre::message::{Mailbox, Message};
     use lettre::{SmtpTransport, Transport};
 
@@ -40,7 +35,9 @@ pub async fn send_email(
             tracing::warn!(error = %e, "email build failed");
         })?;
 
-    let mailer = if let (Some(user), Some(pass)) = (&state.config.smtp_username, &state.config.smtp_password) {
+    let mailer = if let (Some(user), Some(pass)) =
+        (&state.config.smtp_username, &state.config.smtp_password)
+    {
         SmtpTransport::relay(host)
             .map_err(|e| tracing::warn!(error = %e, "SMTP relay init failed"))?
             .port(state.config.smtp_port)

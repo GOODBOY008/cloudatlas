@@ -1,6 +1,6 @@
-use std::time::Duration;
-use sqlx::Row;
 use crate::state::AppState;
+use sqlx::Row;
+use std::time::Duration;
 
 pub async fn start(state: AppState) {
     tracing::info!("Starting CloudAtlas scheduler");
@@ -141,10 +141,12 @@ pub async fn start(state: AppState) {
                 .await;
                 if let Ok(rows) = orgs {
                     for (org_id,) in rows {
-                        if let Err(e) = crate::modules::cmdb::analytics_handlers::snapshot_cmdb_stats(
-                            &cmdb_stats_state.db, org_id,
-                        )
-                        .await
+                        if let Err(e) =
+                            crate::modules::cmdb::analytics_handlers::snapshot_cmdb_stats(
+                                &cmdb_stats_state.db,
+                                org_id,
+                            )
+                            .await
                         {
                             tracing::warn!(org_id = %org_id, error = %e, "CMDB stats snapshot failed");
                         }
@@ -177,20 +179,20 @@ async fn run_cmdb_compliance(state: &AppState) {
     if !acquire_job_lock(&state.db, "cmdb_compliance").await {
         return;
     }
-    let orgs = sqlx::query_as::<_, (uuid::Uuid,)>(
-        "SELECT id FROM organizations WHERE deleted_at IS NULL",
-    )
-    .fetch_all(&state.db)
-    .await;
+    let orgs =
+        sqlx::query_as::<_, (uuid::Uuid,)>("SELECT id FROM organizations WHERE deleted_at IS NULL")
+            .fetch_all(&state.db)
+            .await;
 
     match orgs {
         Ok(rows) => {
             tracing::info!(orgs = rows.len(), "Scheduler: CMDB compliance sweep");
             for (org_id,) in rows {
-                let mut summary = crate::modules::cmdb::compliance_handlers::run_compliance_for_org(
-                    &state.db, org_id,
-                )
-                .await;
+                let mut summary =
+                    crate::modules::cmdb::compliance_handlers::run_compliance_for_org(
+                        &state.db, org_id,
+                    )
+                    .await;
                 match &mut summary {
                     Ok(data) => {
                         data["trigger"] = serde_json::json!("scheduled");
@@ -283,12 +285,10 @@ async fn run_cloud_sync(state: &AppState) {
             tracing::info!(count = ids.len(), "Scheduler: triggering cloud sync");
             for (id,) in ids {
                 // Stamp the account so the next tick is sync_interval_hours away.
-                let _ = sqlx::query(
-                    "UPDATE cloud_accounts SET last_sync_at = NOW() WHERE id = $1"
-                )
-                .bind(id)
-                .execute(&state.db)
-                .await;
+                let _ = sqlx::query("UPDATE cloud_accounts SET last_sync_at = NOW() WHERE id = $1")
+                    .bind(id)
+                    .execute(&state.db)
+                    .await;
 
                 let account = sqlx::query_as::<_, (uuid::Uuid, String)>(
                     "SELECT organization_id, provider::text FROM cloud_accounts WHERE id = $1",
@@ -297,12 +297,12 @@ async fn run_cloud_sync(state: &AppState) {
                 .fetch_optional(&state.db)
                 .await;
 
-                let Ok(Some((org_id, provider))) = account else { continue };
+                let Ok(Some((org_id, provider))) = account else {
+                    continue;
+                };
 
-                match crate::modules::cloud::handlers::launch_sync(
-                    state, org_id, id, "scheduler",
-                )
-                .await
+                match crate::modules::cloud::handlers::launch_sync(state, org_id, id, "scheduler")
+                    .await
                 {
                     // None = a discovery job is already active — routine
                     // overlap, skip silently.
@@ -333,11 +333,10 @@ async fn run_recommendation_engine(state: &AppState) {
     }
     tracing::info!("Scheduler: running recommendation engine");
 
-    let orgs = sqlx::query_as::<_, (uuid::Uuid,)>(
-        "SELECT id FROM organizations WHERE deleted_at IS NULL"
-    )
-    .fetch_all(&state.db)
-    .await;
+    let orgs =
+        sqlx::query_as::<_, (uuid::Uuid,)>("SELECT id FROM organizations WHERE deleted_at IS NULL")
+            .fetch_all(&state.db)
+            .await;
 
     match orgs {
         Ok(ids) => {
@@ -351,7 +350,10 @@ async fn run_recommendation_engine(state: &AppState) {
                 .execute(&state.db)
                 .await;
 
-                if let Err(e) = crate::modules::recommendation::engine::RecEngine::run_for_org(state, org_id).await {
+                if let Err(e) =
+                    crate::modules::recommendation::engine::RecEngine::run_for_org(state, org_id)
+                        .await
+                {
                     tracing::error!(error = %e, org_id = %org_id, "Scheduler: recommendation engine error");
                     let _ = sqlx::query(
                         "UPDATE checklist SET run_status = 'failed', last_error = $2 WHERE organization_id = $1"
@@ -468,26 +470,25 @@ async fn deliver_pending_webhooks(state: &AppState) {
            WHERE we.status = 'pending'
            AND (we.next_retry IS NULL OR we.next_retry <= NOW())
            AND we.attempts < 3
-           LIMIT 10"#
+           LIMIT 10"#,
     )
     .fetch_all(&state.db)
     .await;
 
     if let Ok(events) = events {
         for (id, url, channel, payload, event_type) in events {
-            let _ = sqlx::query(
-                "UPDATE webhook_events SET attempts = attempts + 1 WHERE id = $1"
-            )
-            .bind(id)
-            .execute(&state.db)
-            .await;
+            let _ = sqlx::query("UPDATE webhook_events SET attempts = attempts + 1 WHERE id = $1")
+                .bind(id)
+                .execute(&state.db)
+                .await;
 
             let delivered = if channel == "email" {
                 send_email_notification(state, &url, &event_type, &payload).await
             } else {
                 let body = format_channel_payload(&channel, &event_type, &payload);
                 let client = reqwest::Client::new();
-                match client.post(&url)
+                match client
+                    .post(&url)
                     .json(&body)
                     .timeout(Duration::from_secs(10))
                     .send()
@@ -495,11 +496,7 @@ async fn deliver_pending_webhooks(state: &AppState) {
                 {
                     Ok(resp) => {
                         let status = resp.status().as_u16() as i32;
-                        if (200..300).contains(&status) {
-                            Ok(Some(status))
-                        } else {
-                            Ok(Some(status))
-                        }
+                        Ok(Some(status))
                     }
                     Err(e) => {
                         tracing::warn!(error = %e, url = %url, "webhook delivery failed");
@@ -533,7 +530,11 @@ async fn deliver_pending_webhooks(state: &AppState) {
 /// - slack / teams: `{text: "<event_type>: <summary>"}`
 /// - pagerduty: Events API v2 trigger envelope
 /// - generic: passthrough (backwards compatible)
-fn format_channel_payload(channel: &str, event_type: &str, payload: &serde_json::Value) -> serde_json::Value {
+fn format_channel_payload(
+    channel: &str,
+    event_type: &str,
+    payload: &serde_json::Value,
+) -> serde_json::Value {
     let summary = payload
         .get("message")
         .and_then(|v| v.as_str())
@@ -596,10 +597,19 @@ async fn run_power_schedules(state: &AppState) {
     use cron::Schedule;
     use std::str::FromStr;
 
-    let triggers = sqlx::query_as::<_, (
-        uuid::Uuid, uuid::Uuid, uuid::Uuid, String, String, String,
-        Option<chrono::DateTime<chrono::Utc>>, Option<chrono::DateTime<chrono::Utc>>,
-    )>(
+    let triggers = sqlx::query_as::<
+        _,
+        (
+            uuid::Uuid,
+            uuid::Uuid,
+            uuid::Uuid,
+            String,
+            String,
+            String,
+            Option<chrono::DateTime<chrono::Utc>>,
+            Option<chrono::DateTime<chrono::Utc>>,
+        ),
+    >(
         r#"SELECT t.id, t.schedule_id, s.organization_id, t.cron_expression, t.action::text,
                   s.resource_filter::text, t.last_run_at, t.next_run_at
            FROM power_schedule_triggers t
@@ -622,7 +632,9 @@ async fn run_power_schedules(state: &AppState) {
         return;
     }
 
-    for (trigger_id, schedule_id, org_id, cron_expr, action, filter_json, _last_run, _next_run) in triggers {
+    for (trigger_id, schedule_id, org_id, cron_expr, action, filter_json, _last_run, _next_run) in
+        triggers
+    {
         let schedule = match Schedule::from_str(&cron_expr) {
             Ok(s) => s,
             Err(e) => {
@@ -674,21 +686,26 @@ async fn execute_power_action(
     filter: &serde_json::Value,
     _action: &str,
 ) -> i64 {
-    let mut sql = String::from(
-        "SELECT COUNT(*) FROM resources WHERE organization_id = $1 AND active = true",
-    );
+    let mut sql =
+        String::from("SELECT COUNT(*) FROM resources WHERE organization_id = $1 AND active = true");
     // Placeholder for the n-th bound value (0-based) is $2, $3, …
     let placeholder = |n: usize| format!("${}", n + 2);
     let mut binds: Vec<serde_json::Value> = Vec::new();
 
     if let Some(pool) = filter.get("pool_id").and_then(|v| v.as_str()) {
         if uuid::Uuid::parse_str(pool).is_ok() {
-            sql.push_str(&format!(" AND pool_id = {}::uuid", placeholder(binds.len())));
+            sql.push_str(&format!(
+                " AND pool_id = {}::uuid",
+                placeholder(binds.len())
+            ));
             binds.push(serde_json::Value::String(pool.to_string()));
         }
     }
     if let Some(rt) = filter.get("resource_type").and_then(|v| v.as_str()) {
-        sql.push_str(&format!(" AND resource_type = {}", placeholder(binds.len())));
+        sql.push_str(&format!(
+            " AND resource_type = {}",
+            placeholder(binds.len())
+        ));
         binds.push(serde_json::Value::String(rt.to_string()));
     }
     if let Some(tags) = filter.get("tags").filter(|v| v.is_object()) {
@@ -696,7 +713,7 @@ async fn execute_power_action(
         binds.push(tags.clone());
     }
 
-    let mut query = sqlx::query(&sql).bind(org_id);
+    let mut query = sqlx::query(sqlx::AssertSqlSafe(&*sql)).bind(org_id);
     for b in binds {
         query = query.bind(b);
     }
@@ -729,7 +746,11 @@ async fn run_billing_import(state: &AppState) {
             tracing::info!(count = rows.len(), "Scheduler: triggering billing import");
             for (account_id, org_id) in rows {
                 match crate::modules::billing::worker::launch_billing_import(
-                    state, org_id, account_id, "scheduler", 3,
+                    state,
+                    org_id,
+                    account_id,
+                    "scheduler",
+                    3,
                 )
                 .await
                 {
@@ -744,7 +765,9 @@ async fn run_billing_import(state: &AppState) {
                 }
             }
         }
-        Err(e) => tracing::error!(error = %e, "Scheduler: failed to list cloud accounts for billing"),
+        Err(e) => {
+            tracing::error!(error = %e, "Scheduler: failed to list cloud accounts for billing")
+        }
     }
 }
 

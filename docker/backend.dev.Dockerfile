@@ -1,6 +1,6 @@
 # Development backend with cargo-watch for hot reload
-# Use a Rust toolchain new enough for current dependency MSRV.
-FROM rust:1.91-slim-bookworm
+# Rolling stable — sqlx 0.9 MSRV is 1.94; do not pin below it.
+FROM rust:1-slim-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \

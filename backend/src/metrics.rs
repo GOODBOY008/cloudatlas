@@ -106,14 +106,15 @@ pub async fn metrics_middleware(
 }
 
 /// `GET /metrics` — plain-text counters. Returns 404 when metrics are disabled.
-pub async fn metrics_handler(
-    State(state): State<crate::state::AppState>,
-) -> Response {
+pub async fn metrics_handler(State(state): State<crate::state::AppState>) -> Response {
     if !state.config.metrics_enabled {
         return (StatusCode::NOT_FOUND, "metrics disabled").into_response();
     }
     (
-        [(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; version=0.0.4",
+        )],
         state.metrics.render(),
     )
         .into_response()

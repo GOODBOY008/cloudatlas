@@ -49,18 +49,12 @@ pub struct StoredProvider {
 }
 
 /// What the .env layer provides.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct EnvProvider {
     pub enabled: bool,
     pub api_key: Option<String>,
     pub chat_model: Option<String>,
     pub embed_model: Option<String>,
-}
-
-impl Default for EnvProvider {
-    fn default() -> Self {
-        EnvProvider { enabled: false, api_key: None, chat_model: None, embed_model: None }
-    }
 }
 
 /// Precedence: enabled org row with a key → enabled env with a key → local.
@@ -71,10 +65,19 @@ pub fn pick(org: &Option<StoredProvider>, env: &EnvProvider) -> ResolvedProvider
                 if !key.is_empty() {
                     return ResolvedProvider {
                         enabled: true,
-                        base_url: o.base_url.clone().unwrap_or_else(|| DEFAULT_BASE_URL.into()),
+                        base_url: o
+                            .base_url
+                            .clone()
+                            .unwrap_or_else(|| DEFAULT_BASE_URL.into()),
                         api_key: Some(key.to_string()),
-                        chat_model: o.chat_model.clone().unwrap_or_else(|| DEFAULT_CHAT_MODEL.into()),
-                        embed_model: o.embed_model.clone().unwrap_or_else(|| DEFAULT_EMBED_MODEL.into()),
+                        chat_model: o
+                            .chat_model
+                            .clone()
+                            .unwrap_or_else(|| DEFAULT_CHAT_MODEL.into()),
+                        embed_model: o
+                            .embed_model
+                            .clone()
+                            .unwrap_or_else(|| DEFAULT_EMBED_MODEL.into()),
                         source: ProviderSource::Org,
                     };
                 }
@@ -88,8 +91,14 @@ pub fn pick(org: &Option<StoredProvider>, env: &EnvProvider) -> ResolvedProvider
                     enabled: true,
                     base_url: DEFAULT_BASE_URL.into(),
                     api_key: Some(key.to_string()),
-                    chat_model: env.chat_model.clone().unwrap_or_else(|| DEFAULT_CHAT_MODEL.into()),
-                    embed_model: env.embed_model.clone().unwrap_or_else(|| DEFAULT_EMBED_MODEL.into()),
+                    chat_model: env
+                        .chat_model
+                        .clone()
+                        .unwrap_or_else(|| DEFAULT_CHAT_MODEL.into()),
+                    embed_model: env
+                        .embed_model
+                        .clone()
+                        .unwrap_or_else(|| DEFAULT_EMBED_MODEL.into()),
                     source: ProviderSource::Env,
                 };
             }
@@ -127,11 +136,22 @@ pub async fn load_stored(state: &AppState, org_id: Uuid) -> Option<StoredProvide
         .filter(|s| !s.is_empty());
 
     Some(StoredProvider {
-        enabled: row.try_get::<bool, _>("ai_provider_enabled").unwrap_or(false),
-        base_url: row.try_get::<Option<String>, _>("ai_base_url").ok().flatten(),
+        enabled: row
+            .try_get::<bool, _>("ai_provider_enabled")
+            .unwrap_or(false),
+        base_url: row
+            .try_get::<Option<String>, _>("ai_base_url")
+            .ok()
+            .flatten(),
         api_key,
-        chat_model: row.try_get::<Option<String>, _>("ai_chat_model").ok().flatten(),
-        embed_model: row.try_get::<Option<String>, _>("ai_embed_model").ok().flatten(),
+        chat_model: row
+            .try_get::<Option<String>, _>("ai_chat_model")
+            .ok()
+            .flatten(),
+        embed_model: row
+            .try_get::<Option<String>, _>("ai_embed_model")
+            .ok()
+            .flatten(),
     })
 }
 
@@ -158,12 +178,15 @@ pub fn masked_json(
     env_present: bool,
 ) -> serde_json::Value {
     let s = stored.as_ref();
-    let hint = s
-        .and_then(|x| x.api_key.as_deref())
-        .map(|k| {
-            let chars: Vec<char> = k.chars().collect();
-            format!("…{}", chars[chars.len().saturating_sub(4)..].iter().collect::<String>())
-        });
+    let hint = s.and_then(|x| x.api_key.as_deref()).map(|k| {
+        let chars: Vec<char> = k.chars().collect();
+        format!(
+            "…{}",
+            chars[chars.len().saturating_sub(4)..]
+                .iter()
+                .collect::<String>()
+        )
+    });
     json!({
         "source": effective.source.as_str(),
         "api_key_set": hint.is_some(),

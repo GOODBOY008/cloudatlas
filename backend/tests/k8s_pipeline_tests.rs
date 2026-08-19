@@ -68,13 +68,17 @@ async fn setup() -> Option<(axum::Router, sqlx::PgPool)> {
         let admin = sqlx::PgPool::connect_with(opts.database("postgres"))
             .await
             .expect("connect to postgres admin db");
-        let _ = sqlx::query(&format!("CREATE DATABASE \"{db_name}\""))
-            .execute(&admin)
-            .await; // ignore "already exists"
+        let _ = sqlx::query(sqlx::AssertSqlSafe(&*format!(
+            "CREATE DATABASE \"{db_name}\""
+        )))
+        .execute(&admin)
+        .await; // ignore "already exists"
         admin.close().await;
     }
 
-    let pool = db::create_pool(&url, 5, 1, 300, 1800, 30).await.expect("connect to test db");
+    let pool = db::create_pool(&url, 5, 1, 300, 1800, 30)
+        .await
+        .expect("connect to test db");
     sqlx::migrate!("./migrations")
         .run(&pool)
         .await
@@ -131,7 +135,10 @@ async fn register_and_org(app: &axum::Router) -> (String, String) {
     )
     .await;
     assert_eq!(status, StatusCode::CREATED, "register: {body}");
-    let token = body["data"]["access_token"].as_str().expect("token").to_string();
+    let token = body["data"]["access_token"]
+        .as_str()
+        .expect("token")
+        .to_string();
 
     let (status, body) = send(
         app,
@@ -215,11 +222,15 @@ async fn k8s_pipeline_persists_and_recomputes() {
         usage,
     };
     let workloads = vec![wl(1000, 1024, Some((600.0, 800.0)))];
-    let ids = upsert_workloads(&pool, org, cluster_id, &workloads).await.unwrap();
+    let ids = upsert_workloads(&pool, org, cluster_id, &workloads)
+        .await
+        .unwrap();
     assert_eq!(ids.len(), 1, "one workload id");
 
     // ── samples + recompute ───────────────────────────────────────────────
-    let inserted = record_samples(&pool, org, cluster_id, &workloads, &ids).await.unwrap();
+    let inserted = record_samples(&pool, org, cluster_id, &workloads, &ids)
+        .await
+        .unwrap();
     assert_eq!(inserted, 1, "one sample inserted");
     let updated = recompute_recommendations(&pool, cluster_id, &workloads, &ids, 0.04, 0.005, 14)
         .await
@@ -237,7 +248,11 @@ async fn k8s_pipeline_persists_and_recomputes() {
     .unwrap();
     assert_eq!(row.0, 600.0, "cpu_p95_m (1 sample -> latest)");
     assert_eq!(row.2, 600, "cpu_rec_m");
-    assert!((row.4 - 32.85).abs() < 0.01, "monthly_cost {}, want ~32.85", row.4);
+    assert!(
+        (row.4 - 32.85).abs() < 0.01,
+        "monthly_cost {}, want ~32.85",
+        row.4
+    );
     assert!(row.5 > 0.0, "potential_savings {}", row.5);
 
     // ── no-usage path (metrics-server absent) leaves rec columns NULL ─────
@@ -252,7 +267,9 @@ async fn k8s_pipeline_persists_and_recomputes() {
         pod_names: vec![],
         usage: None,
     }];
-    let ids2 = upsert_workloads(&pool, org, cluster_id, &workloads2).await.unwrap();
+    let ids2 = upsert_workloads(&pool, org, cluster_id, &workloads2)
+        .await
+        .unwrap();
     let updated2 =
         recompute_recommendations(&pool, cluster_id, &workloads2, &ids2, 0.04, 0.005, 14)
             .await

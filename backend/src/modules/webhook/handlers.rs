@@ -17,14 +17,12 @@ use crate::{
 };
 
 async fn ensure_org_member(db: &PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -108,7 +106,9 @@ pub async fn list_webhooks(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_webhook(
@@ -173,16 +173,16 @@ pub async fn update_webhook(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let existing = sqlx::query(
-        "SELECT id FROM webhooks WHERE id = $1 AND organization_id = $2",
-    )
-    .bind(webhook_id)
-    .bind(org_id)
-    .fetch_optional(&state.db)
-    .await?;
+    let existing = sqlx::query("SELECT id FROM webhooks WHERE id = $1 AND organization_id = $2")
+        .bind(webhook_id)
+        .bind(org_id)
+        .fetch_optional(&state.db)
+        .await?;
 
     if existing.is_none() {
-        return Err(AppError::NotFound(format!("Webhook {webhook_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Webhook {webhook_id} not found"
+        )));
     }
 
     let channel = normalize_channel(&body.channel)?;
@@ -210,11 +210,17 @@ pub async fn update_webhook(
     .bind(events_val)
     .bind(body.secret.as_deref())
     .bind(body.is_active)
-    .bind(if body.channel.is_some() { Some(channel.as_str()) } else { None })
+    .bind(if body.channel.is_some() {
+        Some(channel.as_str())
+    } else {
+        None
+    })
     .execute(&state.db)
     .await?;
 
-    Ok(Json(json!({ "data": { "id": webhook_id, "message": "Updated" } })))
+    Ok(Json(
+        json!({ "data": { "id": webhook_id, "message": "Updated" } }),
+    ))
 }
 
 pub async fn delete_webhook(
@@ -225,16 +231,16 @@ pub async fn delete_webhook(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let result = sqlx::query(
-        "DELETE FROM webhooks WHERE id = $1 AND organization_id = $2",
-    )
-    .bind(webhook_id)
-    .bind(org_id)
-    .execute(&state.db)
-    .await?;
+    let result = sqlx::query("DELETE FROM webhooks WHERE id = $1 AND organization_id = $2")
+        .bind(webhook_id)
+        .bind(org_id)
+        .execute(&state.db)
+        .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Webhook {webhook_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Webhook {webhook_id} not found"
+        )));
     }
 
     Ok((StatusCode::NO_CONTENT, Json(json!({}))))
@@ -297,7 +303,9 @@ pub async fn list_webhook_events(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": page_meta_json(total, &bounds) }),
+    ))
 }
 
 /// Enqueue an event for all active webhooks subscribed to the given event type.

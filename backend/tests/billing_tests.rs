@@ -1,7 +1,6 @@
 /// Unit tests for the billing import modules.
 /// Tests mock data generation for AWS CUR and Aliyun BSS importers.
-
-use cloudatlas_lib::modules::billing::{aws_cur, aliyun_bss};
+use cloudatlas_lib::modules::billing::{aliyun_bss, aws_cur};
 
 // ─── AWS CUR mock data ────────────────────────────────────────────────────────
 
@@ -17,7 +16,11 @@ fn test_aws_cur_mock_generates_expected_count() {
 fn test_aws_cur_mock_has_positive_cost() {
     let items = aws_cur::generate_mock_cur_data(1);
     for item in &items {
-        assert!(item.cost_usd > 0.0, "cost_usd should be positive: {}", item.cost_usd);
+        assert!(
+            item.cost_usd > 0.0,
+            "cost_usd should be positive: {}",
+            item.cost_usd
+        );
     }
 }
 
@@ -34,7 +37,11 @@ fn test_aws_cur_mock_different_services() {
     let items = aws_cur::generate_mock_cur_data(1);
     let services: std::collections::HashSet<&str> =
         items.iter().map(|i| i.service_name.as_str()).collect();
-    assert!(services.len() >= 2, "expected multiple services, got {}", services.len());
+    assert!(
+        services.len() >= 2,
+        "expected multiple services, got {}",
+        services.len()
+    );
 }
 
 // ─── Aliyun BSS mock data ─────────────────────────────────────────────────────

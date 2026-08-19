@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 /// Fields are strings so the struct survives `#[serde(flatten)]` embedding
 /// (serde_urlencoded cannot feed numeric leaves through a flattened map);
 /// `resolve()` parses and clamps.
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, utoipa::ToSchema)]
 pub struct PageQuery {
     pub page: Option<String>,     // canonical, 1-based
     pub per_page: Option<String>, // canonical

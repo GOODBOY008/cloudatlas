@@ -15,14 +15,12 @@ use crate::{
 };
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -237,13 +235,11 @@ pub async fn delete_association_kind(
     )
     .await;
 
-    sqlx::query(
-        "DELETE FROM ci_association_kinds WHERE id = $1 AND organization_id = $2",
-    )
-    .bind(kind_id)
-    .bind(org_id)
-    .execute(&state.db)
-    .await?;
+    sqlx::query("DELETE FROM ci_association_kinds WHERE id = $1 AND organization_id = $2")
+        .bind(kind_id)
+        .bind(org_id)
+        .execute(&state.db)
+        .await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

@@ -2,7 +2,7 @@
 //!
 //! Every CI write path calls [`emit_ci_event`], which:
 //! 1. appends a row to the `ci_events` polling stream (cursor-paged via
-//!    `GET /orgs/:id/cmdb/events?after=<id>`), and
+//!    `GET /orgs/{id}/cmdb/events?after=<id>`), and
 //! 2. enqueues the event for delivery to active webhooks subscribed to it.
 
 use serde_json::{json, Value};
@@ -63,11 +63,7 @@ pub async fn emit_ci_event(
 
 /// Variant for deletes: the CI row is soft-deleted by the time we emit, so the
 /// payload is assembled from the last-known snapshot instead of a live row.
-pub async fn emit_ci_deleted(
-    db: &sqlx::PgPool,
-    org_id: Uuid,
-    ci: &Ci,
-) {
+pub async fn emit_ci_deleted(db: &sqlx::PgPool, org_id: Uuid, ci: &Ci) {
     let payload = json!({
         "ci_id": ci.id,
         "ci_name": ci.name,

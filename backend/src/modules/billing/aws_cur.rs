@@ -7,12 +7,11 @@
 ///
 /// This implementation provides the data pipeline structure and SQL queries.
 /// The actual S3 client call is behind the `CLOUD_MOCK_ENABLED` flag.
-
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
-use uuid::Uuid;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// S3 source configuration accepted on the cloud account `config` JSONB:
 /// `{"bucket": "my-cur-bucket", "prefix": "cur/", "region": "us-east-1"}`
@@ -82,10 +81,9 @@ pub async fn fetch_cur_line_items(
     }
     candidates.sort_by(|a, b| b.0.cmp(&a.0)); // newest key first (CUR keys embed the date)
 
-    let (key, _) = candidates
-        .into_iter()
-        .next()
-        .ok_or_else(|| AppError::NotFound("No CUR CSV files found in the configured S3 bucket/prefix".into()))?;
+    let (key, _) = candidates.into_iter().next().ok_or_else(|| {
+        AppError::NotFound("No CUR CSV files found in the configured S3 bucket/prefix".into())
+    })?;
 
     let object = s3
         .get_object()
@@ -126,10 +124,7 @@ pub async fn fetch_cur_line_items(
 /// Build a minimal S3 client from account credentials (access key / secret /
 /// optional session token). Falls back to the default credential chain when no
 /// credentials object is stored.
-async fn build_s3_client(
-    creds: &serde_json::Value,
-    region: &str,
-) -> AppResult<aws_sdk_s3::Client> {
+async fn build_s3_client(creds: &serde_json::Value, region: &str) -> AppResult<aws_sdk_s3::Client> {
     let region = aws_config::Region::new(region.to_string());
 
     let access = creds.get("access_key_id").and_then(|v| v.as_str());
@@ -198,7 +193,11 @@ fn parse_cur_csv(text: &str) -> AppResult<Vec<CurLineItem>> {
     let get = |record: &csv::StringRecord, col: &str| -> Option<String> {
         headers.iter().position(|h| h == col).and_then(|i| {
             let v = record.get(i).unwrap_or_default().trim();
-            if v.is_empty() { None } else { Some(v.to_string()) }
+            if v.is_empty() {
+                None
+            } else {
+                Some(v.to_string())
+            }
         })
     };
 
@@ -215,7 +214,10 @@ fn parse_cur_csv(text: &str) -> AppResult<Vec<CurLineItem>> {
         let line_item_type = get(&record, "lineItem/LineItemType")
             .unwrap_or_default()
             .to_lowercase();
-        if matches!(line_item_type.as_str(), "tax" | "credit" | "discount" | "refund" | "fee") {
+        if matches!(
+            line_item_type.as_str(),
+            "tax" | "credit" | "discount" | "refund" | "fee"
+        ) {
             continue;
         }
 
@@ -230,7 +232,10 @@ fn parse_cur_csv(text: &str) -> AppResult<Vec<CurLineItem>> {
             .or_else(|| get(&record, "lineItem/ResourceID"))
             .unwrap_or_else(|| {
                 // Fall back to a deterministic pseudo id when CUR lacks one.
-                format!("cur-{}", record.iter().take(4).collect::<Vec<_>>().join("-"))
+                format!(
+                    "cur-{}",
+                    record.iter().take(4).collect::<Vec<_>>().join("-")
+                )
             });
 
         let usage_date = get(&record, "lineItem/UsageStartDate")
@@ -471,10 +476,26 @@ mod tests {
 
     #[test]
     fn classify_resource_types() {
-        assert_eq!(classify_resource_type("BoxUsage:t3.micro", "Amazon Elastic Compute Cloud").as_deref(), Some("instance"));
-        assert_eq!(classify_resource_type("S3-Requests", "Amazon Simple Storage Service").as_deref(), Some("bucket"));
-        assert_eq!(classify_resource_type("RDS:Storage", "Amazon Relational Database Service").as_deref(), Some("rds_instance"));
-        assert_eq!(classify_resource_type("ELB:DataProcessing", "Amazon Elastic Load Balancing").as_deref(), Some("load_balancer"));
-        assert_eq!(classify_resource_type("EIP:Address", "Amazon Elastic Compute Cloud").as_deref(), Some("ip_address"));
+        assert_eq!(
+            classify_resource_type("BoxUsage:t3.micro", "Amazon Elastic Compute Cloud").as_deref(),
+            Some("instance")
+        );
+        assert_eq!(
+            classify_resource_type("S3-Requests", "Amazon Simple Storage Service").as_deref(),
+            Some("bucket")
+        );
+        assert_eq!(
+            classify_resource_type("RDS:Storage", "Amazon Relational Database Service").as_deref(),
+            Some("rds_instance")
+        );
+        assert_eq!(
+            classify_resource_type("ELB:DataProcessing", "Amazon Elastic Load Balancing")
+                .as_deref(),
+            Some("load_balancer")
+        );
+        assert_eq!(
+            classify_resource_type("EIP:Address", "Amazon Elastic Compute Cloud").as_deref(),
+            Some("ip_address")
+        );
     }
 }

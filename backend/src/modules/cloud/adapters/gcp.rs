@@ -111,7 +111,10 @@ impl CloudAdapter for GcpAdapter {
                             cloud_resource_id: inst["id"].as_str().unwrap_or(name).to_string(),
                             resource_name: name.to_string(),
                             resource_type: "instance".into(),
-                            region: Some(zone.trim_end_matches(|c: char| c.is_ascii_digit()).to_string()),
+                            region: Some(
+                                zone.trim_end_matches(|c: char| c.is_ascii_digit())
+                                    .to_string(),
+                            ),
                             tags,
                             meta: json!({
                                 "machine_type": inst["machineType"].as_str().unwrap_or(""),

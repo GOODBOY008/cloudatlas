@@ -24,6 +24,7 @@ pub struct DiscoveredResource {
 }
 
 /// Capability contract every cloud adapter must satisfy.
+#[allow(async_fn_in_trait)] // RPITIT is intentional; adapters are boxed, not generic
 pub trait CloudAdapter {
     async fn test_connection(&self) -> AppResult<(bool, String, i32)>;
     async fn discover_resources(&self, region: Option<&str>) -> AppResult<Vec<DiscoveredResource>>;
@@ -155,7 +156,10 @@ pub fn create_adapter(
             Ok(AnyAdapter::Kubernetes(adapter))
         }
         _ => {
-            tracing::warn!(provider, "Unknown cloud provider, falling back to mock adapter");
+            tracing::warn!(
+                provider,
+                "Unknown cloud provider, falling back to mock adapter"
+            );
             Ok(AnyAdapter::Mock(mock::MockAdapter::new()))
         }
     }

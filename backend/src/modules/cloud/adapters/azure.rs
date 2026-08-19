@@ -24,7 +24,9 @@ impl AzureAdapter {
             .to_string();
         let client_secret = creds["client_secret"]
             .as_str()
-            .ok_or_else(|| AppError::Validation("Azure credentials missing 'client_secret'".into()))?
+            .ok_or_else(|| {
+                AppError::Validation("Azure credentials missing 'client_secret'".into())
+            })?
             .to_string();
         let tenant_id = creds["tenant_id"]
             .as_str()

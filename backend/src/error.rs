@@ -108,7 +108,11 @@ impl IntoResponse for AppError {
             }
             AppError::TooManyRequests(msg) => {
                 tracing::warn!(error = %msg, code = "TOO_MANY_REQUESTS", "request failed");
-                (StatusCode::TOO_MANY_REQUESTS, "TOO_MANY_REQUESTS", msg.clone())
+                (
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "TOO_MANY_REQUESTS",
+                    msg.clone(),
+                )
             }
             AppError::Cloud(msg) => {
                 tracing::warn!(error = %msg, code = "CLOUD_ERROR", "cloud provider request failed");
@@ -121,12 +125,20 @@ impl IntoResponse for AppError {
             AppError::Database(e) => {
                 tracing::error!(error = %e, code = "DATABASE_ERROR", "request failed");
                 sentry::capture_message(&format!("Database error: {e}"), sentry::Level::Error);
-                (StatusCode::INTERNAL_SERVER_ERROR, "DATABASE_ERROR", "A database error occurred".into())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "DATABASE_ERROR",
+                    "A database error occurred".into(),
+                )
             }
             AppError::Internal(e) => {
                 tracing::error!(error = %e, code = "INTERNAL_ERROR", "request failed");
                 sentry::capture_message(&format!("Internal error: {e}"), sentry::Level::Error);
-                (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An internal error occurred".into())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "INTERNAL_ERROR",
+                    "An internal error occurred".into(),
+                )
             }
         };
 

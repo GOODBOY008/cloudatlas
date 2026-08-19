@@ -182,9 +182,9 @@ export default function CITopology() {
 
   const setParentMutation = useMutation({
     mutationFn: ({ childId, parentId }: { childId: string; parentId: string }) =>
-      parentId
-        ? api.put(`/orgs/${orgId}/cis/${childId}`, { parent_ci_id: parentId })
-        : api.put(`/orgs/${orgId}/cis/${childId}`, { remove_parent: true }),
+      api.put(`/orgs/${orgId}/cis/${childId}`, parentId
+        ? { parent_ci_id: parentId }
+        : { remove_parent: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ci-forest', orgId, typeFilter] })
       setActionError('')

@@ -24,14 +24,12 @@ use crate::{
 };
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -97,11 +95,12 @@ pub async fn list_exports(
     .fetch_all(&state.db)
     .await?;
 
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM bi_exports WHERE organization_id = $1")
-        .bind(org_id)
-        .fetch_one(&state.db)
-        .await
-        .unwrap_or(0);
+    let total: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM bi_exports WHERE organization_id = $1")
+            .bind(org_id)
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(0);
 
     let data: Vec<Value> = rows
         .iter()
@@ -119,7 +118,9 @@ pub async fn list_exports(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_export(
@@ -208,7 +209,9 @@ pub async fn update_export(
         return Err(AppError::NotFound(format!("Export {export_id} not found")));
     }
 
-    Ok(Json(json!({ "data": { "id": export_id, "message": "Updated" } })))
+    Ok(Json(
+        json!({ "data": { "id": export_id, "message": "Updated" } }),
+    ))
 }
 
 pub async fn delete_export(
@@ -321,7 +324,9 @@ pub async fn list_runs(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 /// Download the export payload as CSV or JSON (re-queried at download time).
@@ -378,31 +383,22 @@ pub async fn download_run(
 
 // ─── scope queries ───────────────────────────────────────────────────────────
 
-async fn count_scope_rows(
-    state: &AppState,
-    org_id: Uuid,
-    scope: &str,
-    filters: &Value,
-) -> i64 {
+async fn count_scope_rows(state: &AppState, org_id: Uuid, scope: &str, filters: &Value) -> i64 {
     match scope {
-        "recommendations" => {
-            sqlx::query_scalar::<_, i64>(
-                "SELECT COUNT(*) FROM recommendations WHERE organization_id = $1",
-            )
-            .bind(org_id)
-            .fetch_one(&state.db)
-            .await
-            .unwrap_or(0)
-        }
-        "resources" => {
-            sqlx::query_scalar::<_, i64>(
-                "SELECT COUNT(*) FROM resources WHERE organization_id = $1",
-            )
-            .bind(org_id)
-            .fetch_one(&state.db)
-            .await
-            .unwrap_or(0)
-        }
+        "recommendations" => sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM recommendations WHERE organization_id = $1",
+        )
+        .bind(org_id)
+        .fetch_one(&state.db)
+        .await
+        .unwrap_or(0),
+        "resources" => sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM resources WHERE organization_id = $1",
+        )
+        .bind(org_id)
+        .fetch_one(&state.db)
+        .await
+        .unwrap_or(0),
         _ => {
             let (start, end) = date_bounds(filters);
             if let (Some(s), Some(e)) = (start, end) {

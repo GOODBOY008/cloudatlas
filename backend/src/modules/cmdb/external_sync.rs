@@ -91,9 +91,9 @@ pub fn map_record(mapping: &Value, record: &Value) -> Option<(String, String, Va
             .get(key)
             .and_then(|v| v.as_str())
             .and_then(|field| obj.get(field))
-            .and_then(|v| match v {
-                Value::String(s) => Some(s.clone()),
-                other => Some(other.to_string()),
+            .map(|v| match v {
+                Value::String(s) => s.clone(),
+                other => other.to_string(),
             })
     };
 
@@ -123,11 +123,19 @@ pub fn map_record(mapping: &Value, record: &Value) -> Option<(String, String, Va
 
 /// Build the (method, url, body, headers) of one pull page request.
 /// Returns None when the provider is unknown.
-pub fn build_pull_request(cfg: &SyncConfig, page: usize, per_page: usize) -> Option<(String, String, Option<Value>)> {
+pub fn build_pull_request(
+    cfg: &SyncConfig,
+    page: usize,
+    per_page: usize,
+) -> Option<(String, String, Option<Value>)> {
     let base = cfg.base_url.trim_end_matches('/');
     match cfg.provider.as_str() {
         "rest" => {
-            let path = cfg.options.get("list_path").and_then(|v| v.as_str()).unwrap_or("");
+            let path = cfg
+                .options
+                .get("list_path")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             Some((
                 "GET".into(),
                 format!("{base}/{path}?page={page}&per_page={per_page}"),
@@ -135,10 +143,17 @@ pub fn build_pull_request(cfg: &SyncConfig, page: usize, per_page: usize) -> Opt
             ))
         }
         "servicenow" => {
-            let table = cfg.options.get("table").and_then(|v| v.as_str()).unwrap_or("cmdb_ci");
+            let table = cfg
+                .options
+                .get("table")
+                .and_then(|v| v.as_str())
+                .unwrap_or("cmdb_ci");
             Some((
                 "GET".into(),
-                format!("{base}/api/now/table/{table}?sysparm_offset={}&sysparm_limit={per_page}", (page - 1) * per_page),
+                format!(
+                    "{base}/api/now/table/{table}?sysparm_offset={}&sysparm_limit={per_page}",
+                    (page - 1) * per_page
+                ),
                 None,
             ))
         }
@@ -165,11 +180,12 @@ pub fn extract_records(provider: &str, body: &Value) -> Vec<Value> {
 }
 
 /// Apply the auth config onto a request builder.
-fn apply_auth(
-    mut req: reqwest::RequestBuilder,
-    auth: &Value,
-) -> reqwest::RequestBuilder {
-    match auth.get("auth_type").and_then(|v| v.as_str()).unwrap_or("none") {
+fn apply_auth(mut req: reqwest::RequestBuilder, auth: &Value) -> reqwest::RequestBuilder {
+    match auth
+        .get("auth_type")
+        .and_then(|v| v.as_str())
+        .unwrap_or("none")
+    {
         "bearer" => {
             if let Some(tok) = auth.get("token").and_then(|v| v.as_str()) {
                 req = req.bearer_auth(tok);
@@ -227,18 +243,31 @@ pub async fn pull_once(
         .ok_or_else(|| AppError::Validation("config has no ci_type_id bound".into()))?;
 
     let client = http_client()?;
-    let mut outcome = PullOutcome { created: 0, updated: 0, unchanged: 0, failed: 0, samples: Vec::new() };
+    let mut outcome = PullOutcome {
+        created: 0,
+        updated: 0,
+        unchanged: 0,
+        failed: 0,
+        samples: Vec::new(),
+    };
 
     for page in 1..=max_pages {
-        let (method, url, body) = build_pull_request(cfg, page, 100)
-            .ok_or_else(|| AppError::Unsupported(format!("unsupported provider '{}'", cfg.provider)))?;
+        let (method, url, body) = build_pull_request(cfg, page, 100).ok_or_else(|| {
+            AppError::Unsupported(format!("unsupported provider '{}'", cfg.provider))
+        })?;
 
-        let mut req = client.request(reqwest::Method::from_bytes(method.as_bytes()).unwrap_or(reqwest::Method::GET), &url);
+        let mut req = client.request(
+            reqwest::Method::from_bytes(method.as_bytes()).unwrap_or(reqwest::Method::GET),
+            &url,
+        );
         req = apply_auth(req, &cfg.auth_config);
         if let Some(b) = &body {
             req = req.json(b);
         }
-        let resp = req.send().await.map_err(|e| AppError::Cloud(format!("external CMDB request failed: {e}")))?;
+        let resp = req
+            .send()
+            .await
+            .map_err(|e| AppError::Cloud(format!("external CMDB request failed: {e}")))?;
         if !resp.status().is_success() {
             return Err(AppError::Cloud(format!(
                 "external CMDB returned HTTP {}",
@@ -357,7 +386,9 @@ pub async fn push_once(db: &sqlx::PgPool, cfg: &SyncConfig) -> AppResult<(u64, u
         .ci_type_id
         .ok_or_else(|| AppError::Validation("config has no ci_type_id bound".into()))?;
 
-    let since = cfg.last_synced_at.unwrap_or_else(|| chrono::Utc::now() - chrono::Duration::days(1));
+    let since = cfg
+        .last_synced_at
+        .unwrap_or_else(|| chrono::Utc::now() - chrono::Duration::days(1));
     let rows = sqlx::query(
         r#"SELECT name, meta FROM cis
            WHERE organization_id = $1 AND ci_type_id = $2 AND deleted_at IS NULL
@@ -374,17 +405,28 @@ pub async fn push_once(db: &sqlx::PgPool, cfg: &SyncConfig) -> AppResult<(u64, u
     let base = cfg.base_url.trim_end_matches('/');
     let (path, method) = match cfg.provider.as_str() {
         "rest" => (
-            cfg.options.get("push_path").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            cfg.options
+                .get("push_path")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
             "PUT",
         ),
         "servicenow" => (
             format!(
                 "/api/now/table/{}",
-                cfg.options.get("table").and_then(|v| v.as_str()).unwrap_or("cmdb_ci")
+                cfg.options
+                    .get("table")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("cmdb_ci")
             ),
             "PATCH",
         ),
-        other => return Err(AppError::Unsupported(format!("unsupported provider '{other}'"))),
+        other => {
+            return Err(AppError::Unsupported(format!(
+                "unsupported provider '{other}'"
+            )))
+        }
     };
 
     // Reverse mapping: remote_field <- local meta key / name.
@@ -413,8 +455,13 @@ pub async fn push_once(db: &sqlx::PgPool, cfg: &SyncConfig) -> AppResult<(u64, u
     for row in &rows {
         let name: String = row.get("name");
         let meta: Value = row.get("meta");
-        let external_id = meta.get("external_id").and_then(|v| v.as_str()).map(String::from);
-        let Some(external_id) = external_id else { continue };
+        let external_id = meta
+            .get("external_id")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+        let Some(external_id) = external_id else {
+            continue;
+        };
 
         let mut payload = serde_json::Map::new();
         payload.insert(name_remote.clone(), json!(name));
@@ -492,10 +539,11 @@ pub async fn run_sync(db: &sqlx::PgPool, cfg: &SyncConfig, trigger: &str) {
     .await;
 
     if status == "success" {
-        let _ = sqlx::query("UPDATE external_cmdb_configs SET last_synced_at = NOW() WHERE id = $1")
-            .bind(cfg.id)
-            .execute(db)
-            .await;
+        let _ =
+            sqlx::query("UPDATE external_cmdb_configs SET last_synced_at = NOW() WHERE id = $1")
+                .bind(cfg.id)
+                .execute(db)
+                .await;
     }
     tracing::info!(config = %cfg.id, trigger = trigger, status = status, "external CMDB sync finished");
 }
@@ -532,7 +580,7 @@ pub struct TriggerSyncRequest {
     pub dry_run: Option<bool>,
 }
 
-/// POST /api/v1/orgs/:org_id/external-cmdb/:id/sync — 202, runs in background.
+/// POST /api/v1/orgs/{org_id}/external-cmdb/{id}/sync — 202, runs in background.
 #[utoipa::path(
     post,
     path = "/api/v1/orgs/{org_id}/external-cmdb/{id}/sync",
@@ -559,7 +607,10 @@ pub async fn trigger_external_sync(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     // For a dry-run request, run the bounded preview synchronously instead.
-    if body.map(|Json(b)| b.dry_run.unwrap_or(false)).unwrap_or(false) {
+    if body
+        .map(|Json(b)| b.dry_run.unwrap_or(false))
+        .unwrap_or(false)
+    {
         let cfg = load_config(&state.db, org_id, config_id).await?;
         let outcome = pull_once(&state.db, &cfg, true, 5).await?;
         return Ok((
@@ -606,7 +657,7 @@ pub async fn trigger_external_sync(
     ))
 }
 
-/// GET /api/v1/orgs/:org_id/external-cmdb/:id/dry-run — bounded preview.
+/// GET /api/v1/orgs/{org_id}/external-cmdb/{id}/dry-run — bounded preview.
 #[utoipa::path(
     get,
     path = "/api/v1/orgs/{org_id}/external-cmdb/{id}/dry-run",
@@ -640,7 +691,7 @@ pub async fn external_sync_dry_run(
     })))
 }
 
-/// GET /api/v1/orgs/:org_id/external-cmdb/:id/logs — paginated sync history.
+/// GET /api/v1/orgs/{org_id}/external-cmdb/{id}/logs — paginated sync history.
 #[utoipa::path(
     get,
     path = "/api/v1/orgs/{org_id}/external-cmdb/{id}/logs",
@@ -811,10 +862,25 @@ mod tests {
 
     #[test]
     fn extract_records_shapes() {
-        assert_eq!(extract_records("rest", &json!([{ "a": 1 }, { "a": 2 }])).len(), 2);
-        assert_eq!(extract_records("rest", &json!({"data": [{ "a": 1 }]})).len(), 1);
-        assert_eq!(extract_records("rest", &json!({"items": [{ "a": 1 }]})).len(), 1);
-        assert_eq!(extract_records("servicenow", &json!({"result": [{ "a": 1 }]})).len(), 1);
-        assert_eq!(extract_records("rest", &json!({"unexpected": true})).len(), 0);
+        assert_eq!(
+            extract_records("rest", &json!([{ "a": 1 }, { "a": 2 }])).len(),
+            2
+        );
+        assert_eq!(
+            extract_records("rest", &json!({"data": [{ "a": 1 }]})).len(),
+            1
+        );
+        assert_eq!(
+            extract_records("rest", &json!({"items": [{ "a": 1 }]})).len(),
+            1
+        );
+        assert_eq!(
+            extract_records("servicenow", &json!({"result": [{ "a": 1 }]})).len(),
+            1
+        );
+        assert_eq!(
+            extract_records("rest", &json!({"unexpected": true})).len(),
+            0
+        );
     }
 }

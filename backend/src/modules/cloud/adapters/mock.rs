@@ -19,7 +19,10 @@ impl CloudAdapter for MockAdapter {
         Ok((true, "Connection successful (mock)".to_string(), 3))
     }
 
-    async fn discover_resources(&self, _region: Option<&str>) -> AppResult<Vec<DiscoveredResource>> {
+    async fn discover_resources(
+        &self,
+        _region: Option<&str>,
+    ) -> AppResult<Vec<DiscoveredResource>> {
         Ok(vec![
             DiscoveredResource {
                 cloud_resource_id: "i-0abc123def456789a".to_string(),

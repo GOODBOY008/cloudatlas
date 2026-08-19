@@ -42,8 +42,16 @@ pub fn compute_recommendation(
     let mut ms = mem_samples.to_vec();
     ms.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-    let p95_cpu = if cs.len() < 5 { cs.last().copied().unwrap_or(0.0) } else { percentile(&cs, 0.95) };
-    let p95_mem = if ms.len() < 5 { ms.last().copied().unwrap_or(0.0) } else { percentile(&ms, 0.95) };
+    let p95_cpu = if cs.len() < 5 {
+        cs.last().copied().unwrap_or(0.0)
+    } else {
+        percentile(&cs, 0.95)
+    };
+    let p95_mem = if ms.len() < 5 {
+        ms.last().copied().unwrap_or(0.0)
+    } else {
+        percentile(&ms, 0.95)
+    };
 
     let rec_cpu = (p95_cpu.ceil().max(10.0)) as i64;
     let rec_mem = (p95_mem.ceil().max(16.0)) as i64;
@@ -213,11 +221,9 @@ pub async fn record_samples(
     }
 
     // Prune samples older than 60 days.
-    sqlx::query(
-        "DELETE FROM k8s_usage_samples WHERE sample_time < NOW() - INTERVAL '60 days'",
-    )
-    .execute(db)
-    .await?;
+    sqlx::query("DELETE FROM k8s_usage_samples WHERE sample_time < NOW() - INTERVAL '60 days'")
+        .execute(db)
+        .await?;
 
     Ok(inserted)
 }
@@ -260,15 +266,14 @@ pub async fn recompute_recommendations(
         let cpu_samples: Vec<f64> = samples.iter().map(|(c, _)| *c).collect();
         let mem_samples: Vec<f64> = samples.iter().map(|(_, m)| *m).collect();
 
-        let (p95_cpu, p95_mem, rec_cpu, rec_mem, monthly_cost, savings) =
-            compute_recommendation(
-                wl.cpu_request_m,
-                wl.mem_request_mi,
-                &cpu_samples,
-                &mem_samples,
-                cpu_rate,
-                mem_rate,
-            );
+        let (p95_cpu, p95_mem, rec_cpu, rec_mem, monthly_cost, savings) = compute_recommendation(
+            wl.cpu_request_m,
+            wl.mem_request_mi,
+            &cpu_samples,
+            &mem_samples,
+            cpu_rate,
+            mem_rate,
+        );
 
         sqlx::query(
             r#"
@@ -327,29 +332,51 @@ pub async fn sync_cluster(
     cluster_name: &str,
     config: &Value,
 ) -> AppResult<()> {
-    let cpu_rate = config.get("cpu_hourly_cost").and_then(Value::as_f64).unwrap_or(0.04);
-    let mem_rate = config.get("memory_hourly_cost").and_then(Value::as_f64).unwrap_or(0.005);
+    let cpu_rate = config
+        .get("cpu_hourly_cost")
+        .and_then(Value::as_f64)
+        .unwrap_or(0.04);
+    let mem_rate = config
+        .get("memory_hourly_cost")
+        .and_then(Value::as_f64)
+        .unwrap_or(0.005);
 
     let nodes = k.discover_nodes().await?;
-    let cluster_id =
-        upsert_cluster(db, org_id, account_id, cluster_name, &nodes, cpu_rate, mem_rate).await?;
+    let cluster_id = upsert_cluster(
+        db,
+        org_id,
+        account_id,
+        cluster_name,
+        &nodes,
+        cpu_rate,
+        mem_rate,
+    )
+    .await?;
 
     let workloads = k.discover_workloads().await?;
     let workload_ids = upsert_workloads(db, org_id, cluster_id, &workloads).await?;
     let inserted = record_samples(db, org_id, cluster_id, &workloads, &workload_ids).await?;
-    let updated =
-        recompute_recommendations(db, cluster_id, &workloads, &workload_ids, cpu_rate, mem_rate, 14)
-            .await?;
+    let updated = recompute_recommendations(
+        db,
+        cluster_id,
+        &workloads,
+        &workload_ids,
+        cpu_rate,
+        mem_rate,
+        14,
+    )
+    .await?;
 
     // T15: mirror the cluster into CMDB CIs (failure must not break the
     // rightsizing pipeline — log and continue).
-    let cis_created = match sync_k8s_cis(db, org_id, account_id, cluster_name, &nodes, &workloads).await {
-        Ok(n) => n,
-        Err(e) => {
-            tracing::warn!(cluster = %cluster_name, error = %e, "K8s → CMDB CI sync failed");
-            0
-        }
-    };
+    let cis_created =
+        match sync_k8s_cis(db, org_id, account_id, cluster_name, &nodes, &workloads).await {
+            Ok(n) => n,
+            Err(e) => {
+                tracing::warn!(cluster = %cluster_name, error = %e, "K8s → CMDB CI sync failed");
+                0
+            }
+        };
 
     tracing::info!(
         account_id = %account_id,
@@ -515,7 +542,9 @@ async fn link_k8s_cis(
     .fetch_optional(db)
     .await?;
 
-    let Some(obj_assoc) = obj_assoc else { return Ok(()) };
+    let Some(obj_assoc) = obj_assoc else {
+        return Ok(());
+    };
     sqlx::query(
         r#"INSERT INTO ci_instance_associations
            (id, organization_id, src_ci_id, object_association_id, dst_ci_id, meta, source)
@@ -613,7 +642,16 @@ pub async fn sync_k8s_cis(
         created += c as usize;
         ns_cis.insert(ns.to_string(), ns_ci);
         // cluster contains namespace
-        link_k8s_cis(db, org_id, cluster_ci, ns_ci, K8S_TYPE_CLUSTER, K8S_TYPE_NAMESPACE, KIND_CONTAINS).await?;
+        link_k8s_cis(
+            db,
+            org_id,
+            cluster_ci,
+            ns_ci,
+            K8S_TYPE_CLUSTER,
+            K8S_TYPE_NAMESPACE,
+            KIND_CONTAINS,
+        )
+        .await?;
     }
 
     // Workloads (+ pods).
@@ -623,7 +661,10 @@ pub async fn sync_k8s_cis(
             org_id,
             account_id,
             K8S_TYPE_WORKLOAD,
-            &format!("k8s/wl/{cluster_name}/{}/{}/{}", wl.namespace, wl.name, wl.kind),
+            &format!(
+                "k8s/wl/{cluster_name}/{}/{}/{}",
+                wl.namespace, wl.name, wl.kind
+            ),
             &wl.name,
             None,
             serde_json::json!({
@@ -640,7 +681,16 @@ pub async fn sync_k8s_cis(
         created += c as usize;
 
         if let Some(ns_ci) = ns_cis.get(&wl.namespace) {
-            link_k8s_cis(db, org_id, *ns_ci, wl_ci, K8S_TYPE_NAMESPACE, K8S_TYPE_WORKLOAD, KIND_CONTAINS).await?;
+            link_k8s_cis(
+                db,
+                org_id,
+                *ns_ci,
+                wl_ci,
+                K8S_TYPE_NAMESPACE,
+                K8S_TYPE_WORKLOAD,
+                KIND_CONTAINS,
+            )
+            .await?;
         }
 
         for pod in &wl.pod_names {
@@ -659,7 +709,16 @@ pub async fn sync_k8s_cis(
             )
             .await?;
             created += c as usize;
-            link_k8s_cis(db, org_id, wl_ci, pod_ci, K8S_TYPE_WORKLOAD, K8S_TYPE_POD, KIND_CONTAINS).await?;
+            link_k8s_cis(
+                db,
+                org_id,
+                wl_ci,
+                pod_ci,
+                K8S_TYPE_WORKLOAD,
+                K8S_TYPE_POD,
+                KIND_CONTAINS,
+            )
+            .await?;
             // pod run_on node: k8s pod names embed the node name in some
             // providers; without scheduling data we skip the link unless the
             // pod name resolves to a known node prefix.
@@ -668,7 +727,16 @@ pub async fn sync_k8s_cis(
                 .find(|n| pod.starts_with(n.split('.').next().unwrap_or(n)))
                 .and_then(|n| node_ci_ids.get(n))
             {
-                link_k8s_cis(db, org_id, pod_ci, *node_ci, K8S_TYPE_POD, K8S_TYPE_NODE, KIND_RUN_ON).await?;
+                link_k8s_cis(
+                    db,
+                    org_id,
+                    pod_ci,
+                    *node_ci,
+                    K8S_TYPE_POD,
+                    K8S_TYPE_NODE,
+                    KIND_RUN_ON,
+                )
+                .await?;
             }
         }
     }

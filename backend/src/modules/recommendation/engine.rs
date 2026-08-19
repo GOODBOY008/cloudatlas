@@ -44,17 +44,6 @@ impl RecEngine {
     }
 }
 
-/// Helper: upsert a recommendation from a raw SQL INSERT…SELECT query
-macro_rules! upsert_rec {
-    ($state:expr, $org_id:expr, $sql:expr) => {{
-        let result = sqlx::query($sql)
-            .bind($org_id)
-            .execute(&$state.db)
-            .await?;
-        result.rows_affected() as u32
-    }};
-}
-
 async fn detect_abandoned_volumes(state: &AppState, org_id: Uuid) -> AppResult<u32> {
     let result = sqlx::query(
         r#"INSERT INTO recommendations
@@ -480,10 +469,7 @@ async fn detect_abandoned_images(state: &AppState, org_id: Uuid) -> AppResult<u3
           )
         ON CONFLICT DO NOTHING
     "#;
-    let result = sqlx::query(sql)
-        .bind(org_id)
-        .execute(&state.db)
-        .await?;
+    let result = sqlx::query(sql).bind(org_id).execute(&state.db).await?;
     Ok(result.rows_affected() as u32)
 }
 
@@ -508,10 +494,7 @@ async fn detect_abandoned_kinesis_streams(state: &AppState, org_id: Uuid) -> App
           AND r.last_seen < NOW() - INTERVAL '7 days'
         ON CONFLICT DO NOTHING
     "#;
-    let result = sqlx::query(sql)
-        .bind(org_id)
-        .execute(&state.db)
-        .await?;
+    let result = sqlx::query(sql).bind(org_id).execute(&state.db).await?;
     Ok(result.rows_affected() as u32)
 }
 
@@ -536,10 +519,7 @@ async fn detect_instances_in_stopped_state(state: &AppState, org_id: Uuid) -> Ap
           AND LOWER(r.meta->>'status') IN ('stopped', 'stopping')
         ON CONFLICT DO NOTHING
     "#;
-    let result = sqlx::query(sql)
-        .bind(org_id)
-        .execute(&state.db)
-        .await?;
+    let result = sqlx::query(sql).bind(org_id).execute(&state.db).await?;
     Ok(result.rows_affected() as u32)
 }
 

@@ -215,9 +215,9 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
 
   const setParentMutation = useMutation({
     mutationFn: (parentId: string) =>
-      parentId
-        ? api.put(`/orgs/${orgId}/cis/${ci.id}`, { parent_ci_id: parentId })
-        : api.put(`/orgs/${orgId}/cis/${ci.id}`, { remove_parent: true }),
+      api.put(`/orgs/${orgId}/cis/${ci.id}`, parentId
+        ? { parent_ci_id: parentId }
+        : { remove_parent: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cmdb', orgId] })
       setEditingParent(false)

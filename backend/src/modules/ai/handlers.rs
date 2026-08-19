@@ -25,14 +25,12 @@ use futures_util::StreamExt;
 use super::{analytics, provider};
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -141,7 +139,7 @@ pub struct ChatRequest {
     pub message: String,
 }
 
-/// POST /orgs/:org_id/ai/chat — Server-Sent Events stream.
+/// POST /orgs/{org_id}/ai/chat — Server-Sent Events stream.
 ///
 /// Streams the assistant reply (single event when AI is disabled or the
 /// upstream call fails — the client treats both the same way).
@@ -176,7 +174,7 @@ pub async fn chat(
 
 // ─── Smart Recommendations ───────────────────────────────────────────────────
 
-/// POST /orgs/:org_id/ai/explain/:rec_id — LLM explanation of a recommendation,
+/// POST /orgs/{org_id}/ai/explain/{rec_id} — LLM explanation of a recommendation,
 /// cached in `details.ai_explanation`.
 pub async fn explain_recommendation(
     State(state): State<AppState>,
@@ -206,7 +204,9 @@ pub async fn explain_recommendation(
 
     // Serve from cache when present.
     if let Some(cached) = details.get("ai_explanation").and_then(|v| v.as_str()) {
-        return Ok(Json(json!({ "data": { "explanation": cached, "cached": true } })));
+        return Ok(Json(
+            json!({ "data": { "explanation": cached, "cached": true } }),
+        ));
     }
 
     let prompt = format!(
@@ -234,12 +234,14 @@ pub async fn explain_recommendation(
             .await;
     }
 
-    Ok(Json(json!({ "data": { "explanation": explanation, "cached": false } })))
+    Ok(Json(
+        json!({ "data": { "explanation": explanation, "cached": false } }),
+    ))
 }
 
 // ─── Forecasting ─────────────────────────────────────────────────────────────
 
-/// POST /orgs/:org_id/ai/forecast?pool_id=…&service=… — Holt-Winters forecast
+/// POST /orgs/{org_id}/ai/forecast?pool_id=…&service=… — Holt-Winters forecast
 /// of daily spend, optionally scoped to a pool or service (A2).
 pub async fn forecast(
     State(state): State<AppState>,
@@ -334,7 +336,7 @@ pub async fn forecast(
 
 // ─── Anomaly Detection ───────────────────────────────────────────────────────
 
-/// POST /orgs/:org_id/ai/anomalies — z-score spikes/drops on daily spend.
+/// POST /orgs/{org_id}/ai/anomalies — z-score spikes/drops on daily spend.
 pub async fn anomalies(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -354,7 +356,12 @@ pub async fn anomalies(
 
     let series: Vec<(chrono::NaiveDate, f64)> = days
         .iter()
-        .map(|r| (r.get::<chrono::NaiveDate, _>("date"), r.get::<f64, _>("total")))
+        .map(|r| {
+            (
+                r.get::<chrono::NaiveDate, _>("date"),
+                r.get::<f64, _>("total"),
+            )
+        })
         .collect();
 
     let found = analytics::zscore_anomalies(&series, 2.5, 10.0);
@@ -408,7 +415,7 @@ pub struct CreateNoteRequest {
     pub body: String,
 }
 
-/// POST /orgs/:org_id/ai/notes — store a note; embeds it when AI is enabled.
+/// POST /orgs/{org_id}/ai/notes — store a note; embeds it when AI is enabled.
 pub async fn create_note(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -421,7 +428,8 @@ pub async fn create_note(
         return Err(AppError::Validation("Note body is required".into()));
     }
 
-    let embedding = provider::embed_text(&state, org_id, &format!("{} {}", req.title, req.body)).await;
+    let embedding =
+        provider::embed_text(&state, org_id, &format!("{} {}", req.title, req.body)).await;
     let embedded = embedding.is_some();
     let embedding_json = serde_json::to_value(embedding.unwrap_or_default()).unwrap_or(json!([]));
 
@@ -456,7 +464,7 @@ pub struct SearchNotesRequest {
     pub limit: Option<i64>,
 }
 
-/// POST /orgs/:org_id/ai/notes/search — semantic search over embedded notes.
+/// POST /orgs/{org_id}/ai/notes/search — semantic search over embedded notes.
 /// Falls back to ILIKE keyword search when embeddings are unavailable.
 /// Shared notes-search logic used by the HTTP handler and the copilot tool.
 /// Returns (results, mode) where mode is "semantic" or "keyword".
@@ -498,7 +506,11 @@ pub async fn search_notes_query(
             }
         }
         scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
-        let results: Vec<Value> = scored.into_iter().take(limit as usize).map(|(_, v)| v).collect();
+        let results: Vec<Value> = scored
+            .into_iter()
+            .take(limit as usize)
+            .map(|(_, v)| v)
+            .collect();
         return (results, "semantic".into());
     }
 
@@ -539,7 +551,8 @@ pub async fn search_notes(
 ) -> AppResult<Json<Value>> {
     ensure_org_member(&state.db, org_id, claims.user_id()?).await?;
 
-    let (results, mode) = search_notes_query(&state, org_id, &req.query, req.limit.unwrap_or(5)).await;
+    let (results, mode) =
+        search_notes_query(&state, org_id, &req.query, req.limit.unwrap_or(5)).await;
     Ok(Json(json!({ "data": results, "mode": mode })))
 }
 
@@ -581,7 +594,9 @@ pub async fn list_notes(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 // ─── Copilot ─────────────────────────────────────────────────────────────────
@@ -602,7 +617,7 @@ pub struct CopilotRequest {
     pub page_context: Option<String>,
 }
 
-/// POST /orgs/:org_id/ai/copilot/chat — SSE copilot conversation.
+/// POST /orgs/{org_id}/ai/copilot/chat — SSE copilot conversation.
 ///
 /// LLM mode: context digest + tool calling loop, then streamed answer.
 /// Local mode: deterministic digest-based answer. Same SSE protocol both ways.
@@ -634,15 +649,23 @@ pub async fn chat_copilot(
     }
     if let Some(pc) = req.page_context.as_deref() {
         if pc.len() > 200 {
-            return Err(AppError::Validation("page_context too long (max 200 chars)".into()));
+            return Err(AppError::Validation(
+                "page_context too long (max 200 chars)".into(),
+            ));
         }
     }
 
     let digest = super::copilot::build_context_digest(&state.db, org_id).await;
 
     // Persist the conversation + user message (G3).
-    let conv_id = persist_conversation(&state, org_id, claims.user_id()?, req.conversation_id, &user_message)
-        .await;
+    let conv_id = persist_conversation(
+        &state,
+        org_id,
+        claims.user_id()?,
+        req.conversation_id,
+        &user_message,
+    )
+    .await;
 
     // LLM mode: tool calling + token streaming (org provider → env → local).
     let provider = super::provider_config::resolve(&state, org_id).await;
@@ -719,20 +742,18 @@ async fn persist_conversation(
             .await;
             Some(id)
         }
-        None => {
-            sqlx::query(
-                r#"INSERT INTO ai_conversation (organization_id, user_id, title)
+        None => sqlx::query(
+            r#"INSERT INTO ai_conversation (organization_id, user_id, title)
                    VALUES ($1, $2, $3) RETURNING id"#,
-            )
-            .bind(org_id)
-            .bind(user_id)
-            .bind(user_message.chars().take(80).collect::<String>())
-            .fetch_optional(&state.db)
-            .await
-            .ok()
-            .flatten()
-            .map(|r| r.try_get::<Uuid, _>("id").unwrap_or(Uuid::new_v4()))
-        }
+        )
+        .bind(org_id)
+        .bind(user_id)
+        .bind(user_message.chars().take(80).collect::<String>())
+        .fetch_optional(&state.db)
+        .await
+        .ok()
+        .flatten()
+        .map(|r| r.try_get::<Uuid, _>("id").unwrap_or(Uuid::new_v4())),
     };
 
     if let Some(id) = conv_id {
@@ -748,7 +769,12 @@ async fn persist_conversation(
     conv_id
 }
 
-async fn persist_assistant_message(state: &AppState, org_id: Uuid, conv_id: Option<Uuid>, reply: &str) {
+async fn persist_assistant_message(
+    state: &AppState,
+    org_id: Uuid,
+    conv_id: Option<Uuid>,
+    reply: &str,
+) {
     if let Some(id) = conv_id {
         let _ = sqlx::query(
             r#"INSERT INTO ai_message (conversation_id, role, content)
@@ -770,6 +796,7 @@ async fn persist_assistant_message(state: &AppState, org_id: Uuid, conv_id: Opti
 
 /// Run the tool-calling loop (non-streaming) and then stream the final answer.
 /// Returns None when the upstream call fails (caller falls back to local).
+#[allow(clippy::too_many_arguments)]
 async fn llm_copilot_stream(
     state: &AppState,
     org_id: Uuid,
@@ -799,7 +826,11 @@ async fn llm_copilot_stream(
 
     let mut api_messages: Vec<Value> = vec![json!({ "role": "system", "content": system })];
     for m in messages {
-        let role = if m.role == "assistant" { "assistant" } else { "user" };
+        let role = if m.role == "assistant" {
+            "assistant"
+        } else {
+            "user"
+        };
         api_messages.push(json!({ "role": role, "content": m.content }));
     }
 
@@ -824,7 +855,10 @@ async fn llm_copilot_stream(
 
         let body: Value = resp.json().await.ok()?;
         let message = &body["choices"][0]["message"];
-        let tool_calls = message["tool_calls"].as_array().cloned().unwrap_or_default();
+        let tool_calls = message["tool_calls"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
 
         if tool_calls.is_empty() {
             api_messages.push(message.clone());
@@ -835,12 +869,12 @@ async fn llm_copilot_stream(
         for call in &tool_calls {
             let call_id = call["id"].as_str().unwrap_or("call_0");
             let fn_name = call["function"]["name"].as_str().unwrap_or("");
-            let fn_args: Value = serde_json::from_str(
-                call["function"]["arguments"].as_str().unwrap_or("{}"),
-            )
-            .unwrap_or_else(|_| json!({}));
+            let fn_args: Value =
+                serde_json::from_str(call["function"]["arguments"].as_str().unwrap_or("{}"))
+                    .unwrap_or_else(|_| json!({}));
 
-            let result = super::copilot::execute_tool(state, org_id, user_id, fn_name, &fn_args).await;
+            let result =
+                super::copilot::execute_tool(state, org_id, user_id, fn_name, &fn_args).await;
             api_messages.push(json!({
                 "role": "tool",
                 "tool_call_id": call_id,
@@ -932,7 +966,7 @@ pub struct CreateConversationRequest {
     pub title: Option<String>,
 }
 
-/// GET /orgs/:id/ai/conversations — list the caller's conversations (newest first).
+/// GET /orgs/{id}/ai/conversations — list the caller's conversations (newest first).
 pub async fn list_conversations(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -980,10 +1014,12 @@ pub async fn list_conversations(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
-/// POST /orgs/:id/ai/conversations — start a new conversation.
+/// POST /orgs/{id}/ai/conversations — start a new conversation.
 pub async fn create_conversation(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -1015,7 +1051,7 @@ pub async fn create_conversation(
     ))
 }
 
-/// GET /orgs/:id/ai/conversations/:conv_id/messages — history for resume.
+/// GET /orgs/{id}/ai/conversations/{conv_id}/messages — history for resume.
 /// Newest-first pages (`created_at DESC`); clients that need chronological
 /// order reverse the page(s) they load.
 pub async fn list_conversation_messages(
@@ -1037,7 +1073,9 @@ pub async fn list_conversation_messages(
     .unwrap_or(0);
 
     if owns == 0 {
-        return Err(AppError::NotFound(format!("Conversation {conv_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Conversation {conv_id} not found"
+        )));
     }
 
     let bounds = page.resolve(50, 200);
@@ -1054,11 +1092,12 @@ pub async fn list_conversation_messages(
     .fetch_all(&state.db)
     .await?;
 
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM ai_message WHERE conversation_id = $1")
-        .bind(conv_id)
-        .fetch_one(&state.db)
-        .await
-        .unwrap_or(0);
+    let total: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM ai_message WHERE conversation_id = $1")
+            .bind(conv_id)
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(0);
 
     let data: Vec<Value> = rows
         .iter()
@@ -1072,10 +1111,12 @@ pub async fn list_conversation_messages(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
-/// DELETE /orgs/:id/ai/conversations/:conv_id — remove a conversation.
+/// DELETE /orgs/{id}/ai/conversations/{conv_id} — remove a conversation.
 pub async fn delete_conversation(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -1093,7 +1134,9 @@ pub async fn delete_conversation(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Conversation {conv_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Conversation {conv_id} not found"
+        )));
     }
 
     Ok((StatusCode::NO_CONTENT, Json(json!({}))))
@@ -1101,7 +1144,7 @@ pub async fn delete_conversation(
 
 // ─── Anomaly root-cause explanation (G4) ─────────────────────────────────────
 
-/// POST /orgs/:id/ai/anomalies/:event_id/explain — LLM root-cause analysis of
+/// POST /orgs/{id}/ai/anomalies/{event_id}/explain — LLM root-cause analysis of
 /// an alert event, cached in `alert_events.ai_explanation`.
 pub async fn explain_anomaly(
     State(state): State<AppState>,
@@ -1123,7 +1166,9 @@ pub async fn explain_anomaly(
     .ok_or_else(|| AppError::NotFound(format!("Alert event {event_id} not found")))?;
 
     if let Some(cached) = row.get::<Option<String>, _>("ai_explanation") {
-        return Ok(Json(json!({ "data": { "explanation": cached, "cached": true } })));
+        return Ok(Json(
+            json!({ "data": { "explanation": cached, "cached": true } }),
+        ));
     }
 
     let message: String = row.get("message");
@@ -1158,12 +1203,14 @@ pub async fn explain_anomaly(
         .execute(&state.db)
         .await;
 
-    Ok(Json(json!({ "data": { "explanation": explanation, "cached": false } })))
+    Ok(Json(
+        json!({ "data": { "explanation": explanation, "cached": false } }),
+    ))
 }
 
 // ─── Analysis run history (G9) ───────────────────────────────────────────────
 
-/// GET /orgs/:id/ai/analysis-runs?kind=forecast — persisted forecast/anomaly runs.
+/// GET /orgs/{id}/ai/analysis-runs?kind=forecast — persisted forecast/anomaly runs.
 pub async fn list_analysis_runs(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -1236,12 +1283,14 @@ pub async fn list_analysis_runs(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 // ─── RAG over resources (G5) ─────────────────────────────────────────────────
 
-/// POST /orgs/:id/ai/resources/embed — (re)build embeddings for all active
+/// POST /orgs/{id}/ai/resources/embed — (re)build embeddings for all active
 /// resources. Each resource's summary (name/type/service/region/tags) is
 /// embedded and stored in `resource_embeddings`. No-op rows when AI is off.
 pub async fn embed_resources(
@@ -1280,8 +1329,7 @@ pub async fn embed_resources(
         );
 
         if let Some(embedding) = provider::embed_text(&state, org_id, &summary).await {
-            let embedding_json =
-                serde_json::to_value(embedding).unwrap_or_else(|_| json!([]));
+            let embedding_json = serde_json::to_value(embedding).unwrap_or_else(|_| json!([]));
             let _ = sqlx::query(
                 r#"INSERT INTO resource_embeddings (resource_id, organization_id, embedding)
                    VALUES ($1, $2, $3)
@@ -1301,7 +1349,7 @@ pub async fn embed_resources(
     })))
 }
 
-/// GET /orgs/:id/ai/resources/search?q=… — semantic resource search with a
+/// GET /orgs/{id}/ai/resources/search?q=… — semantic resource search with a
 /// keyword fallback (same contract as the copilot tool).
 pub async fn search_resources(
     State(state): State<AppState>,
@@ -1315,7 +1363,11 @@ pub async fn search_resources(
     if query.trim().is_empty() {
         return Ok(Json(json!({ "data": [], "mode": "keyword" })));
     }
-    let limit: i64 = q.get("limit").and_then(|v| v.parse().ok()).unwrap_or(5).clamp(1, 20);
+    let limit: i64 = q
+        .get("limit")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(5)
+        .clamp(1, 20);
 
     let (results, mode) = search_resources_query(&state, org_id, &query, limit).await;
     Ok(Json(json!({ "data": results, "mode": mode })))
@@ -1367,7 +1419,11 @@ pub async fn search_resources_query(
             }
         }
         scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
-        let results: Vec<Value> = scored.into_iter().take(limit as usize).map(|(_, v)| v).collect();
+        let results: Vec<Value> = scored
+            .into_iter()
+            .take(limit as usize)
+            .map(|(_, v)| v)
+            .collect();
         if !results.is_empty() {
             return (results, "semantic".into());
         }
@@ -1433,24 +1489,29 @@ fn validate_provider_fields(
     ] {
         if let Some(v) = v {
             if v.len() > max {
-                return Err(AppError::Validation(format!("{name} too long (max {max} chars)")));
+                return Err(AppError::Validation(format!(
+                    "{name} too long (max {max} chars)"
+                )));
             }
         }
     }
     if let Some(u) = base_url {
         let ok = (u.starts_with("https://") || u.starts_with("http://")) && u.len() > 8;
         if !ok {
-            return Err(AppError::Validation("base_url must start with http:// or https://".into()));
+            return Err(AppError::Validation(
+                "base_url must start with http:// or https://".into(),
+            ));
         }
     }
     Ok(())
 }
 
 /// In-memory rate limiter for /provider/test: 5/min/org (spec §4.4).
-static TEST_LIMITER: std::sync::OnceLock<tokio::sync::Mutex<std::collections::HashMap<Uuid, Vec<std::time::Instant>>>> =
-    std::sync::OnceLock::new();
+static TEST_LIMITER: std::sync::OnceLock<
+    tokio::sync::Mutex<std::collections::HashMap<Uuid, Vec<std::time::Instant>>>,
+> = std::sync::OnceLock::new();
 
-/// GET /orgs/:org_id/ai/provider — effective + stored config; key never returned.
+/// GET /orgs/{org_id}/ai/provider — effective + stored config; key never returned.
 pub async fn get_ai_provider(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -1460,10 +1521,12 @@ pub async fn get_ai_provider(
     let stored = super::provider_config::load_stored(&state, org_id).await;
     let effective = super::provider_config::resolve(&state, org_id).await;
     let env_present = state.config.ai_enabled && state.config.openai_api_key.is_some();
-    Ok(Json(json!({ "data": super::provider_config::masked_json(&stored, &effective, env_present) })))
+    Ok(Json(
+        json!({ "data": super::provider_config::masked_json(&stored, &effective, env_present) }),
+    ))
 }
 
-/// PUT /orgs/:org_id/ai/provider — partial update (AdminOrg). `api_key` is
+/// PUT /orgs/{org_id}/ai/provider — partial update (AdminOrg). `api_key` is
 /// write-only: non-empty stores (encrypted), "__CLEAR__" unsets, absent keeps.
 pub async fn update_ai_provider(
     State(state): State<AppState>,
@@ -1481,7 +1544,7 @@ pub async fn update_ai_provider(
     .await?;
 
     let key_opt: Option<Option<String>> = match req.api_key.as_deref() {
-        None | Some("") => None, // unchanged
+        None | Some("") => None,         // unchanged
         Some("__CLEAR__") => Some(None), // unset
         Some(k) => Some(Some(k.to_string())),
     };
@@ -1494,9 +1557,12 @@ pub async fn update_ai_provider(
 
     let key_enc: Option<String> = match &key_opt {
         Some(Some(plain)) => {
-            let ck = crate::crypto::key_from_hex(&state.config.encryption_key).ok_or_else(|| {
-                AppError::Validation("server ENCRYPTION_KEY not configured (must be 64 hex chars)".into())
-            })?;
+            let ck =
+                crate::crypto::key_from_hex(&state.config.encryption_key).ok_or_else(|| {
+                    AppError::Validation(
+                        "server ENCRYPTION_KEY not configured (must be 64 hex chars)".into(),
+                    )
+                })?;
             Some(crate::crypto::encrypt(&ck, plain.as_bytes()))
         }
         _ => None,
@@ -1532,14 +1598,18 @@ pub async fn update_ai_provider(
     let stored = super::provider_config::load_stored(&state, org_id).await;
     let effective = super::provider_config::resolve(&state, org_id).await;
     if matches!(stored, Some(ref s) if s.enabled) && !effective.enabled {
-        return Err(AppError::Validation("no API key configured — set one before enabling AI".into()));
+        return Err(AppError::Validation(
+            "no API key configured — set one before enabling AI".into(),
+        ));
     }
 
     let env_present = state.config.ai_enabled && state.config.openai_api_key.is_some();
-    Ok(Json(json!({ "data": super::provider_config::masked_json(&stored, &effective, env_present) })))
+    Ok(Json(
+        json!({ "data": super::provider_config::masked_json(&stored, &effective, env_present) }),
+    ))
 }
 
-/// POST /orgs/:org_id/ai/provider/test — 1-token ping against the would-be-saved
+/// POST /orgs/{org_id}/ai/provider/test — 1-token ping against the would-be-saved
 /// config (AdminOrg, 5/min/org). Never persists anything.
 pub async fn test_ai_provider(
     State(state): State<AppState>,
@@ -1557,14 +1627,17 @@ pub async fn test_ai_provider(
     .await?;
 
     // Rate limit: 5/min/org.
-    let limiter = TEST_LIMITER.get_or_init(|| tokio::sync::Mutex::new(std::collections::HashMap::new()));
+    let limiter =
+        TEST_LIMITER.get_or_init(|| tokio::sync::Mutex::new(std::collections::HashMap::new()));
     {
         let mut map = limiter.lock().await;
         let now = std::time::Instant::now();
         let hits = map.entry(org_id).or_default();
         hits.retain(|t| now.duration_since(*t).as_secs() < 60);
         if hits.len() >= 5 {
-            return Err(AppError::TooManyRequests("test rate limit exceeded (5 per minute)".into()));
+            return Err(AppError::TooManyRequests(
+                "test rate limit exceeded (5 per minute)".into(),
+            ));
         }
         hits.push(now);
     }
@@ -1605,7 +1678,9 @@ pub async fn test_ai_provider(
     };
     let p = super::provider_config::pick(&Some(stored), &env);
     if !p.enabled {
-        return Ok(Json(json!({ "data": { "ok": false, "error": "no API key configured" } })));
+        return Ok(Json(
+            json!({ "data": { "ok": false, "error": "no API key configured" } }),
+        ));
     }
 
     let client = reqwest::Client::new();
@@ -1632,5 +1707,7 @@ pub async fn test_ai_provider(
         }
         Err(e) => (false, None, Some(e.to_string())),
     };
-    Ok(Json(json!({ "data": { "ok": ok, "status": status, "error": error } })))
+    Ok(Json(
+        json!({ "data": { "ok": ok, "status": status, "error": error } }),
+    ))
 }

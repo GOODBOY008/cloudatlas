@@ -65,13 +65,17 @@ async fn setup() -> Option<(axum::Router, sqlx::PgPool)> {
         let admin = sqlx::PgPool::connect_with(opts.database("postgres"))
             .await
             .expect("connect to postgres admin db");
-        let _ = sqlx::query(&format!("CREATE DATABASE \"{db_name}\""))
-            .execute(&admin)
-            .await; // ignore "already exists"
+        let _ = sqlx::query(sqlx::AssertSqlSafe(&*format!(
+            "CREATE DATABASE \"{db_name}\""
+        )))
+        .execute(&admin)
+        .await; // ignore "already exists"
         admin.close().await;
     }
 
-    let pool = db::create_pool(&url, 5, 1, 300, 1800, 30).await.expect("connect to test db");
+    let pool = db::create_pool(&url, 5, 1, 300, 1800, 30)
+        .await
+        .expect("connect to test db");
     sqlx::migrate!("./migrations")
         .run(&pool)
         .await
@@ -252,7 +256,10 @@ async fn full_api_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::OK, "patch checklist: {body}");
-    assert_eq!(body["data"]["modules_config"]["abandoned_volume"]["enabled"], false);
+    assert_eq!(
+        body["data"]["modules_config"]["abandoned_volume"]["enabled"],
+        false
+    );
 
     let (status, body) = send(
         &app,
@@ -263,7 +270,10 @@ async fn full_api_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::OK, "get checklist: {body}");
-    assert_eq!(body["data"]["recommendation_counts"]["active"].as_u64(), Some(0));
+    assert_eq!(
+        body["data"]["recommendation_counts"]["active"].as_u64(),
+        Some(0)
+    );
 
     // ── Events feed (unified alert + webhook stream) ────────────────────────
     let (status, body) = send(
@@ -339,7 +349,10 @@ async fn full_api_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::CREATED);
-    let other_org = body["data"]["id"].as_str().expect("second org id").to_string();
+    let other_org = body["data"]["id"]
+        .as_str()
+        .expect("second org id")
+        .to_string();
 
     let (status, body) = send(
         &app,
@@ -430,7 +443,10 @@ async fn full_api_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::CREATED, "create integration: {body}");
-    let integration_id = body["data"]["id"].as_str().expect("integration id").to_string();
+    let integration_id = body["data"]["id"]
+        .as_str()
+        .expect("integration id")
+        .to_string();
 
     let (status, body) = send(
         &app,
@@ -537,7 +553,10 @@ async fn full_api_flow() {
     assert_eq!(status, StatusCode::OK, "copilot chat: {body}");
     let sse = body.as_str().expect("copilot replies as SSE text");
     assert!(sse.contains("delta"), "SSE delta frames present: {sse}");
-    assert!(sse.contains("\"done\":true"), "SSE done frame present: {sse}");
+    assert!(
+        sse.contains("\"done\":true"),
+        "SSE done frame present: {sse}"
+    );
     assert!(
         sse.contains("month-to-date") || sse.contains("spend picture"),
         "local copilot answers from the digest: {sse}"
@@ -555,7 +574,11 @@ async fn full_api_flow() {
         })),
     )
     .await;
-    assert_eq!(status, StatusCode::OK, "copilot chat with page_context: {body}");
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "copilot chat with page_context: {body}"
+    );
 
     // page_context is length-capped.
     let long_ctx = "x".repeat(201);
@@ -570,7 +593,11 @@ async fn full_api_flow() {
         })),
     )
     .await;
-    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "page_context > 200 chars is rejected");
+    assert_eq!(
+        status,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "page_context > 200 chars is rejected"
+    );
 
     // Copilot is org-scoped: other org sees 403 (not a member).
     let (status, _) = send(
@@ -601,8 +628,14 @@ async fn full_api_flow() {
     assert_eq!(status, StatusCode::OK, "put provider: {body}");
     assert_eq!(body["data"]["source"], "org");
     assert_eq!(body["data"]["api_key_set"], true);
-    assert!(body["data"]["api_key_hint"].as_str().unwrap().ends_with("1234"));
-    assert!(!body.to_string().contains("sk-test-1234"), "raw key must never be returned");
+    assert!(body["data"]["api_key_hint"]
+        .as_str()
+        .unwrap()
+        .ends_with("1234"));
+    assert!(
+        !body.to_string().contains("sk-test-1234"),
+        "raw key must never be returned"
+    );
 
     // GET as member: allowed, still masked.
     let (status, body) = send(
@@ -626,7 +659,11 @@ async fn full_api_flow() {
         Some(json!({ "ai_base_url": "http://localhost:9/v1", "ai_provider_enabled": true, "api_key": "__CLEAR__" })),
     )
     .await;
-    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "enable without key must 422: {body}");
+    assert_eq!(
+        status,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "enable without key must 422: {body}"
+    );
 
     // Clear the key (disable in the same request so the enable-guard passes).
     let (status, body) = send(
@@ -687,8 +724,14 @@ async fn full_api_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::CREATED, "register member: {body}");
-    let member_token = body["data"]["access_token"].as_str().expect("member token").to_string();
-    let member_id = body["data"]["user"]["id"].as_str().expect("member id").to_string();
+    let member_token = body["data"]["access_token"]
+        .as_str()
+        .expect("member token")
+        .to_string();
+    let member_id = body["data"]["user"]["id"]
+        .as_str()
+        .expect("member id")
+        .to_string();
 
     // Owner invites the member and assigns the Member role.
     let (status, _) = send(
@@ -730,7 +773,11 @@ async fn full_api_flow() {
         Some(json!({ "name": "member-pool", "pool_type": "project" })),
     )
     .await;
-    assert_eq!(status, StatusCode::FORBIDDEN, "member cannot create pools: {body}");
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "member cannot create pools: {body}"
+    );
 
     let (status, _) = send(
         &app,
@@ -744,7 +791,11 @@ async fn full_api_flow() {
         })),
     )
     .await;
-    assert_eq!(status, StatusCode::FORBIDDEN, "member cannot create webhooks");
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "member cannot create webhooks"
+    );
 
     let (status, _) = send(
         &app,
@@ -754,7 +805,11 @@ async fn full_api_flow() {
         Some(json!({ "modules_config": {} })),
     )
     .await;
-    assert_eq!(status, StatusCode::FORBIDDEN, "member cannot mutate checklist");
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "member cannot mutate checklist"
+    );
 
     // Owner can still mutate.
     let (status, _) = send(
@@ -777,7 +832,10 @@ async fn full_api_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::CREATED, "create conversation: {body}");
-    let conv_id = body["data"]["id"].as_str().expect("conversation id").to_string();
+    let conv_id = body["data"]["id"]
+        .as_str()
+        .expect("conversation id")
+        .to_string();
 
     // Copilot chat with the conversation id persists user + assistant messages.
     let (status, body) = send(
@@ -791,9 +849,14 @@ async fn full_api_flow() {
         })),
     )
     .await;
-    assert_eq!(status, StatusCode::OK, "copilot chat in conversation: {body}");
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "copilot chat in conversation: {body}"
+    );
     assert!(
-        body.as_str().map_or(false, |s| s.contains("conversation_id")),
+        body.as_str()
+            .map_or(false, |s| s.contains("conversation_id")),
         "SSE carries the conversation id: {body}"
     );
 
@@ -821,7 +884,9 @@ async fn full_api_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::OK, "list conversations: {body}");
-    assert!(body["data"].as_array().map_or(false, |a| a.iter().any(|c| c["id"] == conv_id)));
+    assert!(body["data"]
+        .as_array()
+        .map_or(false, |a| a.iter().any(|c| c["id"] == conv_id)));
 
     // ── AI analysis runs (G9): forecast + anomaly persist history ───────────
     let (status, _) = send(
@@ -843,7 +908,9 @@ async fn full_api_flow() {
     .await;
     assert_eq!(status, StatusCode::OK, "analysis runs: {body}");
     assert!(
-        body["data"].as_array().map_or(false, |a| a.iter().any(|r| r["kind"] == "forecast")),
+        body["data"]
+            .as_array()
+            .map_or(false, |a| a.iter().any(|r| r["kind"] == "forecast")),
         "forecast run recorded"
     );
 
@@ -867,7 +934,10 @@ async fn full_api_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::OK, "list notifications: {body}");
-    assert!(body["unread"].as_u64().unwrap_or(0) >= 1, "unread count present");
+    assert!(
+        body["unread"].as_u64().unwrap_or(0) >= 1,
+        "unread count present"
+    );
 
     let (status, body) = send(
         &app,
@@ -912,7 +982,10 @@ async fn full_api_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::CREATED, "create api key: {body}");
-    let api_key = body["data"]["key"].as_str().expect("plaintext key").to_string();
+    let api_key = body["data"]["key"]
+        .as_str()
+        .expect("plaintext key")
+        .to_string();
 
     // Authenticate with the key (as a Bearer token).
     let (status, _) = send(
@@ -972,7 +1045,9 @@ async fn full_api_flow() {
         let (status, body) = send(
             &app,
             Method::GET,
-            &format!("/api/v1/orgs/{org_id}/metrics?resource_id={resource_id}&metric=cpu_utilization"),
+            &format!(
+                "/api/v1/orgs/{org_id}/metrics?resource_id={resource_id}&metric=cpu_utilization"
+            ),
             Some(&token),
             None,
         )
@@ -991,7 +1066,10 @@ async fn full_api_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::OK, "global search: {body}");
-    assert!(body["data"]["pools"].is_array(), "search returns grouped results");
+    assert!(
+        body["data"]["pools"].is_array(),
+        "search returns grouped results"
+    );
 
     // ── Demo data (P5): seed → expenses present → idempotent ───────────────
     let (status, body) = send(
@@ -1027,7 +1105,13 @@ async fn full_api_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::OK, "demo data idempotent");
-    assert!(body["data"]["message"].as_str().unwrap_or("").contains("already"), "no double seed");
+    assert!(
+        body["data"]["message"]
+            .as_str()
+            .unwrap_or("")
+            .contains("already"),
+        "no double seed"
+    );
 
     // ── Invites (C1): create + list + revoke ────────────────────────────────
     let (status, body) = send(
@@ -1050,7 +1134,9 @@ async fn full_api_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::OK, "list invites: {body}");
-    assert!(body["data"].as_array().map_or(false, |a| a.iter().any(|i| i["id"] == invite_id)));
+    assert!(body["data"]
+        .as_array()
+        .map_or(false, |a| a.iter().any(|i| i["id"] == invite_id)));
 
     let (status, _) = send(
         &app,
@@ -1065,7 +1151,9 @@ async fn full_api_flow() {
     // ── Metrics endpoint ────────────────────────────────────────────────────
     let (status, body) = send(&app, Method::GET, "/metrics", None, None).await;
     assert_eq!(status, StatusCode::OK, "metrics endpoint");
-    assert!(body.as_str().map_or(false, |s| s.contains("cloudatlas_http_requests_total")));
+    assert!(body
+        .as_str()
+        .map_or(false, |s| s.contains("cloudatlas_http_requests_total")));
 
     pool.close().await;
 }

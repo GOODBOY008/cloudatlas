@@ -17,7 +17,10 @@ use crate::{
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
     sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
-        .bind(org_id).bind(user_id).fetch_optional(db).await?
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
         .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
@@ -42,7 +45,7 @@ pub struct BookEnvironmentRequest {
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 
-/// GET /api/v1/orgs/:org_id/shared-environments
+/// GET /api/v1/orgs/{org_id}/shared-environments
 pub async fn list_environments(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -107,10 +110,12 @@ pub async fn list_environments(
         },
     })).collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
-/// POST /api/v1/orgs/:org_id/shared-environments
+/// POST /api/v1/orgs/{org_id}/shared-environments
 pub async fn create_environment(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -140,17 +145,20 @@ pub async fn create_environment(
     .fetch_one(&state.db)
     .await?;
 
-    Ok((StatusCode::CREATED, Json(json!({
-        "data": {
-            "id":         row.try_get::<Uuid, _>("id").ok(),
-            "name":       row.try_get::<String, _>("name").unwrap_or_default(),
-            "status":     row.try_get::<String, _>("status").unwrap_or_default(),
-            "created_at": row.try_get::<chrono::DateTime<Utc>, _>("created_at").ok(),
-        }
-    }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "data": {
+                "id":         row.try_get::<Uuid, _>("id").ok(),
+                "name":       row.try_get::<String, _>("name").unwrap_or_default(),
+                "status":     row.try_get::<String, _>("status").unwrap_or_default(),
+                "created_at": row.try_get::<chrono::DateTime<Utc>, _>("created_at").ok(),
+            }
+        })),
+    ))
 }
 
-/// DELETE /api/v1/orgs/:org_id/shared-environments/:id
+/// DELETE /api/v1/orgs/{org_id}/shared-environments/{id}
 pub async fn delete_environment(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -160,11 +168,14 @@ pub async fn delete_environment(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     sqlx::query("DELETE FROM shared_environments WHERE id = $1 AND organization_id = $2")
-        .bind(env_id).bind(org_id).execute(&state.db).await?;
+        .bind(env_id)
+        .bind(org_id)
+        .execute(&state.db)
+        .await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// POST /api/v1/orgs/:org_id/shared-environments/:id/book
+/// POST /api/v1/orgs/{org_id}/shared-environments/{id}/book
 pub async fn book_environment(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -175,13 +186,20 @@ pub async fn book_environment(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     if body.end_time <= body.start_time {
-        return Err(AppError::Validation("end_time must be after start_time".into()));
+        return Err(AppError::Validation(
+            "end_time must be after start_time".into(),
+        ));
     }
 
     // Check if environment is available
-    let env = sqlx::query("SELECT status FROM shared_environments WHERE id = $1 AND organization_id = $2")
-        .bind(env_id).bind(org_id).fetch_optional(&state.db).await?
-        .ok_or_else(|| AppError::NotFound("Environment not found".into()))?;
+    let env = sqlx::query(
+        "SELECT status FROM shared_environments WHERE id = $1 AND organization_id = $2",
+    )
+    .bind(env_id)
+    .bind(org_id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Environment not found".into()))?;
 
     let status: String = env.try_get("status").unwrap_or_default();
     if status == "booked" {
@@ -197,28 +215,38 @@ pub async fn book_environment(
            VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING id, start_time, end_time, status"#,
     )
-    .bind(env_id).bind(org_id).bind(user_id)
-    .bind(body.start_time).bind(body.end_time)
+    .bind(env_id)
+    .bind(org_id)
+    .bind(user_id)
+    .bind(body.start_time)
+    .bind(body.end_time)
     .bind(body.notes.as_deref())
     .fetch_one(&mut *tx)
     .await?;
 
-    sqlx::query("UPDATE shared_environments SET status = 'booked', updated_at = NOW() WHERE id = $1")
-        .bind(env_id).execute(&mut *tx).await?;
+    sqlx::query(
+        "UPDATE shared_environments SET status = 'booked', updated_at = NOW() WHERE id = $1",
+    )
+    .bind(env_id)
+    .execute(&mut *tx)
+    .await?;
 
     tx.commit().await?;
 
-    Ok((StatusCode::CREATED, Json(json!({
-        "data": {
-            "id":         booking.try_get::<Uuid, _>("id").ok(),
-            "status":     booking.try_get::<String, _>("status").unwrap_or_default(),
-            "start_time": booking.try_get::<chrono::DateTime<Utc>, _>("start_time").ok(),
-            "end_time":   booking.try_get::<chrono::DateTime<Utc>, _>("end_time").ok(),
-        }
-    }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "data": {
+                "id":         booking.try_get::<Uuid, _>("id").ok(),
+                "status":     booking.try_get::<String, _>("status").unwrap_or_default(),
+                "start_time": booking.try_get::<chrono::DateTime<Utc>, _>("start_time").ok(),
+                "end_time":   booking.try_get::<chrono::DateTime<Utc>, _>("end_time").ok(),
+            }
+        })),
+    ))
 }
 
-/// POST /api/v1/orgs/:org_id/shared-environments/:id/release
+/// POST /api/v1/orgs/{org_id}/shared-environments/{id}/release
 pub async fn release_environment(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -234,7 +262,10 @@ pub async fn release_environment(
            SET status = 'released', updated_at = NOW()
            WHERE environment_id = $1 AND booked_by = $2 AND status = 'active'"#,
     )
-    .bind(env_id).bind(user_id).execute(&mut *tx).await?;
+    .bind(env_id)
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await?;
 
     sqlx::query("UPDATE shared_environments SET status = 'available', updated_at = NOW() WHERE id = $1 AND organization_id = $2")
         .bind(env_id).bind(org_id).execute(&mut *tx).await?;
@@ -243,7 +274,7 @@ pub async fn release_environment(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// GET /api/v1/orgs/:org_id/shared-environments/:id/bookings
+/// GET /api/v1/orgs/{org_id}/shared-environments/{id}/bookings
 pub async fn list_bookings(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -264,8 +295,10 @@ pub async fn list_bookings(
            ORDER BY b.created_at DESC, b.id DESC
            LIMIT $3 OFFSET $4"#,
     )
-    .bind(env_id).bind(org_id)
-    .bind(bounds.limit).bind(bounds.offset)
+    .bind(env_id)
+    .bind(org_id)
+    .bind(bounds.limit)
+    .bind(bounds.offset)
     .fetch_all(&state.db)
     .await?;
 
@@ -277,16 +310,23 @@ pub async fn list_bookings(
     .await
     .unwrap_or(0);
 
-    let data: Vec<Value> = rows.iter().map(|r| json!({
-        "id":             r.try_get::<Uuid, _>("id").ok(),
-        "booked_by":      r.try_get::<Uuid, _>("booked_by").ok(),
-        "booked_by_name": r.try_get::<Option<String>, _>("booked_by_name").unwrap_or(None),
-        "start_time":     r.try_get::<chrono::DateTime<Utc>, _>("start_time").ok(),
-        "end_time":       r.try_get::<chrono::DateTime<Utc>, _>("end_time").ok(),
-        "status":         r.try_get::<String, _>("status").unwrap_or_default(),
-        "notes":          r.try_get::<Option<String>, _>("notes").unwrap_or(None),
-        "created_at":     r.try_get::<chrono::DateTime<Utc>, _>("created_at").ok(),
-    })).collect();
+    let data: Vec<Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "id":             r.try_get::<Uuid, _>("id").ok(),
+                "booked_by":      r.try_get::<Uuid, _>("booked_by").ok(),
+                "booked_by_name": r.try_get::<Option<String>, _>("booked_by_name").unwrap_or(None),
+                "start_time":     r.try_get::<chrono::DateTime<Utc>, _>("start_time").ok(),
+                "end_time":       r.try_get::<chrono::DateTime<Utc>, _>("end_time").ok(),
+                "status":         r.try_get::<String, _>("status").unwrap_or_default(),
+                "notes":          r.try_get::<Option<String>, _>("notes").unwrap_or(None),
+                "created_at":     r.try_get::<chrono::DateTime<Utc>, _>("created_at").ok(),
+            })
+        })
+        .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }

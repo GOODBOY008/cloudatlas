@@ -41,7 +41,7 @@ pub async fn create_notification(
     .await;
 }
 
-/// GET /orgs/:id/notifications — inbox for the caller (their own + org-wide).
+/// GET /orgs/{id}/notifications — inbox for the caller (their own + org-wide).
 pub async fn list_notifications(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -49,14 +49,12 @@ pub async fn list_notifications(
     Query(page): Query<crate::utils::pagination::PageQuery>,
 ) -> AppResult<Json<Value>> {
     let user_id = claims.user_id()?;
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(&state.db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
 
     let bounds = page.resolve(50, 200);
 
@@ -115,7 +113,7 @@ pub async fn list_notifications(
     })))
 }
 
-/// PATCH /orgs/:id/notifications/:notification_id/read — mark one as read.
+/// PATCH /orgs/{id}/notifications/{notification_id}/read — mark one as read.
 pub async fn mark_read(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -135,10 +133,12 @@ pub async fn mark_read(
     .execute(&state.db)
     .await?;
 
-    Ok(Json(json!({ "data": { "updated": result.rows_affected() } })))
+    Ok(Json(
+        json!({ "data": { "updated": result.rows_affected() } }),
+    ))
 }
 
-/// POST /orgs/:id/notifications/read-all — mark every visible notification read.
+/// POST /orgs/{id}/notifications/read-all — mark every visible notification read.
 pub async fn mark_all_read(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -155,10 +155,12 @@ pub async fn mark_all_read(
     .execute(&state.db)
     .await?;
 
-    Ok(Json(json!({ "data": { "updated": result.rows_affected() } })))
+    Ok(Json(
+        json!({ "data": { "updated": result.rows_affected() } }),
+    ))
 }
 
-/// POST /orgs/:id/notifications — internal helper exposed for tests: create one.
+/// POST /orgs/{id}/notifications — internal helper exposed for tests: create one.
 pub async fn create_notification_endpoint(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -166,14 +168,12 @@ pub async fn create_notification_endpoint(
     Json(req): Json<serde_json::Value>,
 ) -> AppResult<(StatusCode, Json<Value>)> {
     let user_id = claims.user_id()?;
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(&state.db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
 
     let kind = req["kind"].as_str().unwrap_or("system");
     let title = req["title"].as_str().unwrap_or("Notification");
@@ -181,5 +181,8 @@ pub async fn create_notification_endpoint(
 
     create_notification(&state.db, org_id, None, kind, title, body).await;
 
-    Ok((StatusCode::CREATED, Json(json!({ "data": { "created": true } }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "data": { "created": true } })),
+    ))
 }

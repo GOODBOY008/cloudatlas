@@ -18,10 +18,7 @@ use serde_json::{json, Value};
 use sqlx::Row;
 use uuid::Uuid;
 
-use crate::{
-    modules::ai::analytics,
-    state::AppState,
-};
+use crate::{modules::ai::analytics, state::AppState};
 
 pub const MAX_MESSAGE_LEN: usize = 4096;
 pub const MAX_TOOL_ROUNDS: usize = 3;
@@ -31,15 +28,14 @@ pub const MAX_TOOL_ROUNDS: usize = 3;
 /// Compact per-org snapshot used by both the LLM system prompt and the local
 /// fallback. All values are read-only aggregates.
 pub async fn build_context_digest(db: &sqlx::PgPool, org_id: Uuid) -> Value {
-    let org_name = sqlx::query_scalar::<_, Option<String>>(
-        "SELECT name FROM organizations WHERE id = $1",
-    )
-    .bind(org_id)
-    .fetch_one(db)
-    .await
-    .ok()
-    .flatten()
-    .unwrap_or_else(|| "this organization".into());
+    let org_name =
+        sqlx::query_scalar::<_, Option<String>>("SELECT name FROM organizations WHERE id = $1")
+            .bind(org_id)
+            .fetch_one(db)
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "this organization".into());
 
     let mtd: f64 = sqlx::query_scalar(
         "SELECT COALESCE(SUM(cost), 0)::float8 FROM expenses WHERE organization_id = $1 AND date >= date_trunc('month', CURRENT_DATE)",
@@ -194,7 +190,9 @@ async fn projected_cost(db: &sqlx::PgPool, org_id: Uuid, horizon: usize) -> f64 
         Err(_) => return 0.0,
     };
     let series: Vec<f64> = rows.iter().map(|r| r.get::<f64, _>("total")).collect();
-    analytics::holt_winters_forecast(&series, horizon, 7).iter().sum()
+    analytics::holt_winters_forecast(&series, horizon, 7)
+        .iter()
+        .sum()
 }
 
 fn round2(v: f64) -> f64 {
@@ -350,8 +348,8 @@ pub async fn execute_tool(
     let db = &state.db;
 
     // Write tools: permission-guarded.
-    if matches!(name, "dismiss_recommendation" | "apply_recommendation") {
-        if crate::middleware::rbac::require_permission(
+    if matches!(name, "dismiss_recommendation" | "apply_recommendation")
+        && crate::middleware::rbac::require_permission(
             db,
             user_id,
             org_id,
@@ -359,14 +357,17 @@ pub async fn execute_tool(
         )
         .await
         .is_err()
-        {
-            return json!({ "error": "You need the ManageRules role to change recommendations" });
-        }
+    {
+        return json!({ "error": "You need the ManageRules role to change recommendations" });
     }
 
     match name {
         "get_expense_summary" => {
-            let days = args.get("days").and_then(|v| v.as_i64()).unwrap_or(30).clamp(7, 90);
+            let days = args
+                .get("days")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(30)
+                .clamp(7, 90);
             let total: f64 = sqlx::query_scalar(
                 "SELECT COALESCE(SUM(cost), 0)::float8 FROM expenses WHERE organization_id = $1 AND date >= CURRENT_DATE - $2::int",
             )
@@ -405,7 +406,11 @@ pub async fn execute_tool(
             })
         }
         "get_top_resources" => {
-            let limit = args.get("limit").and_then(|v| v.as_i64()).unwrap_or(5).clamp(1, 20) as i32;
+            let limit = args
+                .get("limit")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(5)
+                .clamp(1, 20) as i32;
             let rows = sqlx::query(
                 r#"SELECT name, resource_type, service_name, total_cost::float8 AS cost
                    FROM resources
@@ -432,8 +437,15 @@ pub async fn execute_tool(
             json!({ "resources": items })
         }
         "get_recommendations" => {
-            let limit = args.get("limit").and_then(|v| v.as_i64()).unwrap_or(5).clamp(1, 20) as i32;
-            let status = args.get("status").and_then(|v| v.as_str()).unwrap_or("active");
+            let limit = args
+                .get("limit")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(5)
+                .clamp(1, 20) as i32;
+            let status = args
+                .get("status")
+                .and_then(|v| v.as_str())
+                .unwrap_or("active");
             let rows = sqlx::query(
                 r#"SELECT title, rec_type, status, potential_savings::float8 AS savings
                    FROM recommendations
@@ -493,7 +505,11 @@ pub async fn execute_tool(
             json!({ "pools": pools })
         }
         "get_anomalies" => {
-            let days = args.get("days").and_then(|v| v.as_i64()).unwrap_or(30).clamp(7, 90) as i32;
+            let days = args
+                .get("days")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(30)
+                .clamp(7, 90) as i32;
             let rows = sqlx::query(
                 r#"SELECT message, actual_value::float8 AS actual, created_at
                    FROM alert_events
@@ -519,7 +535,11 @@ pub async fn execute_tool(
             json!({ "anomalies": items })
         }
         "get_forecast" => {
-            let days = args.get("days").and_then(|v| v.as_i64()).unwrap_or(14).clamp(7, 30) as usize;
+            let days = args
+                .get("days")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(14)
+                .clamp(7, 30) as usize;
             let rows = sqlx::query(
                 "SELECT date, SUM(cost)::float8 AS total FROM expenses WHERE organization_id = $1 AND date >= CURRENT_DATE - 90 GROUP BY date ORDER BY date",
             )
@@ -537,17 +557,30 @@ pub async fn execute_tool(
             })
         }
         "search_notes" => {
-            let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("").to_string();
-            let (results, mode) = super::handlers::search_notes_query(state, org_id, &query, 5).await;
+            let query = args
+                .get("query")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let (results, mode) =
+                super::handlers::search_notes_query(state, org_id, &query, 5).await;
             json!({ "mode": mode, "results": results })
         }
         "search_resources" => {
-            let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("").to_string();
-            let (results, mode) = super::handlers::search_resources_query(state, org_id, &query, 5).await;
+            let query = args
+                .get("query")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let (results, mode) =
+                super::handlers::search_resources_query(state, org_id, &query, 5).await;
             json!({ "mode": mode, "results": results })
         }
         "dismiss_recommendation" => {
-            let rec_id = args.get("id").and_then(|v| v.as_str()).and_then(|v| uuid::Uuid::parse_str(v).ok());
+            let rec_id = args
+                .get("id")
+                .and_then(|v| v.as_str())
+                .and_then(|v| uuid::Uuid::parse_str(v).ok());
             match rec_id {
                 Some(id) => {
                     let result = sqlx::query(
@@ -568,7 +601,10 @@ pub async fn execute_tool(
             }
         }
         "apply_recommendation" => {
-            let rec_id = args.get("id").and_then(|v| v.as_str()).and_then(|v| uuid::Uuid::parse_str(v).ok());
+            let rec_id = args
+                .get("id")
+                .and_then(|v| v.as_str())
+                .and_then(|v| uuid::Uuid::parse_str(v).ok());
             match rec_id {
                 Some(id) => {
                     let result = sqlx::query(
@@ -614,35 +650,67 @@ fn format_money(value: f64) -> String {
     let digits = int_part.to_string();
     let mut grouped = String::new();
     for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i) % 3 == 0 {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
             grouped.push(',');
         }
         grouped.push(c);
     }
-    format!("${}{}.{:02}", if negative { "-" } else { "" }, grouped, frac_part)
+    format!(
+        "${}{}.{:02}",
+        if negative { "-" } else { "" },
+        grouped,
+        frac_part
+    )
 }
 
 fn detect_intent(message: &str) -> Intent {
     let m = message.to_lowercase();
-    if ["top resource", "top 5", "top5", "top 10", "highest", "最贵", "top 资源", "花费最多"].iter().any(|k| m.contains(k)) {
+    if [
+        "top resource",
+        "top 5",
+        "top5",
+        "top 10",
+        "highest",
+        "最贵",
+        "top 资源",
+        "花费最多",
+    ]
+    .iter()
+    .any(|k| m.contains(k))
+    {
         return Intent::TopResources;
     }
-    if ["spend", "cost", "expense", "花费", "成本", "支出", "花了"].iter().any(|k| m.contains(k)) {
+    if ["spend", "cost", "expense", "花费", "成本", "支出", "花了"]
+        .iter()
+        .any(|k| m.contains(k))
+    {
         return Intent::Spend;
     }
-    if ["recommend", "savings", "optimiz", "建议", "优化", "节省"].iter().any(|k| m.contains(k)) {
+    if ["recommend", "savings", "optimiz", "建议", "优化", "节省"]
+        .iter()
+        .any(|k| m.contains(k))
+    {
         return Intent::Recommendations;
     }
-    if ["budget", "alert", "预算", "告警", "预警"].iter().any(|k| m.contains(k)) {
+    if ["budget", "alert", "预算", "告警", "预警"]
+        .iter()
+        .any(|k| m.contains(k))
+    {
         return Intent::Budget;
     }
     if ["anomal", "异常", "波动"].iter().any(|k| m.contains(k)) {
         return Intent::Anomalies;
     }
-    if ["forecast", "predict", "预测", "预计"].iter().any(|k| m.contains(k)) {
+    if ["forecast", "predict", "预测", "预计"]
+        .iter()
+        .any(|k| m.contains(k))
+    {
         return Intent::Forecast;
     }
-    if ["how many resource", "resource count", "资源数", "多少资源"].iter().any(|k| m.contains(k)) {
+    if ["how many resource", "resource count", "资源数", "多少资源"]
+        .iter()
+        .any(|k| m.contains(k))
+    {
         return Intent::Resources;
     }
     Intent::Overview
@@ -772,14 +840,26 @@ mod tests {
 
     #[test]
     fn intent_detection() {
-        assert_eq!(detect_intent("how much did we spend this month"), Intent::Spend);
+        assert_eq!(
+            detect_intent("how much did we spend this month"),
+            Intent::Spend
+        );
         assert_eq!(detect_intent("本月花了多少钱"), Intent::Spend);
-        assert_eq!(detect_intent("top 5 resources by cost"), Intent::TopResources);
-        assert_eq!(detect_intent("what recommendations do we have"), Intent::Recommendations);
+        assert_eq!(
+            detect_intent("top 5 resources by cost"),
+            Intent::TopResources
+        );
+        assert_eq!(
+            detect_intent("what recommendations do we have"),
+            Intent::Recommendations
+        );
         assert_eq!(detect_intent("are we over budget"), Intent::Budget);
         assert_eq!(detect_intent("any anomalies recently"), Intent::Anomalies);
         assert_eq!(detect_intent("forecast next month"), Intent::Forecast);
-        assert_eq!(detect_intent("how many resources do we have"), Intent::Resources);
+        assert_eq!(
+            detect_intent("how many resources do we have"),
+            Intent::Resources
+        );
         assert_eq!(detect_intent("hello there"), Intent::Overview);
     }
 

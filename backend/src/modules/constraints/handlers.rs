@@ -15,19 +15,13 @@ use crate::{
     state::AppState,
 };
 
-async fn ensure_org_member(
-    db: &sqlx::PgPool,
-    org_id: Uuid,
-    user_id: Uuid,
-) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -89,7 +83,9 @@ pub async fn list_constraints(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_constraint(
@@ -165,10 +161,14 @@ pub async fn update_constraint(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Constraint {constraint_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Constraint {constraint_id} not found"
+        )));
     }
 
-    Ok(Json(json!({ "data": { "id": constraint_id, "message": "Updated" } })))
+    Ok(Json(
+        json!({ "data": { "id": constraint_id, "message": "Updated" } }),
+    ))
 }
 
 pub async fn delete_constraint(
@@ -179,16 +179,17 @@ pub async fn delete_constraint(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let result = sqlx::query(
-        "DELETE FROM organization_constraints WHERE id = $1 AND organization_id = $2",
-    )
-    .bind(constraint_id)
-    .bind(org_id)
-    .execute(&state.db)
-    .await?;
+    let result =
+        sqlx::query("DELETE FROM organization_constraints WHERE id = $1 AND organization_id = $2")
+            .bind(constraint_id)
+            .bind(org_id)
+            .execute(&state.db)
+            .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Constraint {constraint_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Constraint {constraint_id} not found"
+        )));
     }
 
     Ok((StatusCode::NO_CONTENT, Json(json!({}))))

@@ -1,6 +1,6 @@
+pub mod ai;
 pub mod alert;
 pub mod api_keys;
-pub mod ai;
 pub mod auth;
 pub mod bi_export;
 pub mod billing;

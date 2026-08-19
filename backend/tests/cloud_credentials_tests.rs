@@ -62,13 +62,17 @@ async fn setup() -> Option<(axum::Router, sqlx::PgPool)> {
         let admin = sqlx::PgPool::connect_with(opts.database("postgres"))
             .await
             .expect("connect to postgres admin db");
-        let _ = sqlx::query(&format!("CREATE DATABASE \"{db_name}\""))
-            .execute(&admin)
-            .await; // ignore "already exists"
+        let _ = sqlx::query(sqlx::AssertSqlSafe(&*format!(
+            "CREATE DATABASE \"{db_name}\""
+        )))
+        .execute(&admin)
+        .await; // ignore "already exists"
         admin.close().await;
     }
 
-    let pool = db::create_pool(&url, 5, 1, 300, 1800, 30).await.expect("connect to test db");
+    let pool = db::create_pool(&url, 5, 1, 300, 1800, 30)
+        .await
+        .expect("connect to test db");
     sqlx::migrate!("./migrations")
         .run(&pool)
         .await
@@ -125,7 +129,10 @@ async fn register_and_org(app: &axum::Router) -> (String, String) {
     )
     .await;
     assert_eq!(status, StatusCode::CREATED, "register: {body}");
-    let token = body["data"]["access_token"].as_str().expect("token").to_string();
+    let token = body["data"]["access_token"]
+        .as_str()
+        .expect("token")
+        .to_string();
 
     let (status, body) = send(
         app,
@@ -164,8 +171,14 @@ async fn cloud_account_credential_lifecycle() {
     .await;
     assert_eq!(status, StatusCode::CREATED, "create: {body}");
     assert_eq!(body["data"]["has_credentials"], true, "flag set: {body}");
-    assert!(body["data"].get("credentials").is_none(), "never return credentials");
-    assert!(body["data"].get("credentials_enc").is_none(), "never return encrypted blob");
+    assert!(
+        body["data"].get("credentials").is_none(),
+        "never return credentials"
+    );
+    assert!(
+        body["data"].get("credentials_enc").is_none(),
+        "never return encrypted blob"
+    );
     let acct_id = body["data"]["id"].as_str().expect("account id").to_string();
     let acct = format!("{base}/{acct_id}");
 
@@ -182,9 +195,16 @@ async fn cloud_account_credential_lifecycle() {
         })),
     )
     .await;
-    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "malformed create: {body}");
+    assert_eq!(
+        status,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "malformed create: {body}"
+    );
     assert!(
-        body["error"]["message"].as_str().unwrap_or("").contains("secret_access_key"),
+        body["error"]["message"]
+            .as_str()
+            .unwrap_or("")
+            .contains("secret_access_key"),
         "error should name the missing key: {body}"
     );
 
@@ -228,9 +248,16 @@ async fn cloud_account_credential_lifecycle() {
         Some(json!({ "credentials": { "access_key_id": "AKIA789" } })),
     )
     .await;
-    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "invalid rotate must 422");
+    assert_eq!(
+        status,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "invalid rotate must 422"
+    );
     let (status, body) = send(&app, Method::GET, &acct, Some(&token), None).await;
-    assert_eq!(body["data"]["has_credentials"], true, "creds preserved after failed rotate");
+    assert_eq!(
+        body["data"]["has_credentials"], true,
+        "creds preserved after failed rotate"
+    );
 
     // ── Clear via __CLEAR__ sentinel ──────────────────────────────────────
     let (status, body) = send(

@@ -15,19 +15,13 @@ use crate::{
     state::AppState,
 };
 
-async fn ensure_org_member(
-    db: &sqlx::PgPool,
-    org_id: Uuid,
-    user_id: Uuid,
-) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -90,7 +84,9 @@ pub async fn list_policies(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_policy(
@@ -167,7 +163,9 @@ pub async fn update_policy(
         return Err(AppError::NotFound(format!("Policy {policy_id} not found")));
     }
 
-    Ok(Json(json!({ "data": { "id": policy_id, "message": "Updated" } })))
+    Ok(Json(
+        json!({ "data": { "id": policy_id, "message": "Updated" } }),
+    ))
 }
 
 pub async fn delete_policy(
@@ -178,13 +176,11 @@ pub async fn delete_policy(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let result = sqlx::query(
-        "DELETE FROM tagging_policies WHERE id = $1 AND organization_id = $2",
-    )
-    .bind(policy_id)
-    .bind(org_id)
-    .execute(&state.db)
-    .await?;
+    let result = sqlx::query("DELETE FROM tagging_policies WHERE id = $1 AND organization_id = $2")
+        .bind(policy_id)
+        .bind(org_id)
+        .execute(&state.db)
+        .await?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound(format!("Policy {policy_id} not found")));
@@ -236,7 +232,7 @@ pub async fn expenses_by_tag(
     Ok(Json(json!({ "data": data, "tag_key": tag_key })))
 }
 
-/// GET /api/v1/orgs/:org_id/tagging/coverage
+/// GET /api/v1/orgs/{org_id}/tagging/coverage
 ///
 /// Evaluate every active tagging policy for the organization and return per-policy
 /// compliance metrics: how many distinct resources (based on the last 30 days of

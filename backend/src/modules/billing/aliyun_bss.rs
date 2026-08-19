@@ -6,14 +6,13 @@
 /// 3. Imports into raw_expenses → expenses tables
 ///
 /// API Reference: https://help.aliyun.com/document_detail/87998.html
-
 use crate::error::AppResult;
 use crate::state::AppState;
-use uuid::Uuid;
 use chrono::{Duration, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
+use uuid::Uuid;
 
 use anyhow::anyhow;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
@@ -37,11 +36,19 @@ impl AliyunBssClient {
     fn from_credentials(credentials: &Value, config: &Value) -> AppResult<Self> {
         let access_key_id = credentials["access_key_id"]
             .as_str()
-            .ok_or_else(|| crate::error::AppError::Validation("Aliyun credentials missing 'access_key_id'".into()))?
+            .ok_or_else(|| {
+                crate::error::AppError::Validation(
+                    "Aliyun credentials missing 'access_key_id'".into(),
+                )
+            })?
             .to_string();
         let access_key_secret = credentials["access_key_secret"]
             .as_str()
-            .ok_or_else(|| crate::error::AppError::Validation("Aliyun credentials missing 'access_key_secret'".into()))?
+            .ok_or_else(|| {
+                crate::error::AppError::Validation(
+                    "Aliyun credentials missing 'access_key_secret'".into(),
+                )
+            })?
             .to_string();
         let security_token = credentials
             .get("security_token")
@@ -114,7 +121,10 @@ impl AliyunBssClient {
         );
 
         let signing_key = format!("{}&", self.access_key_secret);
-        let signature = BASE64.encode(Self::hmac_sha1(signing_key.as_bytes(), string_to_sign.as_bytes()));
+        let signature = BASE64.encode(Self::hmac_sha1(
+            signing_key.as_bytes(),
+            string_to_sign.as_bytes(),
+        ));
 
         format!(
             "https://{}/?{}&Signature={}",
@@ -126,18 +136,14 @@ impl AliyunBssClient {
 
     async fn call(&self, params: BTreeMap<String, String>) -> AppResult<Value> {
         let url = self.signed_url(params);
-        let resp = self
-            .http
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| crate::error::AppError::Internal(anyhow!("Aliyun BSS request failed: {e}")))?;
+        let resp = self.http.get(&url).send().await.map_err(|e| {
+            crate::error::AppError::Internal(anyhow!("Aliyun BSS request failed: {e}"))
+        })?;
 
         let status = resp.status();
-        let body: Value = resp
-            .json()
-            .await
-            .map_err(|e| crate::error::AppError::Internal(anyhow!("Aliyun BSS response parse failed: {e}")))?;
+        let body: Value = resp.json().await.map_err(|e| {
+            crate::error::AppError::Internal(anyhow!("Aliyun BSS response parse failed: {e}"))
+        })?;
 
         if !status.is_success() {
             let code = body["Code"].as_str().unwrap_or("Unknown");
@@ -228,14 +234,17 @@ fn parse_bss_tags(node: &Value) -> Value {
 }
 
 fn parse_cost(v: &Value) -> Option<f64> {
-    v.as_f64().or_else(|| v.as_str().and_then(|s| s.parse::<f64>().ok()))
+    v.as_f64()
+        .or_else(|| v.as_str().and_then(|s| s.parse::<f64>().ok()))
 }
 
 fn parse_bill_date(v: &Value) -> Option<NaiveDate> {
     let s = v.as_str()?;
-    NaiveDate::parse_from_str(s, "%Y-%m-%d")
-        .ok()
-        .or_else(|| chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S").ok().map(|dt| dt.date()))
+    NaiveDate::parse_from_str(s, "%Y-%m-%d").ok().or_else(|| {
+        chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")
+            .ok()
+            .map(|dt| dt.date())
+    })
 }
 
 fn parse_bss_row(row: &Value) -> Option<BssLineItem> {
@@ -243,8 +252,8 @@ fn parse_bss_row(row: &Value) -> Option<BssLineItem> {
         .as_str()
         .or_else(|| row["ProductName"].as_str())?
         .to_string();
-    let bill_date = parse_bill_date(&row["BillingDate"])
-        .or_else(|| parse_bill_date(&row["UsageDate"]))?;
+    let bill_date =
+        parse_bill_date(&row["BillingDate"]).or_else(|| parse_bill_date(&row["UsageDate"]))?;
     let pretax_amount = parse_cost(&row["PretaxAmount"])
         .or_else(|| parse_cost(&row["PretaxGrossAmount"]))
         .or_else(|| parse_cost(&row["Cost"]))?;
@@ -281,10 +290,7 @@ fn parse_bss_row(row: &Value) -> Option<BssLineItem> {
         .map(str::to_string);
     let tags = parse_bss_tags(&row["Tags"]);
 
-    let currency = row["Currency"]
-        .as_str()
-        .unwrap_or("CNY")
-        .to_string();
+    let currency = row["Currency"].as_str().unwrap_or("CNY").to_string();
 
     let resource_type = Some(classify_bss_type(&product_code, product_name.as_deref()).to_string());
 
@@ -567,11 +573,26 @@ mod tests {
 
     #[test]
     fn test_classify_bss_type_falls_back_to_product_name() {
-        assert_eq!(classify_bss_type("unknown-code", Some("云服务器 ECS")), "instance");
-        assert_eq!(classify_bss_type("unknown-code", Some("对象存储 OSS")), "bucket");
-        assert_eq!(classify_bss_type("unknown-code", Some("弹性公网IP")), "ip_address");
-        assert_eq!(classify_bss_type("unknown-code", Some("负载均衡")), "load_balancer");
-        assert_eq!(classify_bss_type("unknown-code", Some("云数据库 RDS")), "rds_instance");
+        assert_eq!(
+            classify_bss_type("unknown-code", Some("云服务器 ECS")),
+            "instance"
+        );
+        assert_eq!(
+            classify_bss_type("unknown-code", Some("对象存储 OSS")),
+            "bucket"
+        );
+        assert_eq!(
+            classify_bss_type("unknown-code", Some("弹性公网IP")),
+            "ip_address"
+        );
+        assert_eq!(
+            classify_bss_type("unknown-code", Some("负载均衡")),
+            "load_balancer"
+        );
+        assert_eq!(
+            classify_bss_type("unknown-code", Some("云数据库 RDS")),
+            "rds_instance"
+        );
         assert_eq!(classify_bss_type("unknown-code", Some("快照")), "snapshot");
         assert_eq!(classify_bss_type("unknown-code", Some("云监控")), "other");
         assert_eq!(classify_bss_type("unknown-code", None), "other");

@@ -1,10 +1,9 @@
 /// Unit tests for the CMDB module DTOs and data structures.
 /// Tests serialization, deserialization, and structural invariants
 /// without requiring a live database connection.
-
 use cloudatlas_lib::modules::cmdb::dto::{
-    CiQuery, CreateAssociationRequest, CreateCiRequest, CreateCiTypeRequest,
-    ImpactQuery, PatchCiTagsRequest, TopologyQuery, UpdateCiRequest, UpdateCiTypeRequest,
+    CiQuery, CreateAssociationRequest, CreateCiRequest, CreateCiTypeRequest, ImpactQuery,
+    PatchCiTagsRequest, TopologyQuery, UpdateCiRequest, UpdateCiTypeRequest,
 };
 use cloudatlas_lib::modules::cmdb::handlers::validate_patch_tags;
 use serde_json::json;
@@ -160,12 +159,21 @@ fn test_lifecycle_transition_active_to_stopped_is_valid() {
 #[test]
 fn test_ci_type_names_are_snake_case() {
     let types = [
-        "instance", "rds_instance", "volume", "snapshot",
-        "vpc", "subnet", "security_group", "load_balancer",
-        "kubernetes_cluster", "container",
+        "instance",
+        "rds_instance",
+        "volume",
+        "snapshot",
+        "vpc",
+        "subnet",
+        "security_group",
+        "load_balancer",
+        "kubernetes_cluster",
+        "container",
     ];
     for name in &types {
-        let is_valid = name.chars().all(|c| c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit());
+        let is_valid = name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit());
         assert!(is_valid, "CI type name {name:?} is not snake_case");
     }
 }
@@ -254,13 +262,25 @@ fn test_create_association_request_without_meta() {
 fn test_all_attribute_types_are_known() {
     // Mirrors the ci_attribute_type DB enum values
     let known_types = [
-        "string", "integer", "float", "boolean", "datetime",
-        "enum", "list", "json", "url", "ip_address", "cidr",
+        "string",
+        "integer",
+        "float",
+        "boolean",
+        "datetime",
+        "enum",
+        "list",
+        "json",
+        "url",
+        "ip_address",
+        "cidr",
     ];
     for t in &known_types {
         assert!(!t.is_empty());
         // Types must not contain spaces (they map to DB enum labels)
-        assert!(!t.contains(' '), "attribute type {t:?} must not contain spaces");
+        assert!(
+            !t.contains(' '),
+            "attribute type {t:?} must not contain spaces"
+        );
     }
     assert_eq!(known_types.len(), 11);
 }
@@ -269,8 +289,13 @@ fn test_all_attribute_types_are_known() {
 fn test_lifecycle_states_cover_all_enum_variants() {
     // Mirrors the ci_lifecycle_state DB enum
     let states = [
-        "provisioning", "active", "maintenance",
-        "decommissioning", "decommissioned", "retired", "failed",
+        "provisioning",
+        "active",
+        "maintenance",
+        "decommissioning",
+        "decommissioned",
+        "retired",
+        "failed",
     ];
     // Ensure no duplicates
     let mut seen = std::collections::HashSet::new();
@@ -284,9 +309,7 @@ fn test_lifecycle_states_cover_all_enum_variants() {
 
 #[test]
 fn test_association_cardinality_variants() {
-    let cardinalities = [
-        "one_to_one", "one_to_many", "many_to_one", "many_to_many",
-    ];
+    let cardinalities = ["one_to_one", "one_to_many", "many_to_one", "many_to_many"];
     for c in &cardinalities {
         assert!(c.contains('_'), "cardinality {c:?} should be snake_case");
     }
@@ -349,7 +372,12 @@ fn test_validate_patch_tags_rejects_non_string_value() {
     let bad = json!({ "env": "prod", "owner": 42 });
     let err = validate_patch_tags(&bad).unwrap_err();
     let msg = err.to_string();
-    assert!(msg.contains("owner"), "expected offending key in error, got: {msg}");
-    assert!(msg.contains("string"), "expected 'string' in error, got: {msg}");
+    assert!(
+        msg.contains("owner"),
+        "expected offending key in error, got: {msg}"
+    );
+    assert!(
+        msg.contains("string"),
+        "expected 'string' in error, got: {msg}"
+    );
 }
-

@@ -15,19 +15,13 @@ use crate::{
     state::AppState,
 };
 
-async fn ensure_org_member(
-    db: &sqlx::PgPool,
-    org_id: Uuid,
-    user_id: Uuid,
-) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -100,7 +94,9 @@ pub async fn list_schedules(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_schedule(
@@ -178,10 +174,14 @@ pub async fn update_schedule(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Schedule {schedule_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Schedule {schedule_id} not found"
+        )));
     }
 
-    Ok(Json(json!({ "data": { "id": schedule_id, "message": "Updated" } })))
+    Ok(Json(
+        json!({ "data": { "id": schedule_id, "message": "Updated" } }),
+    ))
 }
 
 pub async fn delete_schedule(
@@ -192,16 +192,16 @@ pub async fn delete_schedule(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let result = sqlx::query(
-        "DELETE FROM power_schedules WHERE id = $1 AND organization_id = $2",
-    )
-    .bind(schedule_id)
-    .bind(org_id)
-    .execute(&state.db)
-    .await?;
+    let result = sqlx::query("DELETE FROM power_schedules WHERE id = $1 AND organization_id = $2")
+        .bind(schedule_id)
+        .bind(org_id)
+        .execute(&state.db)
+        .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Schedule {schedule_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Schedule {schedule_id} not found"
+        )));
     }
 
     Ok((StatusCode::NO_CONTENT, Json(json!({}))))
@@ -217,16 +217,17 @@ pub async fn list_triggers(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     // Verify schedule belongs to org
-    let schedule = sqlx::query(
-        "SELECT id FROM power_schedules WHERE id = $1 AND organization_id = $2",
-    )
-    .bind(schedule_id)
-    .bind(org_id)
-    .fetch_optional(&state.db)
-    .await?;
+    let schedule =
+        sqlx::query("SELECT id FROM power_schedules WHERE id = $1 AND organization_id = $2")
+            .bind(schedule_id)
+            .bind(org_id)
+            .fetch_optional(&state.db)
+            .await?;
 
     if schedule.is_none() {
-        return Err(AppError::NotFound(format!("Schedule {schedule_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Schedule {schedule_id} not found"
+        )));
     }
 
     let bounds = page.resolve(50, 200);
@@ -243,13 +244,12 @@ pub async fn list_triggers(
     .fetch_all(&state.db)
     .await?;
 
-    let total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM power_schedule_triggers WHERE schedule_id = $1",
-    )
-    .bind(schedule_id)
-    .fetch_one(&state.db)
-    .await
-    .unwrap_or(0);
+    let total: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM power_schedule_triggers WHERE schedule_id = $1")
+            .bind(schedule_id)
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(0);
 
     let data: Vec<Value> = rows
         .iter()
@@ -265,7 +265,9 @@ pub async fn list_triggers(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_trigger(
@@ -278,19 +280,22 @@ pub async fn create_trigger(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     if body.action != "start" && body.action != "stop" {
-        return Err(AppError::Validation("action must be 'start' or 'stop'".into()));
+        return Err(AppError::Validation(
+            "action must be 'start' or 'stop'".into(),
+        ));
     }
 
-    let schedule = sqlx::query(
-        "SELECT id FROM power_schedules WHERE id = $1 AND organization_id = $2",
-    )
-    .bind(schedule_id)
-    .bind(org_id)
-    .fetch_optional(&state.db)
-    .await?;
+    let schedule =
+        sqlx::query("SELECT id FROM power_schedules WHERE id = $1 AND organization_id = $2")
+            .bind(schedule_id)
+            .bind(org_id)
+            .fetch_optional(&state.db)
+            .await?;
 
     if schedule.is_none() {
-        return Err(AppError::NotFound(format!("Schedule {schedule_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Schedule {schedule_id} not found"
+        )));
     }
 
     let id = Uuid::new_v4();
@@ -339,7 +344,9 @@ pub async fn delete_trigger(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Trigger {trigger_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Trigger {trigger_id} not found"
+        )));
     }
 
     Ok((StatusCode::NO_CONTENT, Json(json!({}))))

@@ -140,10 +140,15 @@ fn parse_rds_instances(body: &Value, region_id: &str) -> Vec<DiscoveredResource>
 
 fn parse_slb_instances(body: &Value, region_id: &str) -> Vec<DiscoveredResource> {
     let empty = vec![];
-    let lbs = body["LoadBalancers"]["LoadBalancer"].as_array().unwrap_or(&empty);
+    let lbs = body["LoadBalancers"]["LoadBalancer"]
+        .as_array()
+        .unwrap_or(&empty);
     lbs.iter()
         .map(|lb| {
-            let id = lb["LoadBalancerId"].as_str().unwrap_or_default().to_string();
+            let id = lb["LoadBalancerId"]
+                .as_str()
+                .unwrap_or_default()
+                .to_string();
             let name = lb["LoadBalancerName"]
                 .as_str()
                 .filter(|s| !s.is_empty())
@@ -217,7 +222,9 @@ fn parse_ecs_snapshots(body: &Value, region_id: &str) -> Vec<DiscoveredResource>
 
 fn parse_eip_addresses(body: &Value, region_id: &str) -> Vec<DiscoveredResource> {
     let empty = vec![];
-    let eips = body["EipAddresses"]["EipAddress"].as_array().unwrap_or(&empty);
+    let eips = body["EipAddresses"]["EipAddress"]
+        .as_array()
+        .unwrap_or(&empty);
     eips.iter()
         .map(|e| {
             let id = e["AllocationId"].as_str().unwrap_or_default().to_string();
@@ -256,7 +263,10 @@ fn parse_flat_lb_instances(body: &Value, region_id: &str) -> Vec<DiscoveredResou
     let lbs = body["LoadBalancers"].as_array().unwrap_or(&empty);
     lbs.iter()
         .map(|lb| {
-            let id = lb["LoadBalancerId"].as_str().unwrap_or_default().to_string();
+            let id = lb["LoadBalancerId"]
+                .as_str()
+                .unwrap_or_default()
+                .to_string();
             let name = lb["LoadBalancerName"]
                 .as_str()
                 .filter(|s| !s.is_empty())
@@ -379,17 +389,13 @@ impl AliyunAdapter {
         let access_key_id = creds["access_key_id"]
             .as_str()
             .ok_or_else(|| {
-                AppError::Validation(
-                    "Aliyun credentials missing 'access_key_id'".into(),
-                )
+                AppError::Validation("Aliyun credentials missing 'access_key_id'".into())
             })?
             .to_string();
         let access_key_secret = creds["access_key_secret"]
             .as_str()
             .ok_or_else(|| {
-                AppError::Validation(
-                    "Aliyun credentials missing 'access_key_secret'".into(),
-                )
+                AppError::Validation("Aliyun credentials missing 'access_key_secret'".into())
             })?
             .to_string();
         let security_token = creds
@@ -435,8 +441,9 @@ impl AliyunAdapter {
         let mut out = String::with_capacity(s.len() * 3);
         for b in s.bytes() {
             match b {
-                b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9'
-                | b'-' | b'_' | b'.' | b'~' => out.push(b as char),
+                b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                    out.push(b as char)
+                }
                 _ => out.push_str(&format!("%{b:02X}")),
             }
         }
@@ -445,8 +452,7 @@ impl AliyunAdapter {
 
     /// HMAC-SHA1 helper — returns raw bytes.
     fn hmac_sha1(key: &[u8], data: &[u8]) -> Vec<u8> {
-        let mut mac = HmacSha1::new_from_slice(key)
-            .expect("HMAC accepts any key length");
+        let mut mac = HmacSha1::new_from_slice(key).expect("HMAC accepts any key length");
         mac.update(data);
         mac.finalize().into_bytes().to_vec()
     }
@@ -471,9 +477,7 @@ impl AliyunAdapter {
         // Canonical query string (keys sorted)
         let canonical: String = params
             .iter()
-            .map(|(k, v)| {
-                format!("{}={}", Self::rfc3986_encode(k), Self::rfc3986_encode(v))
-            })
+            .map(|(k, v)| format!("{}={}", Self::rfc3986_encode(k), Self::rfc3986_encode(v)))
             .collect::<Vec<_>>()
             .join("&");
 
@@ -498,11 +502,7 @@ impl AliyunAdapter {
     }
 
     /// Execute a signed RPC call and return the JSON body.
-    async fn call(
-        &self,
-        endpoint: &str,
-        params: BTreeMap<String, String>,
-    ) -> AppResult<Value> {
+    async fn call(&self, endpoint: &str, params: BTreeMap<String, String>) -> AppResult<Value> {
         let url = self.signed_url(endpoint, params);
         let resp = self
             .http
@@ -591,16 +591,17 @@ impl AliyunAdapter {
         let mut headers = BTreeMap::from([
             ("x-acs-version".to_string(), ACK_VERSION.to_string()),
             ("x-acs-signature-nonce".to_string(), nonce.clone()),
-            ("x-acs-signature-method".to_string(), "HMAC-SHA1".to_string()),
+            (
+                "x-acs-signature-method".to_string(),
+                "HMAC-SHA1".to_string(),
+            ),
         ]);
         if let Some(ref tok) = self.security_token {
             headers.insert("x-acs-security-token".to_string(), tok.clone());
         }
-        let canonical_headers: String = headers
-            .iter()
-            .map(|(k, v)| format!("{k}:{v}\n"))
-            .collect();
-        let string_to_sign = format!("GET\napplication/json\n\n\n{date}\n{canonical_headers}{path}");
+        let canonical_headers: String = headers.iter().map(|(k, v)| format!("{k}:{v}\n")).collect();
+        let string_to_sign =
+            format!("GET\napplication/json\n\n\n{date}\n{canonical_headers}{path}");
         let signature = BASE64.encode(Self::hmac_sha1(
             self.access_key_secret.as_bytes(),
             string_to_sign.as_bytes(),
@@ -614,7 +615,10 @@ impl AliyunAdapter {
             .header("x-acs-version", ACK_VERSION)
             .header("x-acs-signature-nonce", &nonce)
             .header("x-acs-signature-method", "HMAC-SHA1")
-            .header(reqwest::header::AUTHORIZATION, format!("acs {}:{}", self.access_key_id, signature));
+            .header(
+                reqwest::header::AUTHORIZATION,
+                format!("acs {}:{}", self.access_key_id, signature),
+            );
         if let Some(ref tok) = self.security_token {
             req = req.header("x-acs-security-token", tok);
         }
@@ -631,9 +635,7 @@ impl AliyunAdapter {
         if !status.is_success() {
             let code = body["Code"].as_str().unwrap_or("Unknown");
             let msg = body["Message"].as_str().unwrap_or("Unknown error");
-            return Err(AppError::Internal(anyhow!(
-                "ACK API error [{code}]: {msg}"
-            )));
+            return Err(AppError::Internal(anyhow!("ACK API error [{code}]: {msg}")));
         }
         Ok(body)
     }
@@ -646,7 +648,9 @@ impl AliyunAdapter {
     /// Fetch a single ACK cluster's kubeconfig (ROA `GET /k8s/{id}/user_config`).
     /// The `config` field is the kubeconfig YAML used to reach the api-server.
     pub(crate) async fn fetch_ack_kubeconfig(&self, cluster_id: &str) -> AppResult<String> {
-        let body = self.ack_get(&format!("/k8s/{cluster_id}/user_config")).await?;
+        let body = self
+            .ack_get(&format!("/k8s/{cluster_id}/user_config"))
+            .await?;
         body["config"]
             .as_str()
             .map(str::to_string)
@@ -659,7 +663,9 @@ impl AliyunAdapter {
         let clusters = body.as_array().cloned().unwrap_or_default();
         let mut out = Vec::with_capacity(clusters.len());
         for c in &clusters {
-            let Some(cluster_id) = c["cluster_id"].as_str() else { continue };
+            let Some(cluster_id) = c["cluster_id"].as_str() else {
+                continue;
+            };
             let name = c["name"].as_str().unwrap_or(cluster_id);
             out.push(DiscoveredResource {
                 cloud_resource_id: format!("ack:{cluster_id}"),
@@ -714,7 +720,11 @@ impl AliyunAdapter {
     }
 
     /// RPC params for an ECS instance action (StartInstance / StopInstance).
-    fn ecs_action_params(action: &str, instance_id: &str, region: &str) -> BTreeMap<String, String> {
+    fn ecs_action_params(
+        action: &str,
+        instance_id: &str,
+        region: &str,
+    ) -> BTreeMap<String, String> {
         let mut p = BTreeMap::new();
         p.insert("Action".into(), action.to_string());
         p.insert("Version".into(), ECS_VERSION.into());
@@ -725,10 +735,7 @@ impl AliyunAdapter {
 
     // ── Per-region discovery helpers ──────────────────────────────────────────
 
-    async fn discover_ecs_instances(
-        &self,
-        region_id: &str,
-    ) -> AppResult<Vec<DiscoveredResource>> {
+    async fn discover_ecs_instances(&self, region_id: &str) -> AppResult<Vec<DiscoveredResource>> {
         let mut resources = Vec::new();
         let mut page = 1u32;
         loop {
@@ -751,10 +758,7 @@ impl AliyunAdapter {
         Ok(resources)
     }
 
-    async fn discover_ecs_disks(
-        &self,
-        region_id: &str,
-    ) -> AppResult<Vec<DiscoveredResource>> {
+    async fn discover_ecs_disks(&self, region_id: &str) -> AppResult<Vec<DiscoveredResource>> {
         let mut resources = Vec::new();
         let mut page = 1u32;
         loop {
@@ -777,10 +781,7 @@ impl AliyunAdapter {
         Ok(resources)
     }
 
-    async fn discover_rds_instances(
-        &self,
-        region_id: &str,
-    ) -> AppResult<Vec<DiscoveredResource>> {
+    async fn discover_rds_instances(&self, region_id: &str) -> AppResult<Vec<DiscoveredResource>> {
         let mut resources = Vec::new();
         let mut page = 1u32;
         loop {
@@ -804,10 +805,7 @@ impl AliyunAdapter {
         Ok(resources)
     }
 
-    async fn discover_slb_instances(
-        &self,
-        region_id: &str,
-    ) -> AppResult<Vec<DiscoveredResource>> {
+    async fn discover_slb_instances(&self, region_id: &str) -> AppResult<Vec<DiscoveredResource>> {
         let mut resources = Vec::new();
         let mut page = 1u32;
         loop {
@@ -839,9 +837,10 @@ impl CloudAdapter for AliyunAdapter {
         p.insert("Action".into(), "DescribeRegions".into());
         p.insert("Version".into(), ECS_VERSION.into());
 
-        let body = self.call(ECS_ENDPOINT, p).await.map_err(|e| {
-            AppError::Internal(anyhow!("Aliyun test_connection failed: {e}"))
-        })?;
+        let body = self
+            .call(ECS_ENDPOINT, p)
+            .await
+            .map_err(|e| AppError::Internal(anyhow!("Aliyun test_connection failed: {e}")))?;
 
         let empty = vec![];
         let regions = body["Regions"]["Region"].as_array().unwrap_or(&empty);
@@ -907,7 +906,14 @@ impl CloudAdapter for AliyunAdapter {
 
             // ECS snapshots
             match self
-                .discover_rpc_page(ECS_ENDPOINT, ECS_VERSION, "DescribeSnapshots", region_id, "50", parse_ecs_snapshots)
+                .discover_rpc_page(
+                    ECS_ENDPOINT,
+                    ECS_VERSION,
+                    "DescribeSnapshots",
+                    region_id,
+                    "50",
+                    parse_ecs_snapshots,
+                )
                 .await
             {
                 Ok(mut v) => all.append(&mut v),
@@ -916,7 +922,14 @@ impl CloudAdapter for AliyunAdapter {
 
             // VPC EIPs
             match self
-                .discover_rpc_page(VPC_ENDPOINT, VPC_VERSION, "DescribeEipAddresses", region_id, "50", parse_eip_addresses)
+                .discover_rpc_page(
+                    VPC_ENDPOINT,
+                    VPC_VERSION,
+                    "DescribeEipAddresses",
+                    region_id,
+                    "50",
+                    parse_eip_addresses,
+                )
                 .await
             {
                 Ok(mut v) => all.append(&mut v),
@@ -926,7 +939,14 @@ impl CloudAdapter for AliyunAdapter {
             // ALB load balancers (regional endpoint — the global `alb.aliyuncs.com`
             // host does not resolve)
             match self
-                .discover_rpc_page(&format!("alb.{region_id}.aliyuncs.com"), ALB_VERSION, "DescribeLoadBalancers", region_id, "50", parse_alb_instances)
+                .discover_rpc_page(
+                    &format!("alb.{region_id}.aliyuncs.com"),
+                    ALB_VERSION,
+                    "DescribeLoadBalancers",
+                    region_id,
+                    "50",
+                    parse_alb_instances,
+                )
                 .await
             {
                 Ok(mut v) => all.append(&mut v),
@@ -935,7 +955,14 @@ impl CloudAdapter for AliyunAdapter {
 
             // NLB load balancers (regional endpoint)
             match self
-                .discover_rpc_page(&format!("nlb.{region_id}.aliyuncs.com"), NLB_VERSION, "DescribeLoadBalancers", region_id, "50", parse_nlb_instances)
+                .discover_rpc_page(
+                    &format!("nlb.{region_id}.aliyuncs.com"),
+                    NLB_VERSION,
+                    "DescribeLoadBalancers",
+                    region_id,
+                    "50",
+                    parse_nlb_instances,
+                )
                 .await
             {
                 Ok(mut v) => all.append(&mut v),
@@ -943,7 +970,7 @@ impl CloudAdapter for AliyunAdapter {
             }
         }
 
-// OSS buckets (global API — once, not per region)
+        // OSS buckets (global API — once, not per region)
         match self.discover_oss_buckets().await {
             Ok(mut v) => all.append(&mut v),
             Err(e) => tracing::warn!(error = ?e, "OSS scan failed"),
@@ -1227,7 +1254,10 @@ mod tests {
         // Without STS: StringToSign = GET\n\n\nDate\n/
         let mut expected = format!("GET\n\n\n{date}\n/");
         let sig = BASE64.encode(AliyunAdapter::hmac_sha1(b"SECRET", expected.as_bytes()));
-        assert_eq!(test_adapter(None).oss_authorization(date), format!("OSS AKID:{sig}"));
+        assert_eq!(
+            test_adapter(None).oss_authorization(date),
+            format!("OSS AKID:{sig}")
+        );
 
         // With STS: canonical x-oss-security-token line before the resource.
         expected = format!("GET\n\n\n{date}\nx-oss-security-token:TOKEN123\n/");

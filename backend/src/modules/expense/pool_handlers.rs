@@ -28,11 +28,7 @@ const POOL_SELECT: &str = r#"
     FROM pools
 "#;
 
-async fn ensure_org_member(
-    db: &sqlx::PgPool,
-    org_id: Uuid,
-    user_id: Uuid,
-) -> AppResult<()> {
+async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
     let row = sqlx::query(
         "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
     )
@@ -59,15 +55,17 @@ pub async fn list_pools(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let pools = sqlx::query_as::<_, Pool>(&format!(
+    let pools = sqlx::query_as::<_, Pool>(sqlx::AssertSqlSafe(&*format!(
         "{POOL_SELECT} WHERE organization_id = $1 AND deleted_at IS NULL ORDER BY name ASC"
-    ))
+    )))
     .bind(org_id)
     .fetch_all(&state.db)
     .await?;
 
     let data: Vec<PoolResponse> = pools.into_iter().map(Into::into).collect();
-    Ok(Json(json!({ "data": data, "meta": { "total": data.len() } })))
+    Ok(Json(
+        json!({ "data": data, "meta": { "total": data.len() } }),
+    ))
 }
 
 // ─── create_pool ──────────────────────────────────────────────────────────────
@@ -88,7 +86,7 @@ pub async fn create_pool(
     let now = Utc::now();
     let pool_id = Uuid::new_v4();
 
-    let pool = sqlx::query_as::<_, Pool>(&format!(
+    let pool = sqlx::query_as::<_, Pool>(sqlx::AssertSqlSafe(&*format!(
         r#"
         INSERT INTO pools
             (id, organization_id, parent_id, name, description, pool_type, owner_id, monthly_budget, created_at, updated_at)
@@ -97,7 +95,7 @@ pub async fn create_pool(
         "#,
         cols = "id, organization_id, parent_id, name, description, pool_type, owner_id,
                 monthly_budget::float8 AS monthly_budget, created_at, updated_at"
-    ))
+    )))
     .bind(pool_id)
     .bind(org_id)
     .bind(body.parent_id)
@@ -131,9 +129,9 @@ pub async fn get_pool(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let pool = sqlx::query_as::<_, Pool>(&format!(
+    let pool = sqlx::query_as::<_, Pool>(sqlx::AssertSqlSafe(&*format!(
         "{POOL_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-    ))
+    )))
     .bind(pool_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -143,8 +141,7 @@ pub async fn get_pool(
     // Current month's total cost for this pool.
     let month_start = {
         let today = Utc::now().date_naive();
-        NaiveDate::from_ymd_opt(today.year(), today.month(), 1)
-            .unwrap_or(today)
+        NaiveDate::from_ymd_opt(today.year(), today.month(), 1).unwrap_or(today)
     };
 
     let cost_row = sqlx::query(
@@ -179,7 +176,7 @@ pub async fn update_pool(
 
     let now = Utc::now();
 
-    let pool = sqlx::query_as::<_, Pool>(&format!(
+    let pool = sqlx::query_as::<_, Pool>(sqlx::AssertSqlSafe(&*format!(
         r#"
         UPDATE pools
         SET
@@ -193,7 +190,7 @@ pub async fn update_pool(
         "#,
         cols = "id, organization_id, parent_id, name, description, pool_type, owner_id,
                 monthly_budget::float8 AS monthly_budget, created_at, updated_at"
-    ))
+    )))
     .bind(pool_id)
     .bind(org_id)
     .bind(body.name.as_deref())
@@ -232,7 +229,10 @@ pub async fn delete_pool(
         return Err(AppError::NotFound("Pool not found".into()));
     }
 
-    Ok((StatusCode::OK, Json(json!({ "data": { "message": "Pool deleted" } }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "data": { "message": "Pool deleted" } })),
+    ))
 }
 
 // ─── Local import for NaiveDate helpers ───────────────────────────────────────
@@ -300,7 +300,7 @@ pub async fn get_pool_tree(
 
 // ─── pool_expense_trend ───────────────────────────────────────────────────────
 //
-// GET /api/v1/orgs/:org_id/pools/:id/trend
+// GET /api/v1/orgs/{org_id}/pools/{id}/trend
 //
 // Returns the daily cost time-series for a specific pool, plus a forecast of
 // the next 30 days using linear regression on the last 14 actual data points.
@@ -421,7 +421,8 @@ pub async fn pool_expense_trend(
     .await
     .unwrap_or(0.0);
 
-    let projected_month: f64 = forecast.iter()
+    let projected_month: f64 = forecast
+        .iter()
         .map(|f| f["predicted_cost"].as_f64().unwrap_or(0.0))
         .sum();
 
@@ -445,7 +446,7 @@ pub async fn pool_expense_trend(
 
 // ─── pool_top_resources ───────────────────────────────────────────────────────
 //
-// GET /api/v1/orgs/:org_id/pools/:id/top-resources
+// GET /api/v1/orgs/{org_id}/pools/{id}/top-resources
 //
 // Returns the top 20 resources ranked by cost within the pool over a date
 // window.  Includes resource_type, region, service name, and total cost.
@@ -565,7 +566,7 @@ pub async fn pool_top_resources(
 
 // ─── move_pool ────────────────────────────────────────────────────────────────
 //
-// PATCH /api/v1/orgs/:org_id/pools/:id/parent
+// PATCH /api/v1/orgs/{org_id}/pools/{id}/parent
 //
 // Reparents a pool to a new parent (or makes it a root by setting parent to
 // null).  Guards against cycles: the new parent must not be a descendant of
@@ -602,7 +603,9 @@ pub async fn move_pool(
 
     // Cannot reparent to itself
     if body.parent_id == Some(pool_id) {
-        return Err(AppError::Validation("A pool cannot be its own parent".into()));
+        return Err(AppError::Validation(
+            "A pool cannot be its own parent".into(),
+        ));
     }
 
     // Cycle guard: new parent must not be a descendant of pool_id.
@@ -644,14 +647,14 @@ pub async fn move_pool(
         }
     }
 
-    let pool = sqlx::query_as::<_, Pool>(&format!(
+    let pool = sqlx::query_as::<_, Pool>(sqlx::AssertSqlSafe(&*format!(
         r#"UPDATE pools
            SET parent_id = $3, updated_at = NOW()
            WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
            RETURNING {cols}"#,
         cols = "id, organization_id, parent_id, name, description, pool_type, owner_id,
                 monthly_budget::float8 AS monthly_budget, created_at, updated_at"
-    ))
+    )))
     .bind(pool_id)
     .bind(org_id)
     .bind(body.parent_id)
@@ -665,7 +668,7 @@ pub async fn move_pool(
 
 // ─── budget_matrix ────────────────────────────────────────────────────────────
 
-/// GET /api/v1/orgs/:org_id/pools/budget-matrix
+/// GET /api/v1/orgs/{org_id}/pools/budget-matrix
 ///
 /// Returns every pool with its monthly_budget, actual spend for the current
 /// calendar month-to-date, variance, utilisation %, and a status label.
@@ -680,8 +683,8 @@ pub async fn budget_matrix(
 
     // Current month start (UTC)
     let today = chrono::Utc::now().date_naive();
-    let month_start = chrono::NaiveDate::from_ymd_opt(today.year(), today.month(), 1)
-        .unwrap_or(today);
+    let month_start =
+        chrono::NaiveDate::from_ymd_opt(today.year(), today.month(), 1).unwrap_or(today);
 
     let rows = sqlx::query(
         r#"
@@ -744,4 +747,3 @@ pub async fn budget_matrix(
 
     Ok(Json(json!({ "data": data })))
 }
-

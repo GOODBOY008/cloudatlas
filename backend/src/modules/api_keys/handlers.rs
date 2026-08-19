@@ -9,7 +9,7 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use rand::RngCore;
+use rand::TryRng;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -34,19 +34,17 @@ pub fn hash_key(key: &str) -> String {
 /// Generate a new plaintext key (`ca_` + 32 hex chars).
 pub fn generate_key() -> String {
     let mut bytes = [0u8; 16];
-    rand::thread_rng().fill_bytes(&mut bytes);
+    rand::rng().try_fill_bytes(&mut bytes).expect("infallible");
     format!("{KEY_PREFIX}{}", hex::encode(bytes))
 }
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -60,7 +58,7 @@ pub struct UpdateApiKeyRequest {
     pub name: Option<String>,
 }
 
-/// GET /orgs/:id/api-keys — list keys (hashes/prefixes only, no secrets).
+/// GET /orgs/{id}/api-keys — list keys (hashes/prefixes only, no secrets).
 pub async fn list_api_keys(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -106,10 +104,12 @@ pub async fn list_api_keys(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
-/// POST /orgs/:id/api-keys — create a key; plaintext returned exactly once.
+/// POST /orgs/{id}/api-keys — create a key; plaintext returned exactly once.
 pub async fn create_api_key(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -149,7 +149,7 @@ pub async fn create_api_key(
     ))
 }
 
-/// PATCH /orgs/:id/api-keys/:key_id — rename.
+/// PATCH /orgs/{id}/api-keys/{key_id} — rename.
 pub async fn update_api_key(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -170,10 +170,12 @@ pub async fn update_api_key(
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound(format!("API key {key_id} not found")));
     }
-    Ok(Json(json!({ "data": { "id": key_id, "message": "Updated" } })))
+    Ok(Json(
+        json!({ "data": { "id": key_id, "message": "Updated" } }),
+    ))
 }
 
-/// DELETE /orgs/:id/api-keys/:key_id — revoke.
+/// DELETE /orgs/{id}/api-keys/{key_id} — revoke.
 pub async fn revoke_api_key(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,

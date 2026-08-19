@@ -1,6 +1,6 @@
 //! Third-party integrations — connection cards for Slack, Teams, PagerDuty,
 //! Jira, GitHub and generic webhooks. Each integration stores its provider
-//! config; `POST /:id/test` performs a lightweight reachability check and
+//! config; `POST /{id}/test` performs a lightweight reachability check and
 //! stamps `status` / `last_checked_at`.
 
 use axum::{
@@ -20,18 +20,23 @@ use crate::{
 };
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
-const PROVIDERS: &[&str] = &["slack", "teams", "pagerduty", "jira", "github", "generic_webhook"];
+const PROVIDERS: &[&str] = &[
+    "slack",
+    "teams",
+    "pagerduty",
+    "jira",
+    "github",
+    "generic_webhook",
+];
 
 /// Provider metadata used by the frontend cards.
 pub fn provider_info() -> Value {
@@ -82,11 +87,12 @@ pub async fn list_integrations(
     .fetch_all(&state.db)
     .await?;
 
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM integrations WHERE organization_id = $1")
-        .bind(org_id)
-        .fetch_one(&state.db)
-        .await
-        .unwrap_or(0);
+    let total: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM integrations WHERE organization_id = $1")
+            .bind(org_id)
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(0);
 
     let data: Vec<Value> = rows
         .iter()
@@ -125,7 +131,8 @@ pub async fn create_integration(
             PROVIDERS.join(", ")
         )));
     }
-    crate::utils::validate::name(&req.name, 255, "Integration name").map_err(AppError::Validation)?;
+    crate::utils::validate::name(&req.name, 255, "Integration name")
+        .map_err(AppError::Validation)?;
 
     let row = sqlx::query(
         r#"INSERT INTO integrations (organization_id, provider, name, config, created_by)
@@ -186,10 +193,14 @@ pub async fn update_integration(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Integration {integration_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Integration {integration_id} not found"
+        )));
     }
 
-    Ok(Json(json!({ "data": { "id": integration_id, "message": "Updated" } })))
+    Ok(Json(
+        json!({ "data": { "id": integration_id, "message": "Updated" } }),
+    ))
 }
 
 pub async fn delete_integration(
@@ -206,7 +217,9 @@ pub async fn delete_integration(
         .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Integration {integration_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Integration {integration_id} not found"
+        )));
     }
 
     Ok((StatusCode::NO_CONTENT, Json(json!({}))))
@@ -236,7 +249,11 @@ pub async fn test_integration(
 
     let (ok, message) = match provider.as_str() {
         "slack" | "teams" | "generic_webhook" => {
-            match config.get("webhook_url").or_else(|| config.get("url")).and_then(|v| v.as_str()) {
+            match config
+                .get("webhook_url")
+                .or_else(|| config.get("url"))
+                .and_then(|v| v.as_str())
+            {
                 Some(url) if url.starts_with("http") => match test_webhook_endpoint(url).await {
                     Ok(code) => (true, format!("Endpoint reachable (HTTP {code})")),
                     Err(e) => (false, format!("Endpoint unreachable: {e}")),
@@ -249,10 +266,20 @@ pub async fn test_integration(
             _ => (false, "Missing service_key in config".into()),
         },
         "jira" => {
-            let has = config.get("base_url").and_then(|v| v.as_str()).map_or(false, |u| u.starts_with("http"))
+            let has = config
+                .get("base_url")
+                .and_then(|v| v.as_str())
+                .is_some_and(|u| u.starts_with("http"))
                 && config.get("email").is_some()
                 && config.get("api_token").is_some();
-            (has, if has { "Credentials present".into() } else { "base_url (http), email and api_token required".into() })
+            (
+                has,
+                if has {
+                    "Credentials present".into()
+                } else {
+                    "base_url (http), email and api_token required".into()
+                },
+            )
         }
         "github" => match config.get("token").and_then(|v| v.as_str()) {
             Some(t) if !t.is_empty() => (true, "Token present".into()),
@@ -282,11 +309,7 @@ async fn test_webhook_endpoint(url: &str) -> Result<u16, String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let resp = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+    let resp = client.get(url).send().await.map_err(|e| e.to_string())?;
 
     Ok(resp.status().as_u16())
 }

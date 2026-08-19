@@ -42,12 +42,8 @@ pub async fn oidc_start(state: axum::extract::State<AppState>) -> AppResult<Resp
         .as_str()
         .ok_or_else(|| AppError::Cloud("OIDC issuer missing authorization_endpoint".into()))?;
 
-    let state_token = Claims::new_access(
-        Uuid::new_v4(),
-        "oidc-state",
-        600,
-    )
-    .encode_token(&state.config.jwt_secret)?;
+    let state_token = Claims::new_access(Uuid::new_v4(), "oidc-state", 600)
+        .encode_token(&state.config.jwt_secret)?;
 
     let url = format!(
         "{auth_endpoint}?response_type=code&client_id={client_id}&redirect_uri={redirect_url}&scope=openid%20email%20profile&state={state_token}"
@@ -124,21 +120,19 @@ pub async fn oidc_callback(
         .unwrap_or(email.split('@').next().unwrap_or("user"));
 
     // Find-or-create the user by email.
-    let user = sqlx::query_as::<_, (Uuid, String)>(
-        "SELECT id, email FROM users WHERE email = $1",
-    )
-    .bind(email)
-    .fetch_optional(&state.db)
-    .await?;
+    let user = sqlx::query_as::<_, (Uuid, String)>("SELECT id, email FROM users WHERE email = $1")
+        .bind(email)
+        .fetch_optional(&state.db)
+        .await?;
 
     let (user_id, user_email) = match user {
         Some((id, email)) => (id, email),
         None => {
             // Provision with a random unguessable password (SSO users don't
             // log in with a password).
-            use rand::RngCore;
+            use rand::TryRng;
             let mut bytes = [0u8; 24];
-            rand::thread_rng().fill_bytes(&mut bytes);
+            rand::rng().try_fill_bytes(&mut bytes).expect("infallible");
             let password = hex::encode(bytes);
             let password_hash = crate::modules::auth::service::hash_password(&password)?;
             let new_id = Uuid::new_v4();
@@ -165,9 +159,7 @@ pub async fn oidc_callback(
         .app_url
         .clone()
         .unwrap_or_else(|| "http://localhost:5173".into());
-    let redirect = format!(
-        "{app_url}/login?token={access_token}&refresh={refresh_token}"
-    );
+    let redirect = format!("{app_url}/login?token={access_token}&refresh={refresh_token}");
 
     Ok((
         StatusCode::FOUND,
@@ -208,7 +200,10 @@ fn oidc_params_full(state: &AppState) -> AppResult<(String, String, String, Stri
 
 /// Fetch the OIDC discovery document.
 async fn fetch_discovery(issuer: &str) -> AppResult<Value> {
-    let url = format!("{}/.well-known/openid-configuration", issuer.trim_end_matches('/'));
+    let url = format!(
+        "{}/.well-known/openid-configuration",
+        issuer.trim_end_matches('/')
+    );
     let client = reqwest::Client::new();
     let resp = client
         .get(&url)

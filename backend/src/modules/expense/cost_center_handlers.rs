@@ -68,7 +68,9 @@ pub async fn list_cost_centers(
     .await?;
 
     let data: Vec<Value> = rows.iter().map(row_to_json).collect();
-    Ok(Json(json!({ "data": data, "meta": { "total": data.len() } })))
+    Ok(Json(
+        json!({ "data": data, "meta": { "total": data.len() } }),
+    ))
 }
 
 // ─── create_cost_center ───────────────────────────────────────────────────────
@@ -83,10 +85,14 @@ pub async fn create_cost_center(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     if body.code.trim().is_empty() {
-        return Err(AppError::Validation("Cost center code cannot be empty".into()));
+        return Err(AppError::Validation(
+            "Cost center code cannot be empty".into(),
+        ));
     }
     if body.name.trim().is_empty() {
-        return Err(AppError::Validation("Cost center name cannot be empty".into()));
+        return Err(AppError::Validation(
+            "Cost center name cannot be empty".into(),
+        ));
     }
 
     let row = sqlx::query(
@@ -111,7 +117,10 @@ pub async fn create_cost_center(
         }
     })?;
 
-    Ok((StatusCode::CREATED, Json(json!({ "data": row_to_json(&row) }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "data": row_to_json(&row) })),
+    ))
 }
 
 // ─── get_cost_center ──────────────────────────────────────────────────────────
@@ -150,13 +159,11 @@ pub async fn update_cost_center(
 ) -> AppResult<Json<Value>> {
     let user_id = claims.user_id()?;
 
-    let existing = sqlx::query(
-        "SELECT organization_id FROM cost_centers WHERE id = $1",
-    )
-    .bind(id)
-    .fetch_optional(&state.db)
-    .await?
-    .ok_or_else(|| AppError::NotFound("Cost center not found".into()))?;
+    let existing = sqlx::query("SELECT organization_id FROM cost_centers WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Cost center not found".into()))?;
 
     let org_id: Uuid = existing
         .try_get("organization_id")
@@ -218,7 +225,10 @@ pub async fn delete_cost_center(
         return Err(AppError::NotFound("Cost center not found".into()));
     }
 
-    Ok((StatusCode::OK, Json(json!({ "data": { "message": "Cost center deleted" } }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "data": { "message": "Cost center deleted" } })),
+    ))
 }
 
 // ─── cost_center_expenses ─────────────────────────────────────────────────────
@@ -290,14 +300,14 @@ pub struct CreateBusinessCapabilityRequest {
     pub cost_center_id: Option<Uuid>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, utoipa::ToSchema)]
 pub struct UpdateBusinessCapabilityRequest {
     pub name: Option<String>,
     pub description: Option<String>,
     pub cost_center_id: Option<Uuid>,
 }
 
-/// GET /api/v1/orgs/:org_id/business-capabilities
+/// GET /api/v1/orgs/{org_id}/business-capabilities
 #[utoipa::path(
     get,
     path = "/api/v1/orgs/{org_id}/business-capabilities",
@@ -346,7 +356,7 @@ pub async fn list_business_capabilities(
     Ok(Json(json!({ "data": data, "total": data.len() })))
 }
 
-/// POST /api/v1/orgs/:org_id/business-capabilities
+/// POST /api/v1/orgs/{org_id}/business-capabilities
 #[utoipa::path(
     post,
     path = "/api/v1/orgs/{org_id}/business-capabilities",
@@ -369,7 +379,9 @@ pub async fn create_business_capability(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     if body.name.trim().is_empty() {
-        return Err(AppError::Validation("Capability name cannot be empty".into()));
+        return Err(AppError::Validation(
+            "Capability name cannot be empty".into(),
+        ));
     }
     if let Some(cc_id) = body.cost_center_id {
         let ok = sqlx::query("SELECT id FROM cost_centers WHERE id = $1 AND organization_id = $2")
@@ -415,7 +427,7 @@ pub async fn create_business_capability(
     ))
 }
 
-/// PUT /api/v1/business-capabilities/:id
+/// PUT /api/v1/business-capabilities/{id}
 #[utoipa::path(
     put,
     path = "/api/v1/business-capabilities/{id}",
@@ -436,13 +448,12 @@ pub async fn update_business_capability(
     Json(body): Json<UpdateBusinessCapabilityRequest>,
 ) -> AppResult<Json<Value>> {
     // Org derived from the existing row.
-    let existing = sqlx::query(
-        "SELECT id, organization_id FROM business_capabilities WHERE id = $1",
-    )
-    .bind(capability_id)
-    .fetch_optional(&state.db)
-    .await?
-    .ok_or_else(|| AppError::NotFound("Business capability not found".into()))?;
+    let existing =
+        sqlx::query("SELECT id, organization_id FROM business_capabilities WHERE id = $1")
+            .bind(capability_id)
+            .fetch_optional(&state.db)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Business capability not found".into()))?;
     let org_id: Uuid = existing.try_get("organization_id")?;
 
     let user_id = claims.user_id()?;
@@ -487,7 +498,7 @@ pub async fn update_business_capability(
     })))
 }
 
-/// DELETE /api/v1/business-capabilities/:id
+/// DELETE /api/v1/business-capabilities/{id}
 #[utoipa::path(
     delete,
     path = "/api/v1/business-capabilities/{id}",
@@ -504,13 +515,12 @@ pub async fn delete_business_capability(
     Extension(claims): Extension<Claims>,
     Path(capability_id): Path<Uuid>,
 ) -> AppResult<StatusCode> {
-    let existing = sqlx::query(
-        "SELECT id, organization_id FROM business_capabilities WHERE id = $1",
-    )
-    .bind(capability_id)
-    .fetch_optional(&state.db)
-    .await?
-    .ok_or_else(|| AppError::NotFound("Business capability not found".into()))?;
+    let existing =
+        sqlx::query("SELECT id, organization_id FROM business_capabilities WHERE id = $1")
+            .bind(capability_id)
+            .fetch_optional(&state.db)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Business capability not found".into()))?;
     let org_id: Uuid = existing.try_get("organization_id")?;
 
     let user_id = claims.user_id()?;

@@ -11,8 +11,8 @@ use crate::error::{AppError, AppResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String,        // user_id
-    pub jti: String,        // unique token ID (prevents duplicate sessions)
+    pub sub: String, // user_id
+    pub jti: String, // unique token ID (prevents duplicate sessions)
     pub email: String,
     pub exp: usize,
     pub iat: usize,

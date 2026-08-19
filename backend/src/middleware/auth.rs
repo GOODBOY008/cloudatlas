@@ -4,11 +4,7 @@ use axum::{
     response::Response,
 };
 
-use crate::{
-    error::AppError,
-    modules::auth::service::Claims,
-    state::AppState,
-};
+use crate::{error::AppError, modules::auth::service::Claims, state::AppState};
 
 pub async fn auth_middleware(
     State(state): State<AppState>,

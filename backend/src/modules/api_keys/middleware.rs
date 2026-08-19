@@ -15,11 +15,7 @@ use uuid::Uuid;
 
 use sqlx::Row;
 
-use crate::{
-    error::AppError,
-    modules::auth::service::Claims,
-    state::AppState,
-};
+use crate::{error::AppError, modules::auth::service::Claims, state::AppState};
 
 use super::handlers::hash_key;
 

@@ -17,14 +17,12 @@ use crate::{
 };
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -100,7 +98,9 @@ pub async fn list_alerts(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_alert(
@@ -238,13 +238,11 @@ pub async fn delete_alert(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let result = sqlx::query(
-        "DELETE FROM budget_alerts WHERE id = $1 AND organization_id = $2",
-    )
-    .bind(alert_id)
-    .bind(org_id)
-    .execute(&state.db)
-    .await?;
+    let result = sqlx::query("DELETE FROM budget_alerts WHERE id = $1 AND organization_id = $2")
+        .bind(alert_id)
+        .bind(org_id)
+        .execute(&state.db)
+        .await?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound(format!("Alert {alert_id} not found")));
@@ -254,34 +252,34 @@ pub async fn delete_alert(
 }
 
 pub async fn list_events(
-        State(state): State<AppState>,
-        Extension(claims): Extension<Claims>,
-        Path(org_id): Path<Uuid>,
-        Query(page): Query<PageQuery>,
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Path(org_id): Path<Uuid>,
+    Query(page): Query<PageQuery>,
 ) -> AppResult<Json<Value>> {
-        let user_id = claims.user_id()?;
-        ensure_org_member(&state.db, org_id, user_id).await?;
+    let user_id = claims.user_id()?;
+    ensure_org_member(&state.db, org_id, user_id).await?;
 
-        let bounds = page.resolve(50, 200);
-        let (limit, offset) = (bounds.limit, bounds.offset);
+    let bounds = page.resolve(50, 200);
+    let (limit, offset) = (bounds.limit, bounds.offset);
 
-        let total: i64 = sqlx::query_scalar(
-                r#"SELECT COUNT(*) FROM (
+    let total: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*) FROM (
                        SELECT ae.id FROM alert_events ae WHERE ae.organization_id = $1
                        UNION ALL
                        SELECT we.id FROM webhook_events we
                        JOIN webhooks w ON w.id = we.webhook_id
                        WHERE w.organization_id = $1
                    ) e"#,
-        )
-        .bind(org_id)
-        .bind(org_id)
-        .fetch_one(&state.db)
-        .await
-        .unwrap_or(0);
+    )
+    .bind(org_id)
+    .bind(org_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
 
-        let rows = sqlx::query(
-                r#"SELECT id, kind, title, details, created_at
+    let rows = sqlx::query(
+        r#"SELECT id, kind, title, details, created_at
                      FROM (
                          SELECT
                              ae.id,
@@ -318,27 +316,29 @@ pub async fn list_events(
                      ) e
                      ORDER BY created_at DESC
                      LIMIT $2 OFFSET $3"#,
-        )
-        .bind(org_id)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&state.db)
-        .await?;
+    )
+    .bind(org_id)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(&state.db)
+    .await?;
 
-        let data: Vec<Value> = rows
-                .iter()
-                .map(|r| {
-                        json!({
-                                "id": r.try_get::<Uuid, _>("id").ok(),
-                                "kind": r.try_get::<String, _>("kind").unwrap_or_default(),
-                                "title": r.try_get::<String, _>("title").unwrap_or_default(),
-                                "details": r.try_get::<Value, _>("details").unwrap_or(json!({})),
-                                "created_at": r.try_get::<chrono::DateTime<Utc>, _>("created_at").ok(),
-                        })
-                })
-                .collect();
+    let data: Vec<Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                    "id": r.try_get::<Uuid, _>("id").ok(),
+                    "kind": r.try_get::<String, _>("kind").unwrap_or_default(),
+                    "title": r.try_get::<String, _>("title").unwrap_or_default(),
+                    "details": r.try_get::<Value, _>("details").unwrap_or(json!({})),
+                    "created_at": r.try_get::<chrono::DateTime<Utc>, _>("created_at").ok(),
+            })
+        })
+        .collect();
 
-        Ok(Json(json!({ "data": data, "meta": page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn list_alert_events(
@@ -353,13 +353,12 @@ pub async fn list_alert_events(
     let bounds = page.resolve(50, 200);
     let (limit, offset) = (bounds.limit, bounds.offset);
 
-    let total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM alert_events WHERE organization_id = $1",
-    )
-    .bind(org_id)
-    .fetch_one(&state.db)
-    .await
-    .unwrap_or(0);
+    let total: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM alert_events WHERE organization_id = $1")
+            .bind(org_id)
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(0);
 
     let rows = sqlx::query(
         r#"SELECT id, budget_alert_id, budget_id, pool_id,
@@ -394,10 +393,12 @@ pub async fn list_alert_events(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": page_meta_json(total, &bounds) }),
+    ))
 }
 
-/// POST /api/v1/orgs/:org_id/alerts/evaluate
+/// POST /api/v1/orgs/{org_id}/alerts/evaluate
 ///
 /// Evaluate all active budget alerts for the organization.
 /// For each alert, compare actual pool spend to the budget limit + threshold.
@@ -442,15 +443,17 @@ pub async fn evaluate_alerts(
         let alert_type: String = alert.try_get("alert_type").unwrap_or_default();
         let threshold: f64 = alert.try_get("threshold").unwrap_or(0.0);
         let budget_amount: f64 = alert.try_get("budget_amount").unwrap_or(0.0);
-        let budget_period: String = alert.try_get("budget_period").unwrap_or_else(|_| "monthly".into());
+        let budget_period: String = alert
+            .try_get("budget_period")
+            .unwrap_or_else(|_| "monthly".into());
 
         // Determine the date window for the budget period
         // Using a fixed set of safe constant interval strings (not user input)
         let interval_days: i64 = match budget_period.as_str() {
-            "daily"   => 1,
-            "weekly"  => 7,
-            "yearly"  => 365,
-            _         => 30, // monthly (default)
+            "daily" => 1,
+            "weekly" => 7,
+            "yearly" => 365,
+            _ => 30, // monthly (default)
         };
 
         // Compute actual spend for this pool in the current period
@@ -485,7 +488,7 @@ pub async fn evaluate_alerts(
         // Compute the alert trigger threshold value
         let trigger_at = match alert_type.as_str() {
             "percentage" => budget_amount * (threshold / 100.0),
-            _            => threshold, // absolute
+            _ => threshold, // absolute
         };
 
         if actual > trigger_at {

@@ -53,8 +53,12 @@ pub async fn load_attr_defs(db: &sqlx::PgPool, ci_type_id: Uuid) -> AppResult<Ve
             is_required: r.try_get::<bool, _>("is_required").unwrap_or(false),
             is_unique: r.try_get::<bool, _>("is_unique").unwrap_or(false),
             enum_values: r.try_get::<Option<Value>, _>("enum_values").unwrap_or(None),
-            validation_rule: r.try_get::<Option<String>, _>("validation_rule").unwrap_or(None),
-            stored_default: r.try_get::<Option<String>, _>("default_value").unwrap_or(None),
+            validation_rule: r
+                .try_get::<Option<String>, _>("validation_rule")
+                .unwrap_or(None),
+            stored_default: r
+                .try_get::<Option<String>, _>("default_value")
+                .unwrap_or(None),
         })
         .collect())
 }
@@ -130,7 +134,10 @@ pub fn validate_meta(attrs: &[AttrDef], meta: &Value) -> Result<(), Vec<AttrVali
         if let Err(msg) = check_type(&attr.attribute_type, value) {
             errors.push(AttrValidationError::new(
                 &attr.name,
-                format!("attribute '{}' must be a valid {}: {msg}", attr.name, attr.attribute_type),
+                format!(
+                    "attribute '{}' must be a valid {}: {msg}",
+                    attr.name, attr.attribute_type
+                ),
             ));
             continue;
         }
@@ -315,7 +322,12 @@ pub fn validate_meta_update(
             // Required only if the attr is required AND the CI currently has a
             // value for it (or the incoming meta provides one).
             let mut a2 = a.clone();
-            a2.is_required = a.is_required && (old_had_it || new_meta.as_object().map(|o| o.contains_key(&a.name)).unwrap_or(false));
+            a2.is_required = a.is_required
+                && (old_had_it
+                    || new_meta
+                        .as_object()
+                        .map(|o| o.contains_key(&a.name))
+                        .unwrap_or(false));
             a2
         })
         .collect();
@@ -415,7 +427,11 @@ pub async fn load_unique_constraints(
         let attr_names: Vec<String> = r
             .try_get::<Vec<String>, _>("attr_names")
             .unwrap_or_default();
-        result.push(UniqueConstraint { id, name, attr_names });
+        result.push(UniqueConstraint {
+            id,
+            name,
+            attr_names,
+        });
     }
 
     // is_unique attributes behave as single-field constraints (same check path,
@@ -448,9 +464,7 @@ fn meta_text_form(value: &Value) -> Option<String> {
 fn is_safe_attr_key(key: &str) -> bool {
     !key.is_empty()
         && key.len() <= 100
-        && key
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        && key.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
 /// Check every unique constraint of the CI type against `meta`. A constraint
@@ -515,7 +529,7 @@ pub async fn check_unique_constraints(
             conditions.join(" AND ")
         );
 
-        let mut q = sqlx::query_scalar::<_, Uuid>(&sql)
+        let mut q = sqlx::query_scalar::<_, Uuid>(sqlx::AssertSqlSafe(&*sql))
             .bind(org_id)
             .bind(ci_type_id)
             .bind(exclude_ci_id);
@@ -530,12 +544,7 @@ pub async fn check_unique_constraints(
                 format!(
                     "violates unique constraint '{}': another CI of this type already has {}",
                     constraint.name,
-                    constraint
-                        .attr_names
-                        .iter()
-                        .map(|k| k.clone())
-                        .collect::<Vec<_>>()
-                        .join(" + ")
+                    constraint.attr_names.to_vec().join(" + ")
                 ),
                 serde_json::json!({
                     "constraint": constraint.name,
@@ -593,7 +602,10 @@ mod tests {
             "ip": "10.0.0.1",
             "cidr": "10.0.0.0/8",
         });
-        assert!(validate_meta(&attrs, &good).is_ok(), "all-valid meta must pass");
+        assert!(
+            validate_meta(&attrs, &good).is_ok(),
+            "all-valid meta must pass"
+        );
 
         let bad = json!({
             "s": 123,
@@ -688,7 +700,10 @@ mod tests {
             ("decommissioned", "retired"),
             ("decommissioned", "terminated"),
         ] {
-            assert!(validate_transition(from, to).is_ok(), "{from} → {to} must be legal");
+            assert!(
+                validate_transition(from, to).is_ok(),
+                "{from} → {to} must be legal"
+            );
         }
     }
 
@@ -707,7 +722,10 @@ mod tests {
             match err {
                 AppError::Structured(_, code, _, details) => {
                     assert_eq!(code, "ERR_INVALID_TRANSITION");
-                    assert!(details.get("allowed").is_some(), "details must carry allowed list");
+                    assert!(
+                        details.get("allowed").is_some(),
+                        "details must carry allowed list"
+                    );
                 }
                 other => panic!("expected Structured error, got {other:?}"),
             }

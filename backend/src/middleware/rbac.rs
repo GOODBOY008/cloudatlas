@@ -1,6 +1,6 @@
+use crate::error::{AppError, AppResult};
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::error::{AppError, AppResult};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Permission {
@@ -38,7 +38,7 @@ pub async fn require_permission(
            JOIN user_roles ur ON ur.user_id = om.user_id AND ur.organization_id = om.organization_id
            JOIN roles r ON r.id = ur.role_id
            WHERE om.organization_id = $1 AND om.user_id = $2
-           ORDER BY r.name ASC LIMIT 1"#
+           ORDER BY r.name ASC LIMIT 1"#,
     )
     .bind(org_id)
     .bind(user_id)
@@ -48,9 +48,17 @@ pub async fn require_permission(
     let role_level = match row {
         Some((ref role,)) if role.eq_ignore_ascii_case("owner") => 40,
         Some((ref role,)) if role.eq_ignore_ascii_case("admin") => 30,
-        Some((ref role,)) if role.eq_ignore_ascii_case("finops") || role.eq_ignore_ascii_case("cmdb_editor") => 20,
+        Some((ref role,))
+            if role.eq_ignore_ascii_case("finops") || role.eq_ignore_ascii_case("cmdb_editor") =>
+        {
+            20
+        }
         Some(_) => 10,
-        None => return Err(AppError::Forbidden("Not a member of this organization".into())),
+        None => {
+            return Err(AppError::Forbidden(
+                "Not a member of this organization".into(),
+            ))
+        }
     };
 
     if role_level < permission.required_role_level() {

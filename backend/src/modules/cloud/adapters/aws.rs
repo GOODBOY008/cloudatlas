@@ -31,7 +31,8 @@ impl AwsAdapter {
                 AppError::Validation("AWS credentials missing 'secret_access_key'".into())
             })?
             .to_string();
-        let session_token = creds.get("session_token")
+        let session_token = creds
+            .get("session_token")
             .and_then(Value::as_str)
             .map(str::to_string);
         let default_region = config
@@ -179,17 +180,11 @@ impl CloudAdapter for AwsAdapter {
                         let res_region = Self::az_to_region(&az);
                         let vcpus = inst
                             .cpu_options()
-                            .and_then(|c| {
-                                Some(
-                                    c.core_count().unwrap_or(0)
-                                        * c.threads_per_core().unwrap_or(1),
-                                )
+                            .map(|c| {
+                                c.core_count().unwrap_or(0) * c.threads_per_core().unwrap_or(1)
                             })
                             .unwrap_or(0);
-                        let platform = inst
-                            .platform_details()
-                            .unwrap_or("Linux/UNIX")
-                            .to_string();
+                        let platform = inst.platform_details().unwrap_or("Linux/UNIX").to_string();
 
                         out.push(DiscoveredResource {
                             cloud_resource_id: id,
@@ -285,10 +280,7 @@ impl CloudAdapter for AwsAdapter {
                 .map_err(|e| AppError::Internal(anyhow!("AWS EC2 DescribeAddresses: {e}")))?;
 
             for addr in resp.addresses() {
-                let allocation_id = addr
-                    .allocation_id()
-                    .unwrap_or_default()
-                    .to_string();
+                let allocation_id = addr.allocation_id().unwrap_or_default().to_string();
                 let public_ip = addr.public_ip().unwrap_or_default().to_string();
                 let name = addr
                     .tags()
@@ -297,8 +289,8 @@ impl CloudAdapter for AwsAdapter {
                     .and_then(|t| t.value())
                     .unwrap_or(&public_ip)
                     .to_string();
-                let associated = addr.instance_id().is_some()
-                    || addr.network_interface_id().is_some();
+                let associated =
+                    addr.instance_id().is_some() || addr.network_interface_id().is_some();
 
                 out.push(DiscoveredResource {
                     cloud_resource_id: allocation_id.clone(),
@@ -330,9 +322,7 @@ impl CloudAdapter for AwsAdapter {
                 let resp = req
                     .send()
                     .await
-                    .map_err(|e| {
-                        AppError::Internal(anyhow!("AWS RDS DescribeDBInstances: {e}"))
-                    })?;
+                    .map_err(|e| AppError::Internal(anyhow!("AWS RDS DescribeDBInstances: {e}")))?;
 
                 for db in resp.db_instances() {
                     let id = db.db_instance_identifier().unwrap_or_default().to_string();
@@ -343,10 +333,7 @@ impl CloudAdapter for AwsAdapter {
                     let storage = db.allocated_storage().unwrap_or(0);
                     let az = db.availability_zone().unwrap_or_default().to_string();
                     let multi_az = db.multi_az().unwrap_or(false);
-                    let endpoint = db
-                        .endpoint()
-                        .and_then(|e| e.address())
-                        .map(str::to_string);
+                    let endpoint = db.endpoint().and_then(|e| e.address()).map(str::to_string);
 
                     out.push(DiscoveredResource {
                         cloud_resource_id: id.clone(),

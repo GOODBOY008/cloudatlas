@@ -15,14 +15,12 @@ use crate::{
 };
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -30,7 +28,7 @@ async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> Ap
 // Service Templates
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct CreateServiceTemplateRequest {
     pub name: String,
     pub display_name: Option<String>,
@@ -39,7 +37,7 @@ pub struct CreateServiceTemplateRequest {
     pub tags: Option<Value>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct UpdateServiceTemplateRequest {
     pub display_name: Option<String>,
     pub description: Option<String>,
@@ -48,7 +46,7 @@ pub struct UpdateServiceTemplateRequest {
     pub is_active: Option<bool>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct AddTemplateItemRequest {
     pub ci_type_id: Uuid,
     pub role: Option<String>,
@@ -112,7 +110,9 @@ pub async fn list_service_templates(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_service_template(
@@ -442,7 +442,7 @@ pub async fn remove_template_item(
 // CI Apply Rules  (Host Apply equivalent)
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct CreateCiApplyRuleRequest {
     pub ci_type_id: Uuid,
     pub name: String,
@@ -452,7 +452,7 @@ pub struct CreateCiApplyRuleRequest {
     pub priority: Option<i32>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct UpdateCiApplyRuleRequest {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -521,7 +521,9 @@ pub async fn list_ci_apply_rules(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_ci_apply_rule(
@@ -537,10 +539,14 @@ pub async fn create_ci_apply_rule(
         return Err(AppError::Validation("Rule name cannot be empty".into()));
     }
     if !body.conditions.is_array() {
-        return Err(AppError::Validation("conditions must be a JSON array".into()));
+        return Err(AppError::Validation(
+            "conditions must be a JSON array".into(),
+        ));
     }
     if !body.attributes.is_object() {
-        return Err(AppError::Validation("attributes must be a JSON object".into()));
+        return Err(AppError::Validation(
+            "attributes must be a JSON object".into(),
+        ));
     }
 
     let row = sqlx::query(
@@ -772,7 +778,7 @@ pub async fn execute_ci_apply_rule(
 // Field Templates
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct CreateFieldTemplateRequest {
     pub name: String,
     pub display_name: Option<String>,
@@ -780,7 +786,7 @@ pub struct CreateFieldTemplateRequest {
     pub attributes: Value, // array of attribute definitions
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct UpdateFieldTemplateRequest {
     pub display_name: Option<String>,
     pub description: Option<String>,
@@ -833,7 +839,9 @@ pub async fn list_field_templates(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_field_template(
@@ -851,7 +859,9 @@ pub async fn create_field_template(
         ));
     }
     if !body.attributes.is_array() {
-        return Err(AppError::Validation("attributes must be a JSON array".into()));
+        return Err(AppError::Validation(
+            "attributes must be a JSON array".into(),
+        ));
     }
 
     let row = sqlx::query(
@@ -987,12 +997,10 @@ pub async fn delete_field_template(
     .await;
 
     // Remove any CI type references
-    sqlx::query(
-        "DELETE FROM ci_type_field_templates WHERE template_id = $1",
-    )
-    .bind(tmpl_id)
-    .execute(&state.db)
-    .await?;
+    sqlx::query("DELETE FROM ci_type_field_templates WHERE template_id = $1")
+        .bind(tmpl_id)
+        .execute(&state.db)
+        .await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -1009,7 +1017,7 @@ pub struct CreateUniqueConstraintRequest {
     pub attr_names: Vec<String>,
 }
 
-/// GET /api/v1/orgs/:org_id/ci-types/:type_id/unique-constraints
+/// GET /api/v1/orgs/{org_id}/ci-types/{type_id}/unique-constraints
 #[utoipa::path(
     get,
     path = "/api/v1/orgs/{org_id}/ci-types/{type_id}/unique-constraints",
@@ -1070,7 +1078,7 @@ pub async fn list_unique_constraints(
     Ok(Json(json!({ "data": data, "total": data.len() })))
 }
 
-/// POST /api/v1/orgs/:org_id/ci-types/:type_id/unique-constraints
+/// POST /api/v1/orgs/{org_id}/ci-types/{type_id}/unique-constraints
 #[utoipa::path(
     post,
     path = "/api/v1/orgs/{org_id}/ci-types/{type_id}/unique-constraints",
@@ -1097,7 +1105,9 @@ pub async fn create_unique_constraint(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     if body.name.trim().is_empty() {
-        return Err(AppError::Validation("Constraint name cannot be empty".into()));
+        return Err(AppError::Validation(
+            "Constraint name cannot be empty".into(),
+        ));
     }
     if body.attr_names.is_empty() || body.attr_names.len() > 5 {
         return Err(AppError::Validation(
@@ -1183,7 +1193,7 @@ pub async fn create_unique_constraint(
     ))
 }
 
-/// DELETE /api/v1/orgs/:org_id/unique-constraints/:id
+/// DELETE /api/v1/orgs/{org_id}/unique-constraints/{id}
 #[utoipa::path(
     delete,
     path = "/api/v1/orgs/{org_id}/unique-constraints/{id}",
@@ -1237,7 +1247,6 @@ pub async fn delete_unique_constraint(
     Ok(StatusCode::NO_CONTENT)
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Field Template Binding & Apply (T10 — gap closure)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1248,14 +1257,14 @@ pub struct BindFieldTemplateRequest {
     pub ci_type_ids: Vec<Uuid>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct ApplyFieldTemplateRequest {
     pub ci_type_ids: Vec<Uuid>,
     /// When true, return the planned changes without writing.
     pub dry_run: Option<bool>,
 }
 
-/// POST /api/v1/orgs/:org_id/field-templates/:id/bind
+/// POST /api/v1/orgs/{org_id}/field-templates/{id}/bind
 #[utoipa::path(
     post,
     path = "/api/v1/orgs/{org_id}/field-templates/{id}/bind",
@@ -1333,10 +1342,12 @@ pub async fn bind_field_template(
     )
     .await;
 
-    Ok(Json(json!({ "data": { "template_id": tmpl_id, "bound_ci_type_ids": bound } })))
+    Ok(Json(
+        json!({ "data": { "template_id": tmpl_id, "bound_ci_type_ids": bound } }),
+    ))
 }
 
-/// DELETE /api/v1/orgs/:org_id/field-templates/:id/unbind
+/// DELETE /api/v1/orgs/{org_id}/field-templates/{id}/unbind
 #[utoipa::path(
     delete,
     path = "/api/v1/orgs/{org_id}/field-templates/{id}/unbind",
@@ -1393,10 +1404,12 @@ pub async fn unbind_field_template(
     )
     .await;
 
-    Ok(Json(json!({ "data": { "template_id": tmpl_id, "unbound_ci_type_ids": body.ci_type_ids } })))
+    Ok(Json(
+        json!({ "data": { "template_id": tmpl_id, "unbound_ci_type_ids": body.ci_type_ids } }),
+    ))
 }
 
-/// GET /api/v1/orgs/:org_id/field-templates/:id/types
+/// GET /api/v1/orgs/{org_id}/field-templates/{id}/types
 #[utoipa::path(
     get,
     path = "/api/v1/orgs/{org_id}/field-templates/{id}/types",
@@ -1463,16 +1476,25 @@ struct AttrExisting {
 /// `ci_attributes` row. Returns the diff entry (None when identical).
 fn attr_conflicts(tmpl_attr: &Value, existing: &AttrExisting) -> Option<Value> {
     let mut diffs: Vec<String> = Vec::new();
-    let t_type = tmpl_attr.get("attribute_type").and_then(|v| v.as_str()).unwrap_or("string");
+    let t_type = tmpl_attr
+        .get("attribute_type")
+        .and_then(|v| v.as_str())
+        .unwrap_or("string");
     let e_type = existing.attribute_type.as_deref().unwrap_or("string");
     if t_type != e_type {
         diffs.push(format!("attribute_type: {e_type:?} → {t_type:?}"));
     }
-    let t_req = tmpl_attr.get("is_required").and_then(|v| v.as_bool()).unwrap_or(false);
+    let t_req = tmpl_attr
+        .get("is_required")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     if t_req != existing.is_required {
         diffs.push(format!("is_required: {} → {t_req}", existing.is_required));
     }
-    let t_uniq = tmpl_attr.get("is_unique").and_then(|v| v.as_bool()).unwrap_or(false);
+    let t_uniq = tmpl_attr
+        .get("is_unique")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     if t_uniq != existing.is_unique {
         diffs.push(format!("is_unique: {} → {t_uniq}", existing.is_unique));
     }
@@ -1492,7 +1514,7 @@ fn attr_conflicts(tmpl_attr: &Value, existing: &AttrExisting) -> Option<Value> {
     }
 }
 
-/// GET /api/v1/orgs/:org_id/field-templates/:id/diff/:type_id
+/// GET /api/v1/orgs/{org_id}/field-templates/{id}/diff/{type_id}
 ///
 /// Template attributes vs the type's current attributes:
 /// `added` (template-only), `conflicts` (both, differing), `extra` (type-only).
@@ -1545,7 +1567,8 @@ pub async fn field_template_diff(
     .fetch_all(&state.db)
     .await?;
 
-    let mut existing: std::collections::HashMap<String, AttrExisting> = std::collections::HashMap::new();
+    let mut existing: std::collections::HashMap<String, AttrExisting> =
+        std::collections::HashMap::new();
     for r in &existing_rows {
         let name: String = r.try_get("name").unwrap_or_default();
         existing.insert(
@@ -1572,7 +1595,11 @@ pub async fn field_template_diff(
 
     if let Some(arr) = attributes.as_array() {
         for attr in arr {
-            let name = attr.get("name").and_then(|n| n.as_str()).unwrap_or_default().to_string();
+            let name = attr
+                .get("name")
+                .and_then(|n| n.as_str())
+                .unwrap_or_default()
+                .to_string();
             match existing.get(&name) {
                 None => added.push(attr.clone()),
                 Some(ex) => {
@@ -1601,7 +1628,7 @@ pub async fn field_template_diff(
     })))
 }
 
-/// POST /api/v1/orgs/:org_id/field-templates/:id/apply
+/// POST /api/v1/orgs/{org_id}/field-templates/{id}/apply
 ///
 /// Syncs the template's attribute definitions onto the bound (or given) CI
 /// types: missing attributes are created, conflicting definitions are
@@ -1653,10 +1680,22 @@ pub async fn apply_field_template(
     // Validate every template attribute's type up front — a bad enum value
     // must fail the whole apply, not half-apply.
     for attr in &attrs {
-        let ty = attr.get("attribute_type").and_then(|v| v.as_str()).unwrap_or("string");
+        let ty = attr
+            .get("attribute_type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("string");
         let known = [
-            "string", "integer", "float", "boolean", "datetime", "enum", "list", "json", "url",
-            "ip_address", "cidr",
+            "string",
+            "integer",
+            "float",
+            "boolean",
+            "datetime",
+            "enum",
+            "list",
+            "json",
+            "url",
+            "ip_address",
+            "cidr",
         ];
         if !known.contains(&ty) {
             return Err(AppError::Validation(format!(
@@ -1698,14 +1737,29 @@ pub async fn apply_field_template(
         let mut updated_attrs: Vec<String> = Vec::new();
 
         for attr in &attrs {
-            let name = attr.get("name").and_then(|v| v.as_str()).unwrap_or_default();
+            let name = attr
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default();
             if name.is_empty() {
                 continue;
             }
-            let display_name = attr.get("display_name").and_then(|v| v.as_str()).unwrap_or(name);
-            let ty = attr.get("attribute_type").and_then(|v| v.as_str()).unwrap_or("string");
-            let is_required = attr.get("is_required").and_then(|v| v.as_bool()).unwrap_or(false);
-            let is_unique = attr.get("is_unique").and_then(|v| v.as_bool()).unwrap_or(false);
+            let display_name = attr
+                .get("display_name")
+                .and_then(|v| v.as_str())
+                .unwrap_or(name);
+            let ty = attr
+                .get("attribute_type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("string");
+            let is_required = attr
+                .get("is_required")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let is_unique = attr
+                .get("is_unique")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
             let default_value = attr.get("default_value").and_then(|v| v.as_str());
             let enum_values = attr.get("enum_values");
 

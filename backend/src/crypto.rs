@@ -12,7 +12,7 @@ use aes_gcm::{
     Aes256Gcm, Nonce,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use rand::RngCore;
+use rand::TryRng;
 
 /// Versioned envelope prefix marking AES-256-GCM ciphertext.
 const ENVELOPE_V1: &str = "v1:";
@@ -34,7 +34,9 @@ pub fn key_from_hex(hex: &str) -> Option<[u8; 32]> {
 pub fn encrypt(key: &[u8; 32], plaintext: &[u8]) -> String {
     let cipher = Aes256Gcm::new_from_slice(key).expect("AES-256-GCM accepts 32-byte keys");
     let mut nonce_bytes = [0u8; 12];
-    rand::thread_rng().fill_bytes(&mut nonce_bytes);
+    rand::rng()
+        .try_fill_bytes(&mut nonce_bytes)
+        .expect("infallible");
     let nonce = Nonce::from_slice(&nonce_bytes);
     let ciphertext = cipher
         .encrypt(nonce, plaintext)
@@ -94,7 +96,10 @@ mod tests {
     fn decrypt_legacy_base64_fallback() {
         let key = test_key();
         let legacy = BASE64.encode(b"{\"legacy\":true}");
-        assert_eq!(decrypt(&key, &legacy).as_deref(), Some(b"{\"legacy\":true}".as_slice()));
+        assert_eq!(
+            decrypt(&key, &legacy).as_deref(),
+            Some(b"{\"legacy\":true}".as_slice())
+        );
     }
 
     #[test]

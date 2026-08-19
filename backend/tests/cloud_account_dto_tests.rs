@@ -2,7 +2,6 @@
 /// `credentials` and `config` must deserialize with defaults so the UI's
 /// `{name, provider, external_id}` payload is accepted for mock/local
 /// accounts, while real providers can still send full credentials.
-
 use cloudatlas_lib::modules::cloud::dto::CreateCloudAccountRequest;
 use serde_json::json;
 
@@ -39,9 +38,10 @@ fn create_account_request_null_credentials_still_deserializes() {
     // Explicit nulls deserialize as JSON null (Value::Null) — the handler
     // serializes whatever it gets back to JSON for encryption, so this is
     // accepted; the point is it must not be a hard 400.
-    let body: CreateCloudAccountRequest =
-        serde_json::from_value(json!({ "name": "N", "provider": "mock", "credentials": null, "config": null }))
-            .expect("null credentials should not break deserialization");
+    let body: CreateCloudAccountRequest = serde_json::from_value(
+        json!({ "name": "N", "provider": "mock", "credentials": null, "config": null }),
+    )
+    .expect("null credentials should not break deserialization");
     assert!(body.credentials.is_null());
 }
 
@@ -51,7 +51,9 @@ use cloudatlas_lib::modules::cloud::credentials::{credentials_have_content, vali
 
 #[test]
 fn credentials_have_content_detects_real_objects_only() {
-    assert!(credentials_have_content(&json!({ "access_key_id": "AKIA" })));
+    assert!(credentials_have_content(
+        &json!({ "access_key_id": "AKIA" })
+    ));
     assert!(!credentials_have_content(&json!({})));
     assert!(!credentials_have_content(&serde_json::Value::Null));
     assert!(!credentials_have_content(&serde_json::json!("__CLEAR__")));
@@ -84,7 +86,9 @@ fn validate_credentials_covers_azure_and_gcp_shapes() {
     )
     .is_ok());
     assert!(validate_credentials("azure", &json!({ "client_id": "c" })).is_err());
-    assert!(validate_credentials("gcp", &json!({ "access_token": "t", "project_id": "p" })).is_ok());
+    assert!(
+        validate_credentials("gcp", &json!({ "access_token": "t", "project_id": "p" })).is_ok()
+    );
     assert!(validate_credentials("gcp", &json!({ "access_token": "t" })).is_err());
 }
 
@@ -96,7 +100,9 @@ fn validate_credentials_is_permissive_for_mock_and_other() {
 
 #[test]
 fn validate_credentials_rejects_non_object_values() {
-    let err = validate_credentials("aws", &json!("garbage")).unwrap_err().to_string();
+    let err = validate_credentials("aws", &json!("garbage"))
+        .unwrap_err()
+        .to_string();
     assert!(err.contains("object"), "got: {err}");
 }
 

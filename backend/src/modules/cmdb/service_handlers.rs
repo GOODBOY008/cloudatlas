@@ -15,19 +15,13 @@ use crate::{
     state::AppState,
 };
 
-async fn ensure_org_member(
-    db: &sqlx::PgPool,
-    org_id: Uuid,
-    user_id: Uuid,
-) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -97,7 +91,9 @@ pub async fn list_services(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_service(
@@ -229,7 +225,9 @@ pub async fn update_service(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Service {service_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Service {service_id} not found"
+        )));
     }
 
     // T4: model-layer audit.
@@ -246,7 +244,9 @@ pub async fn update_service(
     )
     .await;
 
-    Ok(Json(json!({ "data": { "id": service_id, "message": "Updated" } })))
+    Ok(Json(
+        json!({ "data": { "id": service_id, "message": "Updated" } }),
+    ))
 }
 
 pub async fn delete_service(
@@ -266,7 +266,9 @@ pub async fn delete_service(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Service {service_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Service {service_id} not found"
+        )));
     }
 
     // T4: model-layer audit.
@@ -304,7 +306,9 @@ pub async fn list_service_cis(
     .await?;
 
     if service.is_none() {
-        return Err(AppError::NotFound(format!("Service {service_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Service {service_id} not found"
+        )));
     }
 
     let bounds = page.resolve(50, 200);
@@ -342,7 +346,9 @@ pub async fn list_service_cis(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn add_service_ci(
@@ -363,7 +369,9 @@ pub async fn add_service_ci(
     .await?;
 
     if service.is_none() {
-        return Err(AppError::NotFound(format!("Service {service_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Service {service_id} not found"
+        )));
     }
 
     let id = Uuid::new_v4();

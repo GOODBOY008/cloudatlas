@@ -45,9 +45,7 @@ async fn main() -> anyhow::Result<()> {
         );
     }
     if cfg.encryption_key.chars().all(|c| c == '0') {
-        warn!(
-            "ENCRYPTION_KEY is all zeros — safe for local dev, DO NOT use in production"
-        );
+        warn!("ENCRYPTION_KEY is all zeros — safe for local dev, DO NOT use in production");
     }
 
     // Refuse weak JWT secrets: rotation is supported by restarting with a new

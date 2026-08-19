@@ -16,7 +16,9 @@ pub fn validate_tags(tags: &Value) -> AppResult<()> {
             .as_str()
             .ok_or_else(|| AppError::Validation(format!("tag '{key}' must be a string value")))?;
         if v.trim().is_empty() {
-            return Err(AppError::Validation(format!("tag '{key}' must not be empty")));
+            return Err(AppError::Validation(format!(
+                "tag '{key}' must not be empty"
+            )));
         }
     }
     Ok(())
@@ -47,7 +49,9 @@ mod tests {
 
     #[test]
     fn accepts_valid_keys() {
-        assert!(validate_tags(&serde_json::json!({ "env": "prod", "team.name": "platform" })).is_ok());
+        assert!(
+            validate_tags(&serde_json::json!({ "env": "prod", "team.name": "platform" })).is_ok()
+        );
         assert!(validate_tags(&serde_json::json!({ "k8s-label_1": "x" })).is_ok());
     }
 

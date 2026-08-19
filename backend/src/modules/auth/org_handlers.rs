@@ -1,6 +1,6 @@
 use axum::{
-    http::StatusCode,
     extract::{Extension, Path, State},
+    http::StatusCode,
     Json,
 };
 use chrono::Utc;
@@ -9,14 +9,14 @@ use serde_json::{json, Value};
 use sqlx::Row;
 use uuid::Uuid;
 
-use crate::{
-    error::{AppError, AppResult},
-    state::AppState,
-};
 use super::{
     dto::{CreateOrgRequest, MemberResponse, OrganizationResponse, UpdateOrgRequest},
     models::Organization,
     service::{make_slug, Claims},
+};
+use crate::{
+    error::{AppError, AppResult},
+    state::AppState,
 };
 
 // ─── List organizations for current user ─────────────────────────────────────
@@ -74,7 +74,8 @@ pub async fn create_org(
 ) -> AppResult<(axum::http::StatusCode, Json<Value>)> {
     let user_id = claims.user_id()?;
 
-    crate::utils::validate::name(&body.name, 100, "Organization name").map_err(AppError::Validation)?;
+    crate::utils::validate::name(&body.name, 100, "Organization name")
+        .map_err(AppError::Validation)?;
 
     let name = body.name.trim().to_string();
     let slug = body
@@ -306,13 +307,12 @@ pub async fn list_members(
     .fetch_all(&state.db)
     .await?;
 
-    let total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM organization_members WHERE organization_id = $1",
-    )
-    .bind(org_id)
-    .fetch_one(&state.db)
-    .await
-    .unwrap_or(0);
+    let total: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM organization_members WHERE organization_id = $1")
+            .bind(org_id)
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(0);
 
     // One role query for the whole page (was one query per member).
     let role_rows = sqlx::query(
@@ -344,7 +344,10 @@ pub async fn list_members(
                 email: r.try_get("email").unwrap_or_default(),
                 display_name: r.try_get("display_name").unwrap_or_default(),
                 joined_at: r.try_get("joined_at").unwrap_or_else(|_| Utc::now()),
-                roles: roles_by_user.get(&member_user_id).cloned().unwrap_or_default(),
+                roles: roles_by_user
+                    .get(&member_user_id)
+                    .cloned()
+                    .unwrap_or_default(),
             }
         })
         .collect();
@@ -358,19 +361,13 @@ pub async fn list_members(
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /// Return `Forbidden` if `user_id` is not a member of `org_id`.
-async fn ensure_member(
-    db: &sqlx::PgPool,
-    org_id: Uuid,
-    user_id: Uuid,
-) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("You are not a member of this organization".into()))?;
+async fn ensure_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("You are not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -407,7 +404,9 @@ pub async fn invite_member(
         .fetch_optional(&state.db)
         .await?;
     if exists.is_none() {
-        return Err(AppError::NotFound(format!("User {target_user_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "User {target_user_id} not found"
+        )));
     }
 
     // Insert — ignore if already a member
@@ -463,13 +462,12 @@ pub async fn remove_member(
     let caller_id = claims.user_id()?;
     ensure_member(&state.db, org_id, caller_id).await?;
 
-    let result = sqlx::query(
-        "DELETE FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(target_user_id)
-    .execute(&state.db)
-    .await?;
+    let result =
+        sqlx::query("DELETE FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+            .bind(org_id)
+            .bind(target_user_id)
+            .execute(&state.db)
+            .await?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound(format!(
@@ -517,13 +515,11 @@ pub async fn update_member_role(
 
     let mut tx = state.db.begin().await?;
 
-    sqlx::query(
-        "DELETE FROM user_roles WHERE user_id = $1 AND organization_id = $2",
-    )
-    .bind(target_user_id)
-    .bind(org_id)
-    .execute(tx.as_mut())
-    .await?;
+    sqlx::query("DELETE FROM user_roles WHERE user_id = $1 AND organization_id = $2")
+        .bind(target_user_id)
+        .bind(org_id)
+        .execute(tx.as_mut())
+        .await?;
 
     sqlx::query(
         r#"INSERT INTO user_roles (user_id, role_id, organization_id, assigned_at, assigned_by)
@@ -548,7 +544,6 @@ pub async fn update_member_role(
     })))
 }
 
-
 // ─── Invites (product gap C1) ─────────────────────────────────────────────────
 
 #[derive(Deserialize)]
@@ -562,7 +557,7 @@ fn default_invite_role() -> String {
     "Member".into()
 }
 
-/// POST /organizations/:org_id/invites — email-based invite with accept token.
+/// POST /organizations/{org_id}/invites — email-based invite with accept token.
 pub async fn create_invite(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -593,12 +588,11 @@ pub async fn create_invite(
     .await?;
 
     // Best-effort email with the accept link.
-    if let Ok(org_name) = sqlx::query_scalar::<_, String>(
-        "SELECT name FROM organizations WHERE id = $1",
-    )
-    .bind(org_id)
-    .fetch_one(&state.db)
-    .await
+    if let Ok(org_name) =
+        sqlx::query_scalar::<_, String>("SELECT name FROM organizations WHERE id = $1")
+            .bind(org_id)
+            .fetch_one(&state.db)
+            .await
     {
         let _ = crate::utils::email::send_email(
             &state,
@@ -619,7 +613,7 @@ pub async fn create_invite(
     ))
 }
 
-/// GET /organizations/:org_id/invites — pending invites.
+/// GET /organizations/{org_id}/invites — pending invites.
 pub async fn list_invites(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -654,7 +648,7 @@ pub async fn list_invites(
     Ok(Json(json!({ "data": data, "total": data.len() })))
 }
 
-/// POST /organizations/:org_id/invites/:invite_id/revoke
+/// POST /organizations/{org_id}/invites/{invite_id}/revoke
 pub async fn revoke_invite(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -663,13 +657,11 @@ pub async fn revoke_invite(
     let caller_id = claims.user_id()?;
     ensure_member(&state.db, org_id, caller_id).await?;
 
-    sqlx::query(
-        "UPDATE invites SET status = 'declined' WHERE id = $1 AND organization_id = $2",
-    )
-    .bind(invite_id)
-    .bind(org_id)
-    .execute(&state.db)
-    .await?;
+    sqlx::query("UPDATE invites SET status = 'declined' WHERE id = $1 AND organization_id = $2")
+        .bind(invite_id)
+        .bind(org_id)
+        .execute(&state.db)
+        .await?;
 
     Ok(Json(json!({ "data": { "message": "Invite revoked" } })))
 }
@@ -713,26 +705,23 @@ pub async fn accept_invite(
     .await?;
 
     // Assign the invited role.
-    if let Ok(role) = sqlx::query(
-        "SELECT id FROM roles WHERE organization_id = $1 AND name = $2",
-    )
-    .bind(org_id)
-    .bind(&role_name)
-    .fetch_optional(&state.db)
-    .await
-    {
-        if let Some(role) = role {
-            let role_id: Uuid = role.get("id");
-            let _ = sqlx::query(
-                "INSERT INTO user_roles (user_id, role_id, organization_id, assigned_at)
-                 VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING",
-            )
-            .bind(user_id)
-            .bind(role_id)
+    if let Ok(Some(role)) =
+        sqlx::query("SELECT id FROM roles WHERE organization_id = $1 AND name = $2")
             .bind(org_id)
-            .execute(&state.db)
-            .await;
-        }
+            .bind(&role_name)
+            .fetch_optional(&state.db)
+            .await
+    {
+        let role_id: Uuid = role.get("id");
+        let _ = sqlx::query(
+            "INSERT INTO user_roles (user_id, role_id, organization_id, assigned_at)
+             VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING",
+        )
+        .bind(user_id)
+        .bind(role_id)
+        .bind(org_id)
+        .execute(&state.db)
+        .await;
     }
 
     sqlx::query("UPDATE invites SET status = 'accepted' WHERE id = $1")
@@ -740,13 +729,15 @@ pub async fn accept_invite(
         .execute(&state.db)
         .await?;
 
-    Ok(Json(json!({ "data": { "organization_id": org_id, "message": "Invite accepted" } })))
+    Ok(Json(
+        json!({ "data": { "organization_id": org_id, "message": "Invite accepted" } }),
+    ))
 }
 
 fn auth_token() -> String {
-    use rand::RngCore;
+    use rand::TryRng;
     let mut bytes = [0u8; 24];
-    rand::thread_rng().fill_bytes(&mut bytes);
+    rand::rng().try_fill_bytes(&mut bytes).expect("infallible");
     hex::encode(bytes)
 }
 

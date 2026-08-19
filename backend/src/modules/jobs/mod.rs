@@ -103,9 +103,9 @@ pub fn job_to_json(j: &JobRow) -> Value {
 
 /// Load a single job (org-scoped).
 pub async fn get_job_row(db: &PgPool, org_id: Uuid, job_id: Uuid) -> AppResult<JobRow> {
-    sqlx::query_as::<_, JobRow>(&format!(
+    sqlx::query_as::<_, JobRow>(sqlx::AssertSqlSafe(&*format!(
         "{JOB_SELECT} WHERE j.id = $1 AND j.organization_id = $2"
-    ))
+    )))
     .bind(job_id)
     .bind(org_id)
     .fetch_optional(db)
@@ -116,11 +116,13 @@ pub async fn get_job_row(db: &PgPool, org_id: Uuid, job_id: Uuid) -> AppResult<J
 /// Load a job by id alone — used by internal machinery (the reaper) where
 /// the org is discovered from the row itself.
 pub async fn get_job_row_any(db: &PgPool, job_id: Uuid) -> AppResult<JobRow> {
-    sqlx::query_as::<_, JobRow>(&format!("{JOB_SELECT} WHERE j.id = $1"))
-        .bind(job_id)
-        .fetch_optional(db)
-        .await?
-        .ok_or_else(|| AppError::NotFound("Job not found".into()))
+    sqlx::query_as::<_, JobRow>(sqlx::AssertSqlSafe(&*format!(
+        "{JOB_SELECT} WHERE j.id = $1"
+    )))
+    .bind(job_id)
+    .fetch_optional(db)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Job not found".into()))
 }
 
 // ─── State machine helpers (§4.2) ─────────────────────────────────────────────
@@ -286,7 +288,10 @@ pub async fn finalize_job(
             return;
         }
     };
-    let account = job.account_name.clone().unwrap_or_else(|| job.cloud_account_id.to_string());
+    let account = job
+        .account_name
+        .clone()
+        .unwrap_or_else(|| job.cloud_account_id.to_string());
     let user_triggered = job.triggered_by != TRIGGERED_BY_SCHEDULER;
     let succeeded = status == "succeeded";
 
@@ -300,26 +305,34 @@ pub async fn finalize_job(
             ),
             (KIND_DISCOVERY, false) => (
                 "资源同步失败",
-                format!("{account}: {}", truncate(error.unwrap_or("unknown error"), 200)),
+                format!(
+                    "{account}: {}",
+                    truncate(error.unwrap_or("unknown error"), 200)
+                ),
             ),
             (KIND_BILLING_IMPORT, true) => {
                 let rows = job.result["raw_rows_inserted"].as_i64().unwrap_or(0);
-                let days = job.result["days_imported"].as_i64().unwrap_or_else(|| {
-                    job.params["days"].as_i64().unwrap_or(0)
-                });
-                (
-                    "账单导入完成",
-                    format!("{account}: {rows} 行 · {days} 天"),
-                )
+                let days = job.result["days_imported"]
+                    .as_i64()
+                    .unwrap_or_else(|| job.params["days"].as_i64().unwrap_or(0));
+                ("账单导入完成", format!("{account}: {rows} 行 · {days} 天"))
             }
             (KIND_BILLING_IMPORT, false) => (
                 "账单导入失败",
-                format!("{account}: {}", truncate(error.unwrap_or("unknown error"), 200)),
+                format!(
+                    "{account}: {}",
+                    truncate(error.unwrap_or("unknown error"), 200)
+                ),
             ),
             _ => return,
         };
         crate::modules::notifications::handlers::create_notification(
-            db, job.organization_id, None, "sync", title, &body,
+            db,
+            job.organization_id,
+            None,
+            "sync",
+            title,
+            &body,
         )
         .await;
     }
@@ -353,7 +366,10 @@ pub async fn finalize_job(
         ),
         (KIND_DISCOVERY, false) => (
             "sync.failed",
-            format!("{account} 资源同步失败: {}", truncate(error.unwrap_or("unknown error"), 120)),
+            format!(
+                "{account} 资源同步失败: {}",
+                truncate(error.unwrap_or("unknown error"), 120)
+            ),
         ),
         (KIND_BILLING_IMPORT, true) => {
             let rows = job.result["raw_rows_inserted"].as_i64().unwrap_or(0);
@@ -361,11 +377,17 @@ pub async fn finalize_job(
                 .as_i64()
                 .or_else(|| job.params["days"].as_i64())
                 .unwrap_or(0);
-            ("billing.imported", format!("{account} 账单导入完成: {rows} 行 · {days} 天"))
+            (
+                "billing.imported",
+                format!("{account} 账单导入完成: {rows} 行 · {days} 天"),
+            )
         }
         (KIND_BILLING_IMPORT, false) => (
             "billing.failed",
-            format!("{account} 账单导入失败: {}", truncate(error.unwrap_or("unknown error"), 120)),
+            format!(
+                "{account} 账单导入失败: {}",
+                truncate(error.unwrap_or("unknown error"), 120)
+            ),
         ),
         _ => return,
     };
@@ -416,7 +438,7 @@ pub struct ListJobsQuery {
     pub page: crate::utils::pagination::PageQuery,
 }
 
-/// GET /orgs/:org_id/jobs — unified job list.
+/// GET /orgs/{org_id}/jobs — unified job list.
 #[utoipa::path(
     get,
     path = "/api/v1/orgs/{org_id}/jobs",
@@ -451,7 +473,7 @@ pub async fn list_jobs(
     let bounds = q.page.resolve(50, 200);
 
     let (final_sql, where_sql, binds) = build_list_query(&q);
-    let mut query = sqlx::query_as::<_, JobRow>(&final_sql).bind(org_id);
+    let mut query = sqlx::query_as::<_, JobRow>(sqlx::AssertSqlSafe(&*final_sql)).bind(org_id);
     for b in &binds {
         query = query.bind(b);
     }
@@ -460,14 +482,17 @@ pub async fn list_jobs(
 
     // COUNT under the identical WHERE so meta.total matches the filtered set.
     let count_sql = format!("SELECT COUNT(*) FROM sync_jobs j{where_sql}");
-    let mut count_query = sqlx::query_scalar::<_, i64>(&count_sql).bind(org_id);
+    let mut count_query =
+        sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(&*count_sql)).bind(org_id);
     for b in &binds {
         count_query = count_query.bind(b);
     }
     let total: i64 = count_query.fetch_one(&state.db).await.unwrap_or(0);
 
     let data: Vec<Value> = jobs.iter().map(job_to_json).collect();
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 /// Compose the filter SQL. `$1` is org_id; every pushed bind occupies the
@@ -487,7 +512,10 @@ fn build_list_query(q: &ListJobsQuery) -> (String, String, Vec<String>) {
     }
     if let Some(account) = q.cloud_account_id {
         binds.push(account.to_string());
-        where_sql.push_str(&format!(" AND j.cloud_account_id = ${}::uuid", binds.len() + 1));
+        where_sql.push_str(&format!(
+            " AND j.cloud_account_id = ${}::uuid",
+            binds.len() + 1
+        ));
     }
     if q.active == Some(true) {
         where_sql.push_str(" AND j.status IN ('pending', 'running')");
@@ -502,7 +530,7 @@ fn build_list_query(q: &ListJobsQuery) -> (String, String, Vec<String>) {
     (final_sql, where_sql, binds)
 }
 
-/// GET /orgs/:org_id/jobs/:job_id — the polling target.
+/// GET /orgs/{org_id}/jobs/{job_id} — the polling target.
 #[utoipa::path(
     get,
     path = "/api/v1/orgs/{org_id}/jobs/{job_id}",
@@ -530,7 +558,7 @@ pub async fn get_job(
     Ok(Json(json!({ "data": job_to_json(&job) })))
 }
 
-/// POST /orgs/:org_id/jobs/:job_id/cancel — cooperative cancel.
+/// POST /orgs/{org_id}/jobs/{job_id}/cancel — cooperative cancel.
 #[utoipa::path(
     post,
     path = "/api/v1/orgs/{org_id}/jobs/{job_id}/cancel",
@@ -587,16 +615,24 @@ mod tests {
         let (sql, where_sql, binds) = build_list_query(&no_query());
         assert_eq!(binds.len(), 0);
         assert!(sql.contains("organization_id = $1"));
-        assert!(sql.ends_with("LIMIT $2 OFFSET $3"), "limit must follow org bind: {sql}");
+        assert!(
+            sql.ends_with("LIMIT $2 OFFSET $3"),
+            "limit must follow org bind: {sql}"
+        );
         assert_eq!(where_sql, " WHERE j.organization_id = $1");
 
         let (sql, _, binds) = build_list_query(&ListJobsQuery {
-            kind: Some("billing_import".into()), active: Some(true), ..no_query()
+            kind: Some("billing_import".into()),
+            active: Some(true),
+            ..no_query()
         });
         assert_eq!(binds, vec!["billing_import".to_string()]);
         assert!(sql.contains("j.job_kind = $2"));
         assert!(sql.contains("IN ('pending', 'running')"));
-        assert!(sql.ends_with("LIMIT $3 OFFSET $4"), "limit must follow the kind bind: {sql}");
+        assert!(
+            sql.ends_with("LIMIT $3 OFFSET $4"),
+            "limit must follow the kind bind: {sql}"
+        );
 
         let (sql, where_sql, binds) = build_list_query(&ListJobsQuery {
             kind: Some("discovery".into()),
@@ -608,18 +644,25 @@ mod tests {
         assert!(sql.contains("j.job_kind = $2"));
         assert!(sql.contains("j.status::text = $3"));
         assert!(sql.contains(&format!("j.cloud_account_id = $4::uuid")));
-        assert!(sql.ends_with("LIMIT $5 OFFSET $6"), "limit must follow all binds: {sql}");
+        assert!(
+            sql.ends_with("LIMIT $5 OFFSET $6"),
+            "limit must follow all binds: {sql}"
+        );
         // COUNT reuses the identical WHERE.
         assert!(where_sql.contains("j.status::text = $3"));
-        assert!(!where_sql.contains("ORDER BY"), "COUNT WHERE must stay order-free");
+        assert!(
+            !where_sql.contains("ORDER BY"),
+            "COUNT WHERE must stay order-free"
+        );
     }
 
     /// Connect to the dev Postgres when it is reachable; otherwise skip.
     /// Keeps `cargo test` green in environments without a database while
     /// exercising the real state machine where one exists.
     async fn dev_pool() -> Option<PgPool> {
-        let url = std::env::var("TEST_DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://cloudatlas:cloudatlas@localhost:5432/cloudatlas".into());
+        let url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
+            "postgres://cloudatlas:cloudatlas@localhost:5432/cloudatlas".into()
+        });
         match sqlx::PgPool::connect(&url).await {
             Ok(pool) => Some(pool),
             Err(e) => {
@@ -662,9 +705,16 @@ mod tests {
         let (org, account) = fixture(&db).await;
 
         // Launch → claim → progress → terminal succeeds.
-        let job = insert_job(&db, org, account, KIND_BILLING_IMPORT, json!({"days": 3}), "11111111-1111-1111-1111-111111111111")
-            .await
-            .expect("insert");
+        let job = insert_job(
+            &db,
+            org,
+            account,
+            KIND_BILLING_IMPORT,
+            json!({"days": 3}),
+            "11111111-1111-1111-1111-111111111111",
+        )
+        .await
+        .expect("insert");
         assert!(claim_job(&db, job.id).await, "worker wins the claim");
         assert!(!claim_job(&db, job.id).await, "second claim loses");
         assert!(report_progress(&db, job.id, "fetching", Some(1), Some(3)).await);
@@ -715,7 +765,10 @@ mod tests {
         assert!(!report_progress(&db, job.id, "upserting", Some(1), Some(9)).await);
         finalize_job(&db, &job, "succeeded", None, json!({}), Some((9, 4, 5))).await;
         let done = get_job_row(&db, org, job.id).await.expect("reload");
-        assert_eq!(done.status, "cancelled", "terminal write must not resurrect");
+        assert_eq!(
+            done.status, "cancelled",
+            "terminal write must not resurrect"
+        );
         assert_eq!(done.phase, None, "progress write must not land");
 
         // Cancelled jobs never notify.
@@ -729,7 +782,10 @@ mod tests {
         assert_eq!(notified, 0);
 
         // A new job of the same kind can start immediately.
-        assert!(find_active_job(&db, account, KIND_DISCOVERY).await.unwrap().is_none());
+        assert!(find_active_job(&db, account, KIND_DISCOVERY)
+            .await
+            .unwrap()
+            .is_none());
 
         cleanup(&db, org).await;
     }
@@ -740,16 +796,30 @@ mod tests {
         let (org, account) = fixture(&db).await;
 
         // Scheduler success → no notification.
-        let ok_job = insert_job(&db, org, account, KIND_DISCOVERY, json!({}), TRIGGERED_BY_SCHEDULER)
-            .await
-            .expect("insert");
+        let ok_job = insert_job(
+            &db,
+            org,
+            account,
+            KIND_DISCOVERY,
+            json!({}),
+            TRIGGERED_BY_SCHEDULER,
+        )
+        .await
+        .expect("insert");
         assert!(claim_job(&db, ok_job.id).await);
         finalize_job(&db, &ok_job, "succeeded", None, json!({}), Some((5, 2, 3))).await;
 
         // Scheduler failure → notification.
-        let bad_job = insert_job(&db, org, account, KIND_BILLING_IMPORT, json!({"days": 1}), TRIGGERED_BY_SCHEDULER)
-            .await
-            .expect("insert");
+        let bad_job = insert_job(
+            &db,
+            org,
+            account,
+            KIND_BILLING_IMPORT,
+            json!({"days": 1}),
+            TRIGGERED_BY_SCHEDULER,
+        )
+        .await
+        .expect("insert");
         assert!(claim_job(&db, bad_job.id).await);
         finalize_job(&db, &bad_job, "failed", Some("boom"), json!({}), None).await;
 
@@ -772,19 +842,42 @@ mod tests {
         let Some(db) = dev_pool().await else { return };
         let (org, account) = fixture(&db).await;
 
-        let job = insert_job(&db, org, account, KIND_BILLING_IMPORT, json!({}), "scheduler")
-            .await
-            .expect("insert");
+        let job = insert_job(
+            &db,
+            org,
+            account,
+            KIND_BILLING_IMPORT,
+            json!({}),
+            "scheduler",
+        )
+        .await
+        .expect("insert");
         // Pending counts as active.
-        assert_eq!(find_active_job(&db, account, KIND_BILLING_IMPORT).await.unwrap(), Some(job.id));
+        assert_eq!(
+            find_active_job(&db, account, KIND_BILLING_IMPORT)
+                .await
+                .unwrap(),
+            Some(job.id)
+        );
         // Cross-kind concurrency is allowed.
-        assert!(find_active_job(&db, account, KIND_DISCOVERY).await.unwrap().is_none());
+        assert!(find_active_job(&db, account, KIND_DISCOVERY)
+            .await
+            .unwrap()
+            .is_none());
 
         assert!(claim_job(&db, job.id).await);
-        assert_eq!(find_active_job(&db, account, KIND_BILLING_IMPORT).await.unwrap(), Some(job.id));
+        assert_eq!(
+            find_active_job(&db, account, KIND_BILLING_IMPORT)
+                .await
+                .unwrap(),
+            Some(job.id)
+        );
 
         finalize_job(&db, &job, "failed", Some("x"), json!({}), None).await;
-        assert!(find_active_job(&db, account, KIND_BILLING_IMPORT).await.unwrap().is_none());
+        assert!(find_active_job(&db, account, KIND_BILLING_IMPORT)
+            .await
+            .unwrap()
+            .is_none());
 
         cleanup(&db, org).await;
     }
@@ -797,19 +890,36 @@ mod tests {
         let Some(db) = dev_pool().await else { return };
         let (org, account) = fixture(&db).await;
 
-        let job = insert_job(&db, org, account, KIND_DISCOVERY, json!({}), TRIGGERED_BY_SCHEDULER)
-            .await
-            .expect("insert");
+        let job = insert_job(
+            &db,
+            org,
+            account,
+            KIND_DISCOVERY,
+            json!({}),
+            TRIGGERED_BY_SCHEDULER,
+        )
+        .await
+        .expect("insert");
         assert!(claim_job(&db, job.id).await);
         // Age the row past the 30-minute staleness bound.
-        sqlx::query("UPDATE sync_jobs SET updated_at = NOW() - INTERVAL '31 minutes' WHERE id = $1")
-            .bind(job.id)
-            .execute(&db)
-            .await
-            .expect("age row");
+        sqlx::query(
+            "UPDATE sync_jobs SET updated_at = NOW() - INTERVAL '31 minutes' WHERE id = $1",
+        )
+        .bind(job.id)
+        .execute(&db)
+        .await
+        .expect("age row");
 
         // The exact terminal write the reaper performs.
-        finalize_job(&db, &job, "failed", Some("worker lost (no progress for 30m)"), json!({}), None).await;
+        finalize_job(
+            &db,
+            &job,
+            "failed",
+            Some("worker lost (no progress for 30m)"),
+            json!({}),
+            None,
+        )
+        .await;
 
         let done = get_job_row(&db, org, job.id).await.expect("reload");
         assert_eq!(done.status, "failed");

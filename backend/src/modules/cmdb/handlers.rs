@@ -18,7 +18,7 @@ use crate::{
 
 use super::{
     dto::{
-        AuditLogResponse, AssociationResponse, CiQuery, CiResponse, CiTypeResponse,
+        AssociationResponse, AuditLogResponse, CiQuery, CiResponse, CiTypeResponse,
         CreateAssociationRequest, CreateCiRequest, CreateCiTypeRequest, ImpactQuery, TopologyQuery,
         UpdateCiRequest, UpdateCiTypeRequest,
     },
@@ -49,11 +49,7 @@ const CI_SELECT: &str = r#"
     FROM cis
 "#;
 
-async fn ensure_org_member(
-    db: &sqlx::PgPool,
-    org_id: Uuid,
-    user_id: Uuid,
-) -> AppResult<()> {
+async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
     let row = sqlx::query(
         "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
     )
@@ -101,6 +97,7 @@ async fn write_audit_log(
 /// ci_association_kind / ci_object_association / service / service_template /
 /// field_template mutations land in the same `ci_audit_logs` trail with
 /// `resource_type` set and `ci_id` NULL.
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn write_model_audit_log(
     db: &sqlx::PgPool,
     org_id: Uuid,
@@ -139,10 +136,7 @@ fn compute_field_changes(old: &Ci, req: &UpdateCiRequest) -> Value {
 
     if let Some(ref new_name) = req.name {
         if *new_name != old.name {
-            changes.insert(
-                "name".into(),
-                json!({ "old": old.name, "new": new_name }),
-            );
+            changes.insert("name".into(), json!({ "old": old.name, "new": new_name }));
         }
     }
     if let Some(ref new_dn) = req.display_name {
@@ -184,9 +178,9 @@ pub async fn list_ci_types(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     // Return builtin CI types (org IS NULL) + org-specific ones.
-    let types = sqlx::query_as::<_, CiType>(&format!(
+    let types = sqlx::query_as::<_, CiType>(sqlx::AssertSqlSafe(&*format!(
         "{CI_TYPE_SELECT} WHERE (organization_id = $1 OR organization_id IS NULL) AND deleted_at IS NULL ORDER BY sort_order ASC, name ASC"
-    ))
+    )))
     .bind(org_id)
     .fetch_all(&state.db)
     .await?;
@@ -214,7 +208,7 @@ pub async fn create_ci_type(
     let now = Utc::now();
     let type_id = Uuid::new_v4();
 
-    let ci_type = sqlx::query_as::<_, CiType>(&format!(
+    let ci_type = sqlx::query_as::<_, CiType>(sqlx::AssertSqlSafe(&*format!(
         r#"
         INSERT INTO ci_types
             (id, organization_id, classification_id, name, display_name, description,
@@ -228,7 +222,7 @@ pub async fn create_ci_type(
         cols = "id, organization_id, classification_id, name, display_name, description, icon,
                 cloud_provider::text AS cloud_provider, is_builtin, is_abstract,
                 parent_type_id, sort_order, created_at, updated_at"
-    ))
+    )))
     .bind(type_id)
     .bind(org_id)
     .bind(body.classification_id)
@@ -279,9 +273,9 @@ pub async fn get_ci_type(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let ci_type = sqlx::query_as::<_, CiType>(&format!(
+    let ci_type = sqlx::query_as::<_, CiType>(sqlx::AssertSqlSafe(&*format!(
         "{CI_TYPE_SELECT} WHERE id = $1 AND (organization_id = $2 OR organization_id IS NULL) AND deleted_at IS NULL"
-    ))
+    )))
     .bind(type_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -304,9 +298,9 @@ pub async fn update_ci_type(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     // Guard: cannot update builtin CI types.
-    let existing = sqlx::query_as::<_, CiType>(&format!(
+    let existing = sqlx::query_as::<_, CiType>(sqlx::AssertSqlSafe(&*format!(
         "{CI_TYPE_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-    ))
+    )))
     .bind(type_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -314,12 +308,14 @@ pub async fn update_ci_type(
     .ok_or_else(|| AppError::NotFound("CI type not found or is a builtin".into()))?;
 
     if existing.is_builtin {
-        return Err(AppError::Forbidden("Cannot modify a builtin CI type".into()));
+        return Err(AppError::Forbidden(
+            "Cannot modify a builtin CI type".into(),
+        ));
     }
 
     let now = Utc::now();
 
-    let ci_type = sqlx::query_as::<_, CiType>(&format!(
+    let ci_type = sqlx::query_as::<_, CiType>(sqlx::AssertSqlSafe(&*format!(
         r#"
         UPDATE ci_types
         SET
@@ -334,7 +330,7 @@ pub async fn update_ci_type(
         cols = "id, organization_id, classification_id, name, display_name, description, icon,
                 cloud_provider::text AS cloud_provider, is_builtin, is_abstract,
                 parent_type_id, sort_order, created_at, updated_at"
-    ))
+    )))
     .bind(type_id)
     .bind(org_id)
     .bind(body.display_name.as_deref())
@@ -390,7 +386,10 @@ pub async fn list_cis(
     let bounds = q.page.resolve(50, 200);
     let (limit, offset) = (bounds.limit, bounds.offset);
 
-    let mut conditions = vec!["c.organization_id = $1".to_string(), "c.deleted_at IS NULL".to_string()];
+    let mut conditions = vec![
+        "c.organization_id = $1".to_string(),
+        "c.deleted_at IS NULL".to_string(),
+    ];
     let mut bind_idx = 2usize;
 
     if q.ci_type_id.is_some() {
@@ -410,7 +409,9 @@ pub async fn list_cis(
         bind_idx += 1;
     }
     if q.search.is_some() {
-        conditions.push(format!("(c.name ILIKE ${bind_idx} OR c.cloud_resource_id ILIKE ${bind_idx})"));
+        conditions.push(format!(
+            "(c.name ILIKE ${bind_idx} OR c.cloud_resource_id ILIKE ${bind_idx})"
+        ));
         bind_idx += 1;
     }
 
@@ -433,7 +434,7 @@ pub async fn list_cis(
         bind_idx + 1
     );
 
-    let mut query = sqlx::query_as::<_, Ci>(&sql).bind(org_id);
+    let mut query = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*sql)).bind(org_id);
 
     if let Some(v) = q.ci_type_id {
         query = query.bind(v);
@@ -455,7 +456,8 @@ pub async fn list_cis(
 
     // COUNT under the identical WHERE so meta.total matches the filtered set.
     let count_sql = format!("SELECT COUNT(*) FROM cis c WHERE {where_clause}");
-    let mut count_query = sqlx::query_scalar::<_, i64>(&count_sql).bind(org_id);
+    let mut count_query =
+        sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(&*count_sql)).bind(org_id);
     if let Some(v) = q.ci_type_id {
         count_query = count_query.bind(v);
     }
@@ -488,7 +490,9 @@ pub async fn list_cis(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 // ─── create_ci ────────────────────────────────────────────────────────────────
@@ -520,8 +524,14 @@ pub async fn create_ci(
 
     let now = Utc::now();
     let ci_id = Uuid::new_v4();
-    let meta = body.meta.clone().unwrap_or(Value::Object(Default::default()));
-    let tags = body.tags.clone().unwrap_or(Value::Object(Default::default()));
+    let meta = body
+        .meta
+        .clone()
+        .unwrap_or(Value::Object(Default::default()));
+    let tags = body
+        .tags
+        .clone()
+        .unwrap_or(Value::Object(Default::default()));
 
     // T1: enforce ci_attributes definitions (type / required / enum / regex).
     let attr_defs = super::validation::load_attr_defs(&state.db, body.ci_type_id).await?;
@@ -533,7 +543,7 @@ pub async fn create_ci(
     super::validation::check_unique_constraints(&state.db, org_id, body.ci_type_id, &meta, None)
         .await?;
 
-    let ci = sqlx::query_as::<_, Ci>(&format!(
+    let ci = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
         r#"
         INSERT INTO cis
             (id, organization_id, ci_type_id, cloud_resource_id,
@@ -550,7 +560,7 @@ pub async fn create_ci(
                 cloud_provider::text AS cloud_provider, cloud_region, name, display_name,
                 meta, tags, lifecycle_state::text AS lifecycle_state,
                 parent_ci_id, pool_id, discovered_at, created_at, updated_at"
-    ))
+    )))
     .bind(ci_id)
     .bind(org_id)
     .bind(body.ci_type_id)
@@ -572,9 +582,25 @@ pub async fn create_ci(
         }
     })?;
 
-    write_audit_log(&state.db, ci_id, org_id, Some(user_id), "create", None, "user").await;
+    write_audit_log(
+        &state.db,
+        ci_id,
+        org_id,
+        Some(user_id),
+        "create",
+        None,
+        "user",
+    )
+    .await;
 
-    super::events::emit_ci_event(&state.db, org_id, super::events::EVENT_CI_CREATED, &ci, json!({})).await;
+    super::events::emit_ci_event(
+        &state.db,
+        org_id,
+        super::events::EVENT_CI_CREATED,
+        &ci,
+        json!({}),
+    )
+    .await;
 
     let ci_type_name = fetch_ci_type_name(&state.db, ci.ci_type_id).await?;
     let resp = ci_to_response(ci, ci_type_name);
@@ -605,9 +631,9 @@ pub async fn get_ci(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let ci = sqlx::query_as::<_, Ci>(&format!(
+    let ci = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
         "{CI_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-    ))
+    )))
     .bind(ci_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -631,9 +657,9 @@ pub async fn update_ci(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     // Fetch current state for audit diff.
-    let old = sqlx::query_as::<_, Ci>(&format!(
+    let old = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
         "{CI_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-    ))
+    )))
     .bind(ci_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -706,7 +732,7 @@ pub async fn update_ci(
     let field_changes = compute_field_changes(&old, &body);
     let now = Utc::now();
 
-    let ci = sqlx::query_as::<_, Ci>(&format!(
+    let ci = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
         r#"
         UPDATE cis
         SET
@@ -728,7 +754,7 @@ pub async fn update_ci(
                 cloud_provider::text AS cloud_provider, cloud_region, name, display_name,
                 meta, tags, lifecycle_state::text AS lifecycle_state,
                 parent_ci_id, pool_id, discovered_at, created_at, updated_at"
-    ))
+    )))
     .bind(ci_id)
     .bind(org_id)
     .bind(body.name.as_deref())
@@ -777,7 +803,10 @@ pub async fn update_ci(
     }
 
     // Fire-and-forget drift detection against any active baseline
-    let _ = check_ci_drift(&state.db, ci_id, org_id);
+    let drift_db = state.db.clone();
+    tokio::spawn(async move {
+        let _ = check_ci_drift(&drift_db, ci_id, org_id).await;
+    });
 
     // Change events: lifecycle transitions get a dedicated event type.
     if lifecycle_changed {
@@ -815,7 +844,7 @@ pub struct LifecycleTransitionRequest {
     pub reason: Option<String>,
 }
 
-/// PATCH /api/v1/orgs/:org_id/cis/:ci_id/lifecycle
+/// PATCH /api/v1/orgs/{org_id}/cis/{ci_id}/lifecycle
 ///
 /// Dedicated lifecycle transition endpoint. Enforces the global transition
 /// matrix (422 `ERR_INVALID_TRANSITION` with the legal successor list),
@@ -846,9 +875,9 @@ pub async fn transition_ci_lifecycle(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let old = sqlx::query_as::<_, Ci>(&format!(
+    let old = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
         "{CI_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-    ))
+    )))
     .bind(ci_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -858,7 +887,7 @@ pub async fn transition_ci_lifecycle(
     super::validation::validate_transition(&old.lifecycle_state, &body.to_state)?;
 
     let now = Utc::now();
-    let ci = sqlx::query_as::<_, Ci>(&format!(
+    let ci = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
         r#"
         UPDATE cis
         SET lifecycle_state = $3::ci_lifecycle_state, updated_at = $4
@@ -869,7 +898,7 @@ pub async fn transition_ci_lifecycle(
                 cloud_provider::text AS cloud_provider, cloud_region, name, display_name,
                 meta, tags, lifecycle_state::text AS lifecycle_state,
                 parent_ci_id, pool_id, discovered_at, created_at, updated_at"
-    ))
+    )))
     .bind(ci_id)
     .bind(org_id)
     .bind(&body.to_state)
@@ -911,7 +940,10 @@ pub async fn transition_ci_lifecycle(
     .await;
 
     // Drift detection may care about lifecycle-carrying meta.
-    let _ = check_ci_drift(&state.db, ci_id, org_id);
+    let drift_db = state.db.clone();
+    tokio::spawn(async move {
+        let _ = check_ci_drift(&drift_db, ci_id, org_id).await;
+    });
 
     // Fire the ci.lifecycle_changed event (webhook + event stream, T6).
     super::events::emit_ci_event(
@@ -950,11 +982,11 @@ pub fn validate_patch_tags(tags: &Value) -> AppResult<()> {
     Ok(())
 }
 
-/// PATCH /api/v1/orgs/:org_id/cis/:ci_id/tags
+/// PATCH /api/v1/orgs/{org_id}/cis/{ci_id}/tags
 ///
 /// Replace the full tags object on a configuration item. The body must be
 /// `{"tags": { "key": "value", ... }}` where every value is a string. Mirrors
-/// the `/resources/:id/tags` pattern.
+/// the `/resources/{id}/tags` pattern.
 #[utoipa::path(
     patch,
     path = "/api/v1/orgs/{org_id}/cis/{ci_id}/tags",
@@ -962,7 +994,7 @@ pub fn validate_patch_tags(tags: &Value) -> AppResult<()> {
         ("org_id" = Uuid, Path, description = "Organization ID"),
         ("ci_id"  = Uuid, Path, description = "CI ID"),
     ),
-    request_body = PatchCiTagsRequest,
+    request_body = super::dto::PatchCiTagsRequest,
     responses(
         (status = 200, description = "Tags updated", body = CiResponse),
         (status = 400, description = "tags must be a JSON object of string values"),
@@ -984,9 +1016,9 @@ pub async fn patch_ci_tags(
     validate_patch_tags(&body.tags)?;
 
     // Fetch pre-state for audit diff.
-    let old = sqlx::query_as::<_, Ci>(&format!(
+    let old = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
         "{CI_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-    ))
+    )))
     .bind(ci_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -996,7 +1028,7 @@ pub async fn patch_ci_tags(
     let field_changes = json!({ "tags": { "old": old.tags, "new": body.tags } });
     let now = Utc::now();
 
-    let ci = sqlx::query_as::<_, Ci>(&format!(
+    let ci = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
         r#"
         UPDATE cis
         SET tags = $3, updated_at = $4
@@ -1007,7 +1039,7 @@ pub async fn patch_ci_tags(
                 cloud_provider::text AS cloud_provider, cloud_region, name, display_name,
                 meta, tags, lifecycle_state::text AS lifecycle_state,
                 parent_ci_id, pool_id, discovered_at, created_at, updated_at"
-    ))
+    )))
     .bind(ci_id)
     .bind(org_id)
     .bind(&body.tags)
@@ -1043,9 +1075,9 @@ pub async fn delete_ci(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     // Snapshot for the delete event before the row goes away.
-    let old = sqlx::query_as::<_, Ci>(&format!(
+    let old = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
         "{CI_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-    ))
+    )))
     .bind(ci_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -1065,11 +1097,23 @@ pub async fn delete_ci(
         return Err(AppError::NotFound("CI not found".into()));
     }
 
-    write_audit_log(&state.db, ci_id, org_id, Some(user_id), "delete", None, "user").await;
+    write_audit_log(
+        &state.db,
+        ci_id,
+        org_id,
+        Some(user_id),
+        "delete",
+        None,
+        "user",
+    )
+    .await;
 
     super::events::emit_ci_deleted(&state.db, org_id, &old).await;
 
-    Ok((StatusCode::OK, Json(json!({ "data": { "message": "CI deleted" } }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "data": { "message": "CI deleted" } })),
+    ))
 }
 
 // ─── list_associations ────────────────────────────────────────────────────────
@@ -1140,7 +1184,9 @@ pub async fn list_associations(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 // ─── create_association ───────────────────────────────────────────────────────
@@ -1183,9 +1229,9 @@ pub async fn create_association(
     })?;
 
     // Association change event (best-effort: needs the live src CI row).
-    if let Ok(Some(src_ci)) = sqlx::query_as::<_, Ci>(&format!(
+    if let Ok(Some(src_ci)) = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
         "{CI_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-    ))
+    )))
     .bind(src_ci_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -1209,7 +1255,7 @@ pub async fn create_association(
 
 // ─── delete_association ───────────────────────────────────────────────────────
 
-/// DELETE /api/v1/orgs/:org_id/cis/:ci_id/associations/:assoc_id
+/// DELETE /api/v1/orgs/{org_id}/cis/{ci_id}/associations/{assoc_id}
 ///
 /// Permanently removes a CI instance association. The association must belong
 /// to the organization and involve `ci_id` as either source or destination.
@@ -1234,13 +1280,15 @@ pub async fn delete_association(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Association {assoc_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Association {assoc_id} not found"
+        )));
     }
 
     // Association change event (best-effort).
-    if let Ok(Some(src_ci)) = sqlx::query_as::<_, Ci>(&format!(
+    if let Ok(Some(src_ci)) = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
         "{CI_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-    ))
+    )))
     .bind(ci_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -1261,7 +1309,7 @@ pub async fn delete_association(
 
 // ─── delete_ci_type ───────────────────────────────────────────────────────────
 
-/// DELETE /api/v1/orgs/:org_id/ci-types/:type_id
+/// DELETE /api/v1/orgs/{org_id}/ci-types/{type_id}
 ///
 /// Soft-deletes a custom CI type (deleted_at = now). Rejected if:
 /// - The type is a builtin (is_builtin = true), or
@@ -1275,18 +1323,19 @@ pub async fn delete_ci_type(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     // Fetch the type and confirm it belongs to this org (not builtin).
-    let row = sqlx::query(
-        "SELECT is_builtin, name FROM ci_types WHERE id = $1 AND organization_id = $2",
-    )
-    .bind(type_id)
-    .bind(org_id)
-    .fetch_optional(&state.db)
-    .await?
-    .ok_or_else(|| AppError::NotFound("CI type not found or is a builtin".into()))?;
+    let row =
+        sqlx::query("SELECT is_builtin, name FROM ci_types WHERE id = $1 AND organization_id = $2")
+            .bind(type_id)
+            .bind(org_id)
+            .fetch_optional(&state.db)
+            .await?
+            .ok_or_else(|| AppError::NotFound("CI type not found or is a builtin".into()))?;
 
     let is_builtin: bool = row.try_get("is_builtin").unwrap_or(true);
     if is_builtin {
-        return Err(AppError::Forbidden("Cannot delete a builtin CI type".into()));
+        return Err(AppError::Forbidden(
+            "Cannot delete a builtin CI type".into(),
+        ));
     }
     let type_name: String = row.try_get("name").unwrap_or_default();
 
@@ -1378,7 +1427,9 @@ pub async fn ci_history(
     .unwrap_or(0);
 
     let data: Vec<AuditLogResponse> = logs.into_iter().map(Into::into).collect();
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 // ─── Private helpers ──────────────────────────────────────────────────────────
@@ -1694,13 +1745,12 @@ pub async fn list_dynamic_groups(
     .fetch_all(&state.db)
     .await?;
 
-    let total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM ci_dynamic_groups WHERE organization_id = $1",
-    )
-    .bind(org_id)
-    .fetch_one(&state.db)
-    .await
-    .unwrap_or(0);
+    let total: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM ci_dynamic_groups WHERE organization_id = $1")
+            .bind(org_id)
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(0);
 
     let data: Vec<Value> = rows
         .iter()
@@ -1717,7 +1767,9 @@ pub async fn list_dynamic_groups(
         })
         .collect();
 
-    Ok(Json(serde_json::json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        serde_json::json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_dynamic_group(
@@ -1735,7 +1787,10 @@ pub async fn create_dynamic_group(
         .to_string();
 
     let id = Uuid::new_v4();
-    let conditions = body.get("conditions").cloned().unwrap_or(serde_json::json!([]));
+    let conditions = body
+        .get("conditions")
+        .cloned()
+        .unwrap_or(serde_json::json!([]));
     let ci_type_id: Option<Uuid> = body["ci_type_id"]
         .as_str()
         .and_then(|s| Uuid::parse_str(s).ok());
@@ -1786,10 +1841,14 @@ pub async fn update_dynamic_group(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Dynamic group {group_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Dynamic group {group_id} not found"
+        )));
     }
 
-    Ok(Json(serde_json::json!({ "data": { "id": group_id, "message": "Updated" } })))
+    Ok(Json(
+        serde_json::json!({ "data": { "id": group_id, "message": "Updated" } }),
+    ))
 }
 
 pub async fn delete_dynamic_group(
@@ -1800,19 +1859,23 @@ pub async fn delete_dynamic_group(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let result = sqlx::query(
-        "DELETE FROM ci_dynamic_groups WHERE id = $1 AND organization_id = $2",
-    )
-    .bind(group_id)
-    .bind(org_id)
-    .execute(&state.db)
-    .await?;
+    let result =
+        sqlx::query("DELETE FROM ci_dynamic_groups WHERE id = $1 AND organization_id = $2")
+            .bind(group_id)
+            .bind(org_id)
+            .execute(&state.db)
+            .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Dynamic group {group_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Dynamic group {group_id} not found"
+        )));
     }
 
-    Ok((axum::http::StatusCode::NO_CONTENT, Json(serde_json::json!({}))))
+    Ok((
+        axum::http::StatusCode::NO_CONTENT,
+        Json(serde_json::json!({})),
+    ))
 }
 
 /// Execute a dynamic group with SQL pushdown (T16): conditions compile to a
@@ -1843,8 +1906,15 @@ pub async fn execute_dynamic_group(
     let conditions: Vec<Value> = conditions_raw.as_array().cloned().unwrap_or_default();
 
     let bounds = page.resolve(50, 200);
-    let (cis, total) =
-        run_dynamic_group_sql(&state.db, org_id, &conditions, ci_type_id, bounds.limit, bounds.offset).await?;
+    let (cis, total) = run_dynamic_group_sql(
+        &state.db,
+        org_id,
+        &conditions,
+        ci_type_id,
+        bounds.limit,
+        bounds.offset,
+    )
+    .await?;
 
     Ok((
         axum::http::StatusCode::OK,
@@ -1853,133 +1923,6 @@ pub async fn execute_dynamic_group(
             "meta": crate::utils::pagination::page_meta_json(total, &bounds)
         })),
     ))
-}
-
-/// Evaluate all conditions with AND (default) or OR logic.
-/// Condition JSON shape: `{ "field": "name", "operator": "$eq", "value": "web-01", "logic": "AND" }`
-fn evaluate_conditions(ci: &Value, conditions: &[Value]) -> bool {
-    if conditions.is_empty() {
-        return true;
-    }
-
-    // Check if any condition specifies "OR" logic — if mixed, majority wins; simple: first non-null
-    let use_or = conditions
-        .iter()
-        .any(|c| c.get("logic").and_then(|v| v.as_str()) == Some("OR"));
-
-    if use_or {
-        conditions.iter().any(|c| evaluate_condition(ci, c))
-    } else {
-        conditions.iter().all(|c| evaluate_condition(ci, c))
-    }
-}
-
-/// Evaluate a single condition against a CI value.
-fn evaluate_condition(ci: &Value, condition: &Value) -> bool {
-    let field = match condition.get("field").and_then(|v| v.as_str()) {
-        Some(f) => f,
-        None => return true,
-    };
-    let operator = condition
-        .get("operator")
-        .and_then(|v| v.as_str())
-        .unwrap_or("$eq");
-    let cond_val = condition.get("value");
-
-    // Resolve field value from CI — support `meta.key` JSONB path
-    let ci_field_val: Option<Value> = if let Some(meta_key) = field.strip_prefix("meta.") {
-        ci.get("meta").and_then(|m| m.get(meta_key)).cloned()
-    } else if let Some(tags_key) = field.strip_prefix("tags.") {
-        ci.get("tags").and_then(|t| t.get(tags_key)).cloned()
-    } else {
-        ci.get(field).cloned()
-    };
-
-    match operator {
-        "$eq" => {
-            let cv = match cond_val {
-                Some(v) => v,
-                None => return ci_field_val.is_none(),
-            };
-            match &ci_field_val {
-                Some(Value::String(s)) => cv.as_str().map(|c| c.to_lowercase() == s.to_lowercase()).unwrap_or(false),
-                Some(other) => other == cv,
-                None => false,
-            }
-        }
-        "$ne" => {
-            let cv = match cond_val {
-                Some(v) => v,
-                None => return ci_field_val.is_some(),
-            };
-            match &ci_field_val {
-                Some(Value::String(s)) => cv.as_str().map(|c| c.to_lowercase() != s.to_lowercase()).unwrap_or(true),
-                Some(other) => other != cv,
-                None => true,
-            }
-        }
-        "$in" => {
-            let arr = match cond_val.and_then(|v| v.as_array()) {
-                Some(a) => a,
-                None => return false,
-            };
-            match &ci_field_val {
-                Some(v) => arr.iter().any(|a| a == v),
-                None => false,
-            }
-        }
-        "$nin" => {
-            let arr = match cond_val.and_then(|v| v.as_array()) {
-                Some(a) => a,
-                None => return true,
-            };
-            match &ci_field_val {
-                Some(v) => !arr.iter().any(|a| a == v),
-                None => true,
-            }
-        }
-        "$contains" => {
-            let pattern = match cond_val.and_then(|v| v.as_str()) {
-                Some(p) => p.to_lowercase(),
-                None => return false,
-            };
-            match &ci_field_val {
-                Some(Value::String(s)) => s.to_lowercase().contains(&pattern),
-                _ => false,
-            }
-        }
-        "$startswith" => {
-            let pattern = match cond_val.and_then(|v| v.as_str()) {
-                Some(p) => p.to_lowercase(),
-                None => return false,
-            };
-            match &ci_field_val {
-                Some(Value::String(s)) => s.to_lowercase().starts_with(&pattern),
-                _ => false,
-            }
-        }
-        "$gte" => compare_numeric(&ci_field_val, cond_val, |a, b| a >= b),
-        "$lte" => compare_numeric(&ci_field_val, cond_val, |a, b| a <= b),
-        "$gt"  => compare_numeric(&ci_field_val, cond_val, |a, b| a > b),
-        "$lt"  => compare_numeric(&ci_field_val, cond_val, |a, b| a < b),
-        _ => true,
-    }
-}
-
-fn compare_numeric<F: Fn(f64, f64) -> bool>(
-    ci_val: &Option<Value>,
-    cond_val: Option<&Value>,
-    f: F,
-) -> bool {
-    let a = match ci_val {
-        Some(Value::Number(n)) => n.as_f64(),
-        _ => None,
-    };
-    let b = cond_val.and_then(|v| v.as_f64());
-    match (a, b) {
-        (Some(a), Some(b)) => f(a, b),
-        _ => false,
-    }
 }
 
 // ─── Drift Detection ─────────────────────────────────────────────────────────
@@ -2078,7 +2021,7 @@ async fn do_check_ci_drift(db: &sqlx::PgPool, ci_id: Uuid, org_id: Uuid) -> AppR
 
 // ─── CI Attributes ────────────────────────────────────────────────────────────
 
-/// GET /api/v1/orgs/:org_id/ci-types/:type_id/attributes
+/// GET /api/v1/orgs/{org_id}/ci-types/{type_id}/attributes
 /// List all attribute definitions for a CI type (builtin + org-specific).
 pub async fn list_ci_attributes(
     State(state): State<AppState>,
@@ -2146,7 +2089,7 @@ pub struct CreateCiAttributeRequest {
     pub sort_order: Option<i32>,
 }
 
-/// POST /api/v1/orgs/:org_id/ci-types/:type_id/attributes
+/// POST /api/v1/orgs/{org_id}/ci-types/{type_id}/attributes
 /// Add a new attribute definition to a custom (non-builtin) CI type.
 pub async fn create_ci_attribute(
     State(state): State<AppState>,
@@ -2158,7 +2101,9 @@ pub async fn create_ci_attribute(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     if body.name.trim().is_empty() {
-        return Err(AppError::Validation("Attribute name cannot be empty".into()));
+        return Err(AppError::Validation(
+            "Attribute name cannot be empty".into(),
+        ));
     }
 
     let type_row = sqlx::query(
@@ -2172,7 +2117,9 @@ pub async fn create_ci_attribute(
 
     let is_builtin: bool = type_row.try_get("is_builtin").unwrap_or(false);
     if is_builtin {
-        return Err(AppError::Forbidden("Cannot add attributes to a builtin CI type".into()));
+        return Err(AppError::Forbidden(
+            "Cannot add attributes to a builtin CI type".into(),
+        ));
     }
 
     let attr_id = Uuid::new_v4();
@@ -2245,7 +2192,7 @@ pub async fn create_ci_attribute(
     ))
 }
 
-/// DELETE /api/v1/orgs/:org_id/ci-types/:type_id/attributes/:attr_id
+/// DELETE /api/v1/orgs/{org_id}/ci-types/{type_id}/attributes/{attr_id}
 /// Remove a custom (non-builtin) attribute from a CI type.
 pub async fn delete_ci_attribute(
     State(state): State<AppState>,
@@ -2255,17 +2202,17 @@ pub async fn delete_ci_attribute(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let row = sqlx::query(
-        "SELECT is_builtin FROM ci_attributes WHERE id = $1 AND ci_type_id = $2",
-    )
-    .bind(attr_id)
-    .bind(type_id)
-    .fetch_optional(&state.db)
-    .await?
-    .ok_or_else(|| AppError::NotFound("Attribute not found".into()))?;
+    let row = sqlx::query("SELECT is_builtin FROM ci_attributes WHERE id = $1 AND ci_type_id = $2")
+        .bind(attr_id)
+        .bind(type_id)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Attribute not found".into()))?;
 
     if row.try_get::<bool, _>("is_builtin").unwrap_or(false) {
-        return Err(AppError::Forbidden("Cannot delete a builtin attribute".into()));
+        return Err(AppError::Forbidden(
+            "Cannot delete a builtin attribute".into(),
+        ));
     }
 
     sqlx::query("DELETE FROM ci_attributes WHERE id = $1 AND ci_type_id = $2")
@@ -2295,7 +2242,7 @@ pub async fn delete_ci_attribute(
 
 // ─── CI Association Kinds ─────────────────────────────────────────────────────
 
-/// GET /api/v1/orgs/:org_id/ci-association-kinds
+/// GET /api/v1/orgs/{org_id}/ci-association-kinds
 /// List all association kinds available to this org (builtin + org-specific).
 pub async fn list_ci_association_kinds(
     State(state): State<AppState>,
@@ -2336,7 +2283,7 @@ pub async fn list_ci_association_kinds(
 
 // ─── CI Object Associations (schema-level) ────────────────────────────────────
 
-/// GET /api/v1/orgs/:org_id/ci-object-associations
+/// GET /api/v1/orgs/{org_id}/ci-object-associations
 /// List schema-level relationship definitions (src_type ↔ kind ↔ dst_type).
 /// Used by the UI to populate the association creation form.
 pub async fn list_ci_object_associations(
@@ -2420,7 +2367,7 @@ pub struct CiSearchQuery {
     pub page: crate::utils::pagination::PageQuery,
 }
 
-/// GET /api/v1/orgs/:org_id/cis/search?q=
+/// GET /api/v1/orgs/{org_id}/cis/search?q=
 ///
 /// Ranked full-text search: `%q%` ILIKE over the trigram-indexed name surface
 /// (similarity-ranked) UNION meta/tags JSONB text fallback, returning the
@@ -2504,7 +2451,7 @@ pub async fn search_cis(
     )
     .bind(org_id)
     .bind(&pattern)
-    .bind(&term.to_lowercase())
+    .bind(term.to_lowercase())
     .bind(q.ci_type_id)
     .bind(format!("%{term}%"))
     .bind(bounds.limit)
@@ -2572,7 +2519,7 @@ pub struct BatchUpdateCiRequest {
     pub meta_patch: Option<Value>,
 }
 
-/// POST /api/v1/orgs/:org_id/cis/batch-update
+/// POST /api/v1/orgs/{org_id}/cis/batch-update
 ///
 /// Applies the same patch to a list of CIs with per-id results. Every row runs
 /// the full T1 attribute / T3 lifecycle / T2 unique validation chain; a row
@@ -2608,7 +2555,9 @@ pub async fn batch_update_cis(
     }
     if let Some(ref meta_patch) = body.meta_patch {
         if !meta_patch.is_object() {
-            return Err(AppError::Validation("meta_patch must be a JSON object".into()));
+            return Err(AppError::Validation(
+                "meta_patch must be a JSON object".into(),
+            ));
         }
     }
 
@@ -2617,9 +2566,9 @@ pub async fn batch_update_cis(
     let mut results: Vec<Value> = Vec::new();
 
     for ci_id in &body.ids {
-        let old = match sqlx::query_as::<_, Ci>(&format!(
+        let old = match sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
             "{CI_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-        ))
+        )))
         .bind(ci_id)
         .bind(org_id)
         .fetch_optional(&state.db)
@@ -2641,7 +2590,9 @@ pub async fn batch_update_cis(
         // T3 lifecycle matrix.
         if let Some(ref new_state) = body.lifecycle_state {
             if *new_state != old.lifecycle_state {
-                if let Err(e) = super::validation::validate_transition(&old.lifecycle_state, new_state) {
+                if let Err(e) =
+                    super::validation::validate_transition(&old.lifecycle_state, new_state)
+                {
                     failed += 1;
                     results.push(json!({ "id": ci_id, "status": "error", "error": e.to_string() }));
                     continue;
@@ -2662,11 +2613,9 @@ pub async fn batch_update_cis(
         };
         if body.meta_patch.is_some() {
             let attr_defs = super::validation::load_attr_defs(&state.db, old.ci_type_id).await?;
-            if let Err(errors) = super::validation::validate_meta_update(
-                &attr_defs,
-                &old.meta,
-                &effective_meta,
-            ) {
+            if let Err(errors) =
+                super::validation::validate_meta_update(&attr_defs, &old.meta, &effective_meta)
+            {
                 failed += 1;
                 let msgs: Vec<Value> = errors.iter().map(|ve| ve.to_json()).collect();
                 results.push(json!({ "id": ci_id, "status": "error", "errors": msgs }));
@@ -2698,7 +2647,7 @@ pub async fn batch_update_cis(
             }
         });
 
-        let ci = match sqlx::query_as::<_, Ci>(&format!(
+        let ci = match sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
             r#"
             UPDATE cis
             SET name            = COALESCE($3, name),
@@ -2714,12 +2663,16 @@ pub async fn batch_update_cis(
                     cloud_provider::text AS cloud_provider, cloud_region, name, display_name,
                     meta, tags, lifecycle_state::text AS lifecycle_state,
                     parent_ci_id, pool_id, discovered_at, created_at, updated_at"
-        ))
+        )))
         .bind(ci_id)
         .bind(org_id)
         .bind(body.name.as_deref())
         .bind(body.tags.as_ref())
-        .bind(if body.meta_patch.is_some() { Some(&effective_meta) } else { None })
+        .bind(if body.meta_patch.is_some() {
+            Some(&effective_meta)
+        } else {
+            None
+        })
         .bind(body.lifecycle_state.as_deref())
         .bind(body.pool_id)
         .bind(Utc::now())
@@ -2778,7 +2731,7 @@ pub struct BatchDeleteCiRequest {
     pub ids: Vec<Uuid>,
 }
 
-/// POST /api/v1/orgs/:org_id/cis/batch-delete
+/// POST /api/v1/orgs/{org_id}/cis/batch-delete
 ///
 /// Soft-deletes a list of CIs with per-id results (audit + delete event each).
 #[utoipa::path(
@@ -2812,9 +2765,9 @@ pub async fn batch_delete_cis(
     let mut results: Vec<Value> = Vec::new();
 
     for ci_id in &body.ids {
-        let old = sqlx::query_as::<_, Ci>(&format!(
+        let old = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
             "{CI_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-        ))
+        )))
         .bind(ci_id)
         .bind(org_id)
         .fetch_optional(&state.db)
@@ -2845,7 +2798,16 @@ pub async fn batch_delete_cis(
 
         match res {
             Ok(r) if r.rows_affected() > 0 => {
-                write_audit_log(&state.db, *ci_id, org_id, Some(user_id), "delete", None, "batch").await;
+                write_audit_log(
+                    &state.db,
+                    *ci_id,
+                    org_id,
+                    Some(user_id),
+                    "delete",
+                    None,
+                    "batch",
+                )
+                .await;
                 super::events::emit_ci_deleted(&state.db, org_id, &old).await;
                 deleted += 1;
                 results.push(json!({ "id": ci_id, "status": "deleted" }));
@@ -2876,7 +2838,7 @@ pub struct CloneCiRequest {
     pub new_name: String,
 }
 
-/// POST /api/v1/orgs/:org_id/cis/:id/clone
+/// POST /api/v1/orgs/{org_id}/cis/{id}/clone
 ///
 /// Clones a CI: copies ci_type_id / cloud_provider / cloud_region / meta /
 /// tags under a new name. Associations and cloud_resource_id are NOT copied
@@ -2911,9 +2873,9 @@ pub async fn clone_ci(
         return Err(AppError::Validation("new_name cannot be empty".into()));
     }
 
-    let src = sqlx::query_as::<_, Ci>(&format!(
+    let src = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
         "{CI_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-    ))
+    )))
     .bind(ci_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -2926,7 +2888,7 @@ pub async fn clone_ci(
 
     let now = Utc::now();
     let new_id = Uuid::new_v4();
-    let ci = sqlx::query_as::<_, Ci>(&format!(
+    let ci = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
         r#"
         INSERT INTO cis
             (id, organization_id, ci_type_id, cloud_resource_id,
@@ -2943,7 +2905,7 @@ pub async fn clone_ci(
                 cloud_provider::text AS cloud_provider, cloud_region, name, display_name,
                 meta, tags, lifecycle_state::text AS lifecycle_state,
                 parent_ci_id, pool_id, discovered_at, created_at, updated_at"
-    ))
+    )))
     .bind(new_id)
     .bind(org_id)
     .bind(src.ci_type_id)
@@ -2992,7 +2954,7 @@ pub struct CiForestQuery {
     pub max_depth: Option<i32>,
 }
 
-/// GET /api/v1/orgs/:org_id/ci-forest
+/// GET /api/v1/orgs/{org_id}/ci-forest
 ///
 /// Returns the CI parent-child forest for the org (optionally scoped to one
 /// type): roots are CIs without a parent; every node carries its children.
@@ -3061,9 +3023,7 @@ pub async fn ci_forest(
     let mut roots: Vec<Uuid> = Vec::new();
 
     for row in &rows {
-        let id: Uuid = row
-            .try_get("id")
-            .unwrap_or_default();
+        let id: Uuid = row.try_get("id").unwrap_or_default();
         let parent_id: Option<Uuid> = row.try_get("parent_ci_id").unwrap_or(None);
         let depth: i32 = row.try_get("depth").unwrap_or(0);
 
@@ -3113,11 +3073,20 @@ const GROUP_TOP_LEVEL_FIELDS: &[&str] = &[
 ];
 
 const GROUP_OPS: &[&str] = &[
-    "$eq", "$ne", "$in", "$nin", "$contains", "$startswith", "$gte", "$lte", "$gt", "$lt",
+    "$eq",
+    "$ne",
+    "$in",
+    "$nin",
+    "$contains",
+    "$startswith",
+    "$gte",
+    "$lte",
+    "$gt",
+    "$lt",
 ];
 
 /// One compiled condition: a SQL fragment plus the bind value (already typed).
-struct CompiledCondition {
+pub struct CompiledCondition {
     sql: String,
     value: Value,
 }
@@ -3200,9 +3169,7 @@ fn numeric_expr(column: &str, cmp: &str, _jsonb: bool) -> String {
 fn is_safe_group_key(key: &str) -> bool {
     !key.is_empty()
         && key.len() <= 100
-        && key
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        && key.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
 /// Compile the whole condition list into `(where_sql, bind_values)` where
@@ -3288,13 +3255,20 @@ pub async fn run_dynamic_group_sql(
     offset: i64,
 ) -> AppResult<(Vec<Value>, i64)> {
     let empty: Vec<Value> = Vec::new();
-    let conditions = if conditions.is_empty() { &empty } else { conditions };
-    let (cond_sql, binds) = compile_group_conditions(conditions)
-        .map_err(AppError::Validation)?;
+    let conditions = if conditions.is_empty() {
+        &empty
+    } else {
+        conditions
+    };
+    let (cond_sql, binds) = compile_group_conditions(conditions).map_err(AppError::Validation)?;
 
     // Parameter layout: $1 org, $2 optional type, then condition binds,
     // then LIMIT/OFFSET. Building with explicit numbering keeps binds aligned.
-    let type_slot = if ci_type_id.is_some() { Some(2usize) } else { None };
+    let type_slot = if ci_type_id.is_some() {
+        Some(2usize)
+    } else {
+        None
+    };
     let cond_base = if ci_type_id.is_some() { 3usize } else { 2usize };
     // compile_group_conditions numbered from $1 — renumber to cond_base.
     let mut cond_sql = cond_sql;
@@ -3305,7 +3279,10 @@ pub async fn run_dynamic_group_sql(
     let limit_idx = cond_base + binds.len();
     let offset_idx = limit_idx + 1;
 
-    let mut where_parts = vec!["c.organization_id = $1".to_string(), "c.deleted_at IS NULL".to_string()];
+    let mut where_parts = vec![
+        "c.organization_id = $1".to_string(),
+        "c.deleted_at IS NULL".to_string(),
+    ];
     if let Some(slot) = type_slot {
         where_parts.push(format!("c.ci_type_id = ${slot}"));
     }
@@ -3329,8 +3306,9 @@ pub async fn run_dynamic_group_sql(
         where_parts.join(" AND ")
     );
 
-    let mut query = sqlx::query(&sql).bind(org_id);
-    let mut count_query = sqlx::query_scalar::<_, i64>(&count_sql).bind(org_id);
+    let mut query = sqlx::query(sqlx::AssertSqlSafe(&*sql)).bind(org_id);
+    let mut count_query =
+        sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(&*count_sql)).bind(org_id);
     if let Some(t) = ci_type_id {
         query = query.bind(t);
         count_query = count_query.bind(t);
@@ -3364,11 +3342,7 @@ pub async fn run_dynamic_group_sql(
             }
         }
     }
-    let rows = query
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(db)
-        .await?;
+    let rows = query.bind(limit).bind(offset).fetch_all(db).await?;
     let total: i64 = count_query.fetch_one(db).await.unwrap_or(0);
 
     let data: Vec<Value> = rows
@@ -3446,16 +3420,30 @@ mod group_tests {
     fn compiles_numeric_comparison_with_cast() {
         let c = json!({"field": "meta.cpu_count", "operator": "$gte", "value": 4});
         let compiled = compile_group_condition(&c).unwrap();
-        assert!(compiled.sql.contains("NULLIF(c.meta->>'cpu_count', '')::numeric >="));
+        assert!(compiled
+            .sql
+            .contains("NULLIF(c.meta->>'cpu_count', '')::numeric >="));
     }
 
     #[test]
     fn rejects_unknown_field_and_op_and_unsafe_key() {
-        assert!(compile_group_condition(&json!({"field": "id", "operator": "$eq", "value": "x"})).is_err());
-        assert!(compile_group_condition(&json!({"field": "name", "operator": "$regex", "value": "x"})).is_err());
-        assert!(compile_group_condition(&json!({"field": "meta.bad-key", "operator": "$eq", "value": "x"})).is_err());
+        assert!(
+            compile_group_condition(&json!({"field": "id", "operator": "$eq", "value": "x"}))
+                .is_err()
+        );
+        assert!(compile_group_condition(
+            &json!({"field": "name", "operator": "$regex", "value": "x"})
+        )
+        .is_err());
+        assert!(compile_group_condition(
+            &json!({"field": "meta.bad-key", "operator": "$eq", "value": "x"})
+        )
+        .is_err());
         // SQL injection via key is impossible
-        assert!(compile_group_condition(&json!({"field": "meta.x' OR '1'='1", "operator": "$eq", "value": "x"})).is_err());
+        assert!(compile_group_condition(
+            &json!({"field": "meta.x' OR '1'='1", "operator": "$eq", "value": "x"})
+        )
+        .is_err());
     }
 
     #[test]
@@ -3482,7 +3470,13 @@ mod group_tests {
 
     #[test]
     fn renumbers_placeholders() {
-        assert_eq!(renumber_placeholders("(a = $1 OR b = $2) AND c = $1", 1), "(a = $2 OR b = $3) AND c = $2");
-        assert_eq!(renumber_placeholders("no placeholders $", 5), "no placeholders $");
+        assert_eq!(
+            renumber_placeholders("(a = $1 OR b = $2) AND c = $1", 1),
+            "(a = $2 OR b = $3) AND c = $2"
+        );
+        assert_eq!(
+            renumber_placeholders("no placeholders $", 5),
+            "no placeholders $"
+        );
     }
 }

@@ -22,8 +22,8 @@ use super::{
     },
     credentials::{credentials_have_content, encrypted_has_credentials, validate_credentials},
     dto::{
-        CloudAccountResponse, ConnectionTestResponse, CreateCloudAccountRequest,
-        SyncJobResponse, UpdateCloudAccountRequest,
+        CloudAccountResponse, ConnectionTestResponse, CreateCloudAccountRequest, SyncJobResponse,
+        UpdateCloudAccountRequest,
     },
     models::{CloudAccount, SyncJob},
 };
@@ -54,11 +54,7 @@ const SYNC_JOB_SELECT: &str = r#"
 "#;
 
 /// Abort with Forbidden if the caller is not a member of `org_id`.
-async fn ensure_org_member(
-    db: &sqlx::PgPool,
-    org_id: Uuid,
-    user_id: Uuid,
-) -> AppResult<()> {
+async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
     let row = sqlx::query(
         "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
     )
@@ -91,14 +87,14 @@ fn ci_provider_for(provider: &str) -> &'static str {
 /// Map a discovered `resource_type` string to the seeded builtin CI type UUID.
 fn resource_type_to_ci_type_id(resource_type: &str) -> Uuid {
     match resource_type {
-        "instance"       => uuid::uuid!("20000000-0000-0000-0000-000000000001"),
-        "rds_instance"   => uuid::uuid!("20000000-0000-0000-0000-000000000002"),
-        "volume"         => uuid::uuid!("20000000-0000-0000-0000-000000000003"),
-        "snapshot"       => uuid::uuid!("20000000-0000-0000-0000-000000000004"),
-        "bucket"         => uuid::uuid!("20000000-0000-0000-0000-000000000005"),
-        "load_balancer"  => uuid::uuid!("20000000-0000-0000-0000-000000000006"),
-        "ip_address"     => uuid::uuid!("20000000-0000-0000-0000-000000000007"),
-        _                => uuid::uuid!("20000000-0000-0000-0000-000000000001"),
+        "instance" => uuid::uuid!("20000000-0000-0000-0000-000000000001"),
+        "rds_instance" => uuid::uuid!("20000000-0000-0000-0000-000000000002"),
+        "volume" => uuid::uuid!("20000000-0000-0000-0000-000000000003"),
+        "snapshot" => uuid::uuid!("20000000-0000-0000-0000-000000000004"),
+        "bucket" => uuid::uuid!("20000000-0000-0000-0000-000000000005"),
+        "load_balancer" => uuid::uuid!("20000000-0000-0000-0000-000000000006"),
+        "ip_address" => uuid::uuid!("20000000-0000-0000-0000-000000000007"),
+        _ => uuid::uuid!("20000000-0000-0000-0000-000000000001"),
     }
 }
 
@@ -109,35 +105,35 @@ fn resource_type_to_ci_type_id(resource_type: &str) -> Uuid {
 fn service_name_for_type(resource_type: &str, provider: &str) -> &'static str {
     if provider == "alibaba" {
         return match resource_type {
-            "instance"        => "Aliyun ECS",
-            "rds_instance"    => "Aliyun RDS",
-            "volume"          => "Aliyun Disk",
-            "snapshot"        => "Aliyun Snapshot",
-            "snapshot_chain"  => "Aliyun Snapshot",
-            "bucket"          => "Aliyun OSS",
-            "load_balancer"   => "Aliyun SLB",
-            "ip_address"      => "Aliyun EIP",
-            "k8s_pod"         => "Aliyun ACK",
-            "k8s_cluster"     => "Aliyun ACK",
+            "instance" => "Aliyun ECS",
+            "rds_instance" => "Aliyun RDS",
+            "volume" => "Aliyun Disk",
+            "snapshot" => "Aliyun Snapshot",
+            "snapshot_chain" => "Aliyun Snapshot",
+            "bucket" => "Aliyun OSS",
+            "load_balancer" => "Aliyun SLB",
+            "ip_address" => "Aliyun EIP",
+            "k8s_pod" => "Aliyun ACK",
+            "k8s_cluster" => "Aliyun ACK",
             "reserved_instance" => "Aliyun Reserved Instance",
-            "savings_plan"    => "Aliyun Savings Plan",
-            _                 => "Other",
+            "savings_plan" => "Aliyun Savings Plan",
+            _ => "Other",
         };
     }
     match resource_type {
-        "instance"        => "Amazon EC2",
-        "rds_instance"    => "Amazon RDS",
-        "volume"          => "Amazon EBS",
-        "snapshot"        => "Amazon EBS",
-        "snapshot_chain"  => "Amazon EBS",
-        "bucket"          => "Amazon S3",
-        "load_balancer"   => "AWS ELB",
-        "ip_address"      => "Amazon EC2",
-        "k8s_pod"         => "Amazon EKS",
-        "k8s_cluster"     => "Kubernetes",
+        "instance" => "Amazon EC2",
+        "rds_instance" => "Amazon RDS",
+        "volume" => "Amazon EBS",
+        "snapshot" => "Amazon EBS",
+        "snapshot_chain" => "Amazon EBS",
+        "bucket" => "Amazon S3",
+        "load_balancer" => "AWS ELB",
+        "ip_address" => "Amazon EC2",
+        "k8s_pod" => "Amazon EKS",
+        "k8s_cluster" => "Kubernetes",
         "reserved_instance" => "Amazon EC2",
-        "savings_plan"    => "Savings Plan",
-        _                 => "Other",
+        "savings_plan" => "Savings Plan",
+        _ => "Other",
     }
 }
 
@@ -280,10 +276,10 @@ pub async fn list_accounts(
 
     let bounds = page.resolve(50, 200);
 
-    let accounts = sqlx::query_as::<_, CloudAccount>(&format!(
+    let accounts = sqlx::query_as::<_, CloudAccount>(sqlx::AssertSqlSafe(&*format!(
         "{ACCOUNT_SELECT} WHERE organization_id = $1 AND deleted_at IS NULL \
          ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3"
-    ))
+    )))
     .bind(org_id)
     .bind(bounds.limit)
     .bind(bounds.offset)
@@ -306,7 +302,9 @@ pub async fn list_accounts(
             CloudAccountResponse::from_account(a, has)
         })
         .collect();
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 // ─── create_account ───────────────────────────────────────────────────────────
@@ -337,7 +335,15 @@ pub async fn create_account(
     crate::utils::validate::name(&body.name, 100, "Account name").map_err(AppError::Validation)?;
     crate::utils::validate::one_of(
         &body.provider,
-        ["aws", "alibaba", "azure", "gcp", "mock", "kubernetes", "other"],
+        [
+            "aws",
+            "alibaba",
+            "azure",
+            "gcp",
+            "mock",
+            "kubernetes",
+            "other",
+        ],
         "Provider",
     )
     .map_err(AppError::Validation)?;
@@ -346,15 +352,14 @@ pub async fn create_account(
     // Encrypt credentials JSON at rest with AES-256-GCM (ENCRYPTION_KEY).
     let creds_json = serde_json::to_string(&body.credentials)
         .map_err(|e| AppError::Validation(format!("Invalid credentials JSON: {e}")))?;
-    let key = crypto::key_from_hex(&state.config.encryption_key).ok_or_else(|| {
-        AppError::Validation("ENCRYPTION_KEY must be 64 hex characters".into())
-    })?;
+    let key = crypto::key_from_hex(&state.config.encryption_key)
+        .ok_or_else(|| AppError::Validation("ENCRYPTION_KEY must be 64 hex characters".into()))?;
     let credentials_enc = crypto::encrypt(&key, creds_json.as_bytes());
 
     let now = Utc::now();
     let account_id = Uuid::new_v4();
 
-    let account = sqlx::query_as::<_, CloudAccount>(&format!(
+    let account = sqlx::query_as::<_, CloudAccount>(sqlx::AssertSqlSafe(&*format!(
         r#"
         INSERT INTO cloud_accounts
             (id, organization_id, name, provider, credentials_enc, config, is_active, currency, created_at, updated_at)
@@ -364,7 +369,7 @@ pub async fn create_account(
         cols = "id, organization_id, name, provider::text AS provider, credentials_enc, config,
                 is_active, last_sync_at, last_sync_status::text AS last_sync_status,
                 currency, resource_count, created_at, updated_at"
-    ))
+    )))
     .bind(account_id)
     .bind(org_id)
     .bind(body.name.trim())
@@ -414,9 +419,9 @@ pub async fn get_account(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let account = sqlx::query_as::<_, CloudAccount>(&format!(
+    let account = sqlx::query_as::<_, CloudAccount>(sqlx::AssertSqlSafe(&*format!(
         "{ACCOUNT_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-    ))
+    )))
     .bind(account_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -440,7 +445,7 @@ pub async fn update_account(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let mut account = sqlx::query_as::<_, CloudAccount>(&format!(
+    let mut account = sqlx::query_as::<_, CloudAccount>(sqlx::AssertSqlSafe(&*format!(
         r#"
         UPDATE cloud_accounts
         SET
@@ -455,7 +460,7 @@ pub async fn update_account(
         cols = "id, organization_id, name, provider::text AS provider, credentials_enc, config,
                 is_active, last_sync_at, last_sync_status::text AS last_sync_status,
                 currency, resource_count, created_at, updated_at"
-    ))
+    )))
     .bind(account_id)
     .bind(org_id)
     .bind(body.name.as_deref())
@@ -488,7 +493,7 @@ pub async fn update_account(
             _ => None, // null / {} / absent → unchanged
         };
         if let Some(enc) = new_enc {
-            account = sqlx::query_as::<_, CloudAccount>(&format!(
+            account = sqlx::query_as::<_, CloudAccount>(sqlx::AssertSqlSafe(&*format!(
                 r#"
                 UPDATE cloud_accounts
                 SET credentials_enc = $3, updated_at = NOW()
@@ -498,7 +503,7 @@ pub async fn update_account(
                 cols = "id, organization_id, name, provider::text AS provider, credentials_enc, config,
                         is_active, last_sync_at, last_sync_status::text AS last_sync_status,
                         currency, resource_count, created_at, updated_at"
-            ))
+            )))
             .bind(account_id)
             .bind(org_id)
             .bind(&enc)
@@ -537,7 +542,10 @@ pub async fn delete_account(
         return Err(AppError::NotFound("Cloud account not found".into()));
     }
 
-    Ok((StatusCode::OK, Json(json!({ "data": { "message": "Account deleted" } }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "data": { "message": "Account deleted" } })),
+    ))
 }
 
 // ─── test_connection ──────────────────────────────────────────────────────────
@@ -551,9 +559,9 @@ pub async fn test_connection(
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     // Fetch account to get provider / config.
-    let account = sqlx::query_as::<_, CloudAccount>(&format!(
+    let account = sqlx::query_as::<_, CloudAccount>(sqlx::AssertSqlSafe(&*format!(
         "{ACCOUNT_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-    ))
+    )))
     .bind(account_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -595,7 +603,10 @@ pub async fn trigger_sync(
             "manual sync launch returned no job"
         )));
     };
-    Ok((StatusCode::ACCEPTED, Json(json!({ "data": crate::modules::jobs::job_to_json(&job) }))))
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(json!({ "data": crate::modules::jobs::job_to_json(&job) })),
+    ))
 }
 
 /// Create a pending discovery job and spawn the background discovery worker.
@@ -611,9 +622,9 @@ pub(crate) async fn launch_sync(
     triggered_by: &str,
 ) -> AppResult<Option<crate::modules::jobs::JobRow>> {
     // Verify the account exists.
-    let account = sqlx::query_as::<_, CloudAccount>(&format!(
+    let account = sqlx::query_as::<_, CloudAccount>(sqlx::AssertSqlSafe(&*format!(
         "{ACCOUNT_SELECT} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"
-    ))
+    )))
     .bind(account_id)
     .bind(org_id)
     .fetch_optional(&state.db)
@@ -621,7 +632,9 @@ pub(crate) async fn launch_sync(
     .ok_or_else(|| AppError::NotFound("Cloud account not found".into()))?;
 
     use crate::modules::jobs;
-    if let Some(existing) = jobs::find_active_job(&state.db, account_id, jobs::KIND_DISCOVERY).await? {
+    if let Some(existing) =
+        jobs::find_active_job(&state.db, account_id, jobs::KIND_DISCOVERY).await?
+    {
         if triggered_by == jobs::TRIGGERED_BY_SCHEDULER {
             tracing::debug!(account_id = %account_id, existing_job = %existing, "discovery already active — scheduler skips");
             return Ok(None);
@@ -632,7 +645,15 @@ pub(crate) async fn launch_sync(
         ));
     }
 
-    let job = jobs::insert_job(&state.db, org_id, account_id, jobs::KIND_DISCOVERY, json!({}), triggered_by).await?;
+    let job = jobs::insert_job(
+        &state.db,
+        org_id,
+        account_id,
+        jobs::KIND_DISCOVERY,
+        json!({}),
+        triggered_by,
+    )
+    .await?;
 
     // Spawn background discovery task.
     let db = state.db.clone();
@@ -666,6 +687,7 @@ pub(crate) async fn launch_sync(
 /// rowcount means the job was cancelled and the worker returns without a
 /// terminal write (the cancelled state sticks) and without touching
 /// `cloud_accounts` (spec 2026-09-09 §4.5).
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn run_sync(
     db: sqlx::PgPool,
     job_id: Uuid,
@@ -725,7 +747,8 @@ pub(crate) async fn run_sync(
     // ── Phase: upserting — n/total, write every 20 resources ─────────────
     for (idx, res) in resources.iter().enumerate() {
         if idx % 20 == 0
-            && !jobs::report_progress(&db, job_id, "upserting", Some(idx as i32), Some(discovered)).await
+            && !jobs::report_progress(&db, job_id, "upserting", Some(idx as i32), Some(discovered))
+                .await
         {
             return;
         }
@@ -743,7 +766,9 @@ pub(crate) async fn run_sync(
     // K8s rightsizing pipeline: clusters/workloads/usage samples for
     // kubernetes accounts (spec 2026-08-17). Failures don't fail the job.
     if provider == "kubernetes" {
-        if let Err(e) = crate::modules::k8s::pipeline::sync_account(&db, org_id, account_id, &adapter, &config).await
+        if let Err(e) =
+            crate::modules::k8s::pipeline::sync_account(&db, org_id, account_id, &adapter, &config)
+                .await
         {
             tracing::warn!(account_id = %account_id, error = %e, "k8s pipeline sync failed");
         }
@@ -762,7 +787,15 @@ pub(crate) async fn run_sync(
         let cluster_total = clusters.len();
         for (ci, res) in clusters.into_iter().enumerate() {
             // ── Phase: k8s_clusters — cluster i/n ────────────────────────
-            if !jobs::report_progress(&db, job_id, "k8s_clusters", Some(ci as i32 + 1), Some(cluster_total as i32)).await {
+            if !jobs::report_progress(
+                &db,
+                job_id,
+                "k8s_clusters",
+                Some(ci as i32 + 1),
+                Some(cluster_total as i32),
+            )
+            .await
+            {
                 return;
             }
             let node_count = res.meta["node_count"].as_i64().unwrap_or(0) as i32;
@@ -811,7 +844,12 @@ pub(crate) async fn run_sync(
                                 Ok(pods) => {
                                     for pod in pods {
                                         if let Err(e) = upsert_discovered_resource(
-                                            &db, org_id, account_id, &provider, &pod, Utc::now(),
+                                            &db,
+                                            org_id,
+                                            account_id,
+                                            &provider,
+                                            &pod,
+                                            Utc::now(),
                                         )
                                         .await
                                         {
@@ -832,7 +870,12 @@ pub(crate) async fn run_sync(
                             }
                             // Workloads → k8s rightsizing tables.
                             if let Err(e) = crate::modules::k8s::pipeline::sync_cluster(
-                                &db, org_id, account_id, &k8s_adapter, &res.resource_name, &config,
+                                &db,
+                                org_id,
+                                account_id,
+                                &k8s_adapter,
+                                &res.resource_name,
+                                &config,
                             )
                             .await
                             {
@@ -920,14 +963,14 @@ pub async fn list_sync_jobs(
 
     let bounds = page.resolve(50, 200);
 
-    let jobs = sqlx::query_as::<_, SyncJob>(&format!(
+    let jobs = sqlx::query_as::<_, SyncJob>(sqlx::AssertSqlSafe(&*format!(
         r#"
         {SYNC_JOB_SELECT}
         WHERE cloud_account_id = $1 AND organization_id = $2
         ORDER BY created_at DESC
         LIMIT $3 OFFSET $4
         "#
-    ))
+    )))
     .bind(account_id)
     .bind(org_id)
     .bind(bounds.limit)
@@ -945,7 +988,9 @@ pub async fn list_sync_jobs(
     .unwrap_or(0);
 
     let data: Vec<SyncJobResponse> = jobs.into_iter().map(Into::into).collect();
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 #[cfg(test)]
@@ -999,9 +1044,15 @@ mod tests {
         // Alibaba resources must not get AWS service labels.
         assert_eq!(service_name_for_type("bucket", "alibaba"), "Aliyun OSS");
         assert_eq!(service_name_for_type("instance", "alibaba"), "Aliyun ECS");
-        assert_eq!(service_name_for_type("rds_instance", "alibaba"), "Aliyun RDS");
+        assert_eq!(
+            service_name_for_type("rds_instance", "alibaba"),
+            "Aliyun RDS"
+        );
         assert_eq!(service_name_for_type("volume", "alibaba"), "Aliyun Disk");
         assert_eq!(service_name_for_type("ip_address", "alibaba"), "Aliyun EIP");
-        assert_eq!(service_name_for_type("k8s_cluster", "alibaba"), "Aliyun ACK");
+        assert_eq!(
+            service_name_for_type("k8s_cluster", "alibaba"),
+            "Aliyun ACK"
+        );
     }
 }

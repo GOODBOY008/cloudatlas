@@ -7,6 +7,8 @@ import { usePagination } from '../lib/hooks/usePagination'
 import i18n from '../i18n'
 import type { Paginated } from '../types'
 
+type FetchPage = (page: number, perPage: number) => Promise<Paginated<string>>
+
 const page = (total: number, pageNo: number, perPage = 50, data: string[] = []): Paginated<string> => ({
   data,
   meta: { total, page: pageNo, per_page: perPage, total_pages: Math.max(0, Math.ceil(total / perPage)) },
@@ -100,7 +102,7 @@ describe('usePagination', () => {
     return new QueryClient({ defaultOptions: { queries: { retry: false } } })
   }
 
-  function setupHook(fetchPage: ReturnType<typeof vi.fn>, baseKey: readonly unknown[]) {
+  function setupHook(fetchPage: FetchPage, baseKey: readonly unknown[]) {
     const client = makeClient()
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
@@ -117,7 +119,7 @@ describe('usePagination', () => {
   })
 
   it('starts at page 1 and loads it', async () => {
-    const fetchPage = vi.fn().mockResolvedValue(page(120, 1))
+    const fetchPage = vi.fn<FetchPage>().mockResolvedValue(page(120, 1))
     const hook = setupHook(fetchPage, ['x'])
     await waitFor(() => expect(hook.result.current.query.isSuccess).toBe(true))
     expect(fetchPage).toHaveBeenCalledWith(1, 50)
@@ -127,7 +129,7 @@ describe('usePagination', () => {
   })
 
   it('setPage loads another page; setPerPage resets to page 1', async () => {
-    const fetchPage = vi.fn().mockResolvedValue(page(120, 1))
+    const fetchPage = vi.fn<FetchPage>().mockResolvedValue(page(120, 1))
     const hook = setupHook(fetchPage, ['x'])
     await waitFor(() => expect(hook.result.current.query.isSuccess).toBe(true))
 
@@ -142,7 +144,7 @@ describe('usePagination', () => {
   })
 
   it('resets to page 1 when the base key (filters) changes', async () => {
-    const fetchPage = vi.fn().mockResolvedValue(page(120, 1))
+    const fetchPage = vi.fn<FetchPage>().mockResolvedValue(page(120, 1))
     const hook = setupHook(fetchPage, ['x', 'filter-a'])
     await waitFor(() => expect(hook.result.current.query.isSuccess).toBe(true))
 
@@ -158,7 +160,7 @@ describe('usePagination', () => {
     let resolveSecond: (v: Paginated<string>) => void = () => {}
     const first = Promise.resolve(page(120, 1, 50, ['row-1']))
     const second = new Promise<Paginated<string>>((res) => { resolveSecond = res })
-    const fetchPage = vi.fn().mockReturnValueOnce(first).mockReturnValueOnce(second)
+    const fetchPage = vi.fn<FetchPage>().mockReturnValueOnce(first).mockReturnValueOnce(second)
 
     const hook = setupHook(fetchPage, ['x'])
     await waitFor(() => expect(hook.result.current.query.isSuccess).toBe(true))

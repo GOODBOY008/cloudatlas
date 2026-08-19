@@ -15,10 +15,7 @@ use axum::{
 use uuid::Uuid;
 
 use crate::{
-    error::AppError,
-    middleware::rbac::Permission,
-    modules::auth::service::Claims,
-    state::AppState,
+    error::AppError, middleware::rbac::Permission, modules::auth::service::Claims, state::AppState,
 };
 
 /// Map a request (method + path segments) to the permission it requires, or
@@ -26,7 +23,7 @@ use crate::{
 pub fn required_permission(method: &Method, segments: &[&str]) -> Option<Permission> {
     use Permission::*;
 
-    // Normalize: find the org segment (orgs/:org_id/... or organizations/:org_id/...)
+    // Normalize: find the org segment (orgs/{org_id}/... or organizations/{org_id}/...)
     let org_idx = segments
         .iter()
         .position(|s| *s == "orgs" || *s == "organizations")?;
@@ -38,9 +35,12 @@ pub fn required_permission(method: &Method, segments: &[&str]) -> Option<Permiss
     };
     let resource = rest.first().copied().unwrap_or("");
 
-    let mutating = matches!(method, &Method::POST | &Method::PUT | &Method::PATCH | &Method::DELETE);
+    let mutating = matches!(
+        method,
+        &Method::POST | &Method::PUT | &Method::PATCH | &Method::DELETE
+    );
 
-    // Org-level mutation with no resource segment: PUT /organizations/:org_id
+    // Org-level mutation with no resource segment: PUT /organizations/{org_id}
     // (creating an org at POST /organizations is open to any member).
     if resource.is_empty()
         && segments[org_idx] == "organizations"
@@ -68,9 +68,18 @@ pub fn required_permission(method: &Method, segments: &[&str]) -> Option<Permiss
         "shared-environments" if mutating => Some(ManagePools), // book/release/delete
 
         // ── CMDB ────────────────────────────────────────────────────────────
-        "cis" | "ci-types" | "ci-classifications" | "ci-association-kinds"
-        | "ci-object-associations" | "ci-groups" | "services" | "compliance-policies"
-        | "ci-baselines" | "external-cmdb" | "service-templates" | "ci-apply-rules"
+        "cis"
+        | "ci-types"
+        | "ci-classifications"
+        | "ci-association-kinds"
+        | "ci-object-associations"
+        | "ci-groups"
+        | "services"
+        | "compliance-policies"
+        | "ci-baselines"
+        | "external-cmdb"
+        | "service-templates"
+        | "ci-apply-rules"
             if mutating =>
         {
             Some(ManageCmdb)
@@ -93,15 +102,13 @@ pub fn required_permission(method: &Method, segments: &[&str]) -> Option<Permiss
     }
 }
 
-/// Extract the org id from `/api/v1/orgs/:org_id/...` or
-/// `/api/v1/organizations/:org_id/...`.
+/// Extract the org id from `/api/v1/orgs/{org_id}/...` or
+/// `/api/v1/organizations/{org_id}/...`.
 fn org_id_from_segments(segments: &[&str]) -> Option<Uuid> {
     let idx = segments
         .iter()
         .position(|s| *s == "orgs" || *s == "organizations")?;
-    segments
-        .get(idx + 1)
-        .and_then(|s| Uuid::parse_str(s).ok())
+    segments.get(idx + 1).and_then(|s| Uuid::parse_str(s).ok())
 }
 
 /// RBAC middleware: 403 when the caller's role cannot perform the mutation.

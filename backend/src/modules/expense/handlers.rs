@@ -17,7 +17,10 @@ use crate::{
 };
 
 use super::{
-    dto::{AnomalyQuery, ExpenseQuery, ExpenseSummaryResponse, ForecastQuery, RegionCost, ServiceCost, TopResourceEntry, TrendPoint},
+    dto::{
+        AnomalyQuery, ExpenseQuery, ExpenseSummaryResponse, ForecastQuery, RegionCost, ServiceCost,
+        TopResourceEntry, TrendPoint,
+    },
     models::Expense,
 };
 
@@ -38,11 +41,7 @@ const EXPENSE_SELECT: &str = r#"
     FROM expenses
 "#;
 
-async fn ensure_org_member(
-    db: &sqlx::PgPool,
-    org_id: Uuid,
-    user_id: Uuid,
-) -> AppResult<()> {
+async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
     let row = sqlx::query(
         "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
     )
@@ -66,10 +65,7 @@ fn parse_date(s: &str, field: &str) -> AppResult<NaiveDate> {
 }
 
 /// Returns (start_date, end_date) — defaults to the last 30 days.
-fn resolve_date_range(
-    start: Option<&str>,
-    end: Option<&str>,
-) -> AppResult<(NaiveDate, NaiveDate)> {
+fn resolve_date_range(start: Option<&str>, end: Option<&str>) -> AppResult<(NaiveDate, NaiveDate)> {
     let end_date = match end {
         Some(s) => parse_date(s, "end_date")?,
         None => Utc::now().date_naive(),
@@ -105,10 +101,8 @@ pub async fn list_expenses(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let (start_date, end_date) = resolve_date_range(
-        q.start_date.as_deref(),
-        q.end_date.as_deref(),
-    )?;
+    let (start_date, end_date) =
+        resolve_date_range(q.start_date.as_deref(), q.end_date.as_deref())?;
 
     let bounds = q.page.resolve(50, 200);
     let (limit, offset) = (bounds.limit, bounds.offset);
@@ -149,7 +143,7 @@ pub async fn list_expenses(
         bind_idx + 1
     );
 
-    let mut query = sqlx::query_as::<_, Expense>(&sql)
+    let mut query = sqlx::query_as::<_, Expense>(sqlx::AssertSqlSafe(&*sql))
         .bind(org_id)
         .bind(start_date)
         .bind(end_date);
@@ -171,7 +165,7 @@ pub async fn list_expenses(
 
     // COUNT under the identical WHERE so meta.total matches the filtered set.
     let count_sql = format!("SELECT COUNT(*) FROM expenses WHERE {where_clause}");
-    let mut count_query = sqlx::query_scalar::<_, i64>(&count_sql)
+    let mut count_query = sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(&*count_sql))
         .bind(org_id)
         .bind(start_date)
         .bind(end_date);
@@ -214,10 +208,8 @@ pub async fn summary(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let (start_date, end_date) = resolve_date_range(
-        q.start_date.as_deref(),
-        q.end_date.as_deref(),
-    )?;
+    let (start_date, end_date) =
+        resolve_date_range(q.start_date.as_deref(), q.end_date.as_deref())?;
     let period_days = (end_date - start_date).num_days() as i32;
 
     // Total cost + resource count.
@@ -265,7 +257,11 @@ pub async fn summary(
             ServiceCost {
                 service_name: r.try_get("service_name").unwrap_or_default(),
                 cost,
-                percentage: if total_cost > 0.0 { cost / total_cost * 100.0 } else { 0.0 },
+                percentage: if total_cost > 0.0 {
+                    cost / total_cost * 100.0
+                } else {
+                    0.0
+                },
             }
         })
         .collect();
@@ -296,7 +292,11 @@ pub async fn summary(
             RegionCost {
                 region: r.try_get("region").unwrap_or_default(),
                 cost,
-                percentage: if total_cost > 0.0 { cost / total_cost * 100.0 } else { 0.0 },
+                percentage: if total_cost > 0.0 {
+                    cost / total_cost * 100.0
+                } else {
+                    0.0
+                },
             }
         })
         .collect();
@@ -666,9 +666,23 @@ pub async fn forecast_expenses(
         .take(30)
         .map(|f| f["predicted_cost"].as_f64().unwrap_or(0.0))
         .sum();
-    let trend_direction = if slope > 0.01 { "increasing" } else if slope < -0.01 { "decreasing" } else { "stable" };
-    let avg_recent = if n > 0.0 { reg_pts.iter().sum::<f64>() / n } else { 0.0 };
-    let change_percent = if avg_recent > 0.0 { slope / avg_recent * 100.0 } else { 0.0 };
+    let trend_direction = if slope > 0.01 {
+        "increasing"
+    } else if slope < -0.01 {
+        "decreasing"
+    } else {
+        "stable"
+    };
+    let avg_recent = if n > 0.0 {
+        reg_pts.iter().sum::<f64>() / n
+    } else {
+        0.0
+    };
+    let change_percent = if avg_recent > 0.0 {
+        slope / avg_recent * 100.0
+    } else {
+        0.0
+    };
 
     let history_json: Vec<Value> = history
         .iter()
@@ -790,7 +804,7 @@ pub async fn export_expenses(
         r#"{EXPENSE_SELECT} WHERE {where_clause} ORDER BY date DESC, cost DESC LIMIT 10000"#
     );
 
-    let mut query = sqlx::query_as::<_, Expense>(&sql)
+    let mut query = sqlx::query_as::<_, Expense>(sqlx::AssertSqlSafe(&*sql))
         .bind(org_id)
         .bind(start_date)
         .bind(end_date);
@@ -888,7 +902,7 @@ pub async fn ri_coverage(
     })))
 }
 
-/// GET /api/v1/orgs/:org_id/showback
+/// GET /api/v1/orgs/{org_id}/showback
 ///
 /// Showback/Chargeback allocation report.
 /// Returns cost breakdown by pool (with cost-center ownership) and by cost center
@@ -984,7 +998,11 @@ pub async fn showback_report(
         .iter()
         .map(|r| {
             let cost: f64 = r.try_get("cost").unwrap_or(0.0);
-            let pct = if total_cost > 0.0 { cost / total_cost * 100.0 } else { 0.0 };
+            let pct = if total_cost > 0.0 {
+                cost / total_cost * 100.0
+            } else {
+                0.0
+            };
             json!({
                 "cost_center_id":   r.try_get::<Uuid, _>("cost_center_id").ok(),
                 "cost_center_name": r.try_get::<String, _>("cost_center_name").unwrap_or_default(),
@@ -1129,7 +1147,7 @@ pub async fn raw_expenses_by_resource(
 
 // ─── expense_heatmap ─────────────────────────────────────────────────────────
 //
-// GET /api/v1/orgs/:org_id/expenses/heatmap
+// GET /api/v1/orgs/{org_id}/expenses/heatmap
 //
 // Returns a cost matrix: each row is a resource_type, each column is an ISO
 // week (YYYY-Www), value is total cost.  Useful for spotting which resource
@@ -1217,7 +1235,7 @@ pub async fn expense_heatmap(
 
 // ─── resource_expense_history ─────────────────────────────────────────────────
 //
-// GET /api/v1/orgs/:org_id/expenses/resources/:resource_id/history
+// GET /api/v1/orgs/{org_id}/expenses/resources/{resource_id}/history
 //
 // Returns the full daily cost history for a single cloud resource, plus:
 //   - 30-day total, 7-day total
@@ -1352,7 +1370,7 @@ pub async fn resource_expense_history(
 
 // ─── expenses_by_tag_breakdown ───────────────────────────────────────────────
 //
-// GET /api/v1/orgs/:org_id/expenses/by-tag-breakdown
+// GET /api/v1/orgs/{org_id}/expenses/by-tag-breakdown
 //
 // Groups expenses by every tag key present in the period, then for each key
 // groups by tag value.  Provides a two-level hierarchy for tag cost explorer.
@@ -1455,26 +1473,26 @@ pub async fn expenses_by_tag_breakdown(
 /// All values are whitelisted here; no user input is ever interpolated into SQL.
 fn dim_sql_expr(dim: &str) -> Option<&'static str> {
     match dim {
-        "cloud"         => Some("COALESCE(ca.provider::text, 'Unknown')"),
-        "service"       => Some("COALESCE(e.service_name, 'Unknown')"),
-        "region"        => Some("COALESCE(e.cloud_region, 'global')"),
+        "cloud" => Some("COALESCE(ca.provider::text, 'Unknown')"),
+        "service" => Some("COALESCE(e.service_name, 'Unknown')"),
+        "region" => Some("COALESCE(e.cloud_region, 'global')"),
         "resource_type" => Some("e.resource_type::text"),
-        "pool"          => Some("COALESCE(p.name, 'Unassigned')"),
-        _               => None,
+        "pool" => Some("COALESCE(p.name, 'Unassigned')"),
+        _ => None,
     }
 }
 
 #[derive(Debug, Default, Deserialize)]
 pub struct CostMapQuery {
-    pub start_date:    Option<String>,
-    pub end_date:      Option<String>,
-    pub primary_dim:   Option<String>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
+    pub primary_dim: Option<String>,
     pub secondary_dim: Option<String>,
-    pub filter_dim:    Option<String>,
-    pub filter_val:    Option<String>,
+    pub filter_dim: Option<String>,
+    pub filter_val: Option<String>,
 }
 
-/// GET /api/v1/orgs/:org_id/expenses/cost-map
+/// GET /api/v1/orgs/{org_id}/expenses/cost-map
 ///
 /// Returns cost grouped by one or two dimensions for treemap visualisation.
 /// Primary dimension is required; secondary is optional and produces nested children.
@@ -1533,11 +1551,7 @@ pub async fn cost_map(
         String::new()
     };
 
-    let secondary_group = if has_secondary {
-        ", secondary_key"
-    } else {
-        ""
-    };
+    let secondary_group = if has_secondary { ", secondary_key" } else { "" };
 
     let sql = format!(
         r#"
@@ -1559,7 +1573,7 @@ pub async fn cost_map(
         "#
     );
 
-    let mut query = sqlx::query(&sql)
+    let mut query = sqlx::query(sqlx::AssertSqlSafe(&*sql))
         .bind(org_id)
         .bind(start_date)
         .bind(end_date);
@@ -1653,7 +1667,7 @@ pub async fn cost_map(
 
 // ─── unit_economics ───────────────────────────────────────────────────────────
 
-/// GET /api/v1/orgs/:org_id/expenses/unit-economics
+/// GET /api/v1/orgs/{org_id}/expenses/unit-economics
 ///
 /// Returns per-resource-type aggregates: count, total cost, avg daily cost, % of total.
 pub async fn unit_economics(
@@ -1732,80 +1746,80 @@ pub async fn unit_economics(
 fn region_coords(region: &str) -> Option<(f64, f64, &'static str)> {
     match region {
         // AWS
-        "us-east-1"      => Some((37.9268, -77.0177, "N. Virginia")),
-        "us-east-2"      => Some((40.4173, -82.9071, "Ohio")),
-        "us-west-1"      => Some((37.3382, -121.8863, "N. California")),
-        "us-west-2"      => Some((45.5051, -122.6750, "Oregon")),
-        "ca-central-1"   => Some((45.5017, -73.5673, "Canada Central")),
-        "eu-west-1"      => Some((53.3498, -6.2603, "Ireland")),
-        "eu-west-2"      => Some((51.5074, -0.1278, "London")),
-        "eu-west-3"      => Some((48.8566, 2.3522, "Paris")),
-        "eu-central-1"   => Some((50.1109, 8.6821, "Frankfurt")),
-        "eu-north-1"     => Some((59.3293, 18.0686, "Stockholm")),
-        "eu-south-1"     => Some((45.4654, 9.1859, "Milan")),
-        "ap-east-1"      => Some((22.3193, 114.1694, "Hong Kong")),
+        "us-east-1" => Some((37.9268, -77.0177, "N. Virginia")),
+        "us-east-2" => Some((40.4173, -82.9071, "Ohio")),
+        "us-west-1" => Some((37.3382, -121.8863, "N. California")),
+        "us-west-2" => Some((45.5051, -122.6750, "Oregon")),
+        "ca-central-1" => Some((45.5017, -73.5673, "Canada Central")),
+        "eu-west-1" => Some((53.3498, -6.2603, "Ireland")),
+        "eu-west-2" => Some((51.5074, -0.1278, "London")),
+        "eu-west-3" => Some((48.8566, 2.3522, "Paris")),
+        "eu-central-1" => Some((50.1109, 8.6821, "Frankfurt")),
+        "eu-north-1" => Some((59.3293, 18.0686, "Stockholm")),
+        "eu-south-1" => Some((45.4654, 9.1859, "Milan")),
+        "ap-east-1" => Some((22.3193, 114.1694, "Hong Kong")),
         "ap-northeast-1" => Some((35.6762, 139.6503, "Tokyo")),
         "ap-northeast-2" => Some((37.5665, 126.9780, "Seoul")),
         "ap-northeast-3" => Some((34.6937, 135.5023, "Osaka")),
         "ap-southeast-1" => Some((1.3521, 103.8198, "Singapore")),
         "ap-southeast-2" => Some((-33.8688, 151.2093, "Sydney")),
-        "ap-south-1"     => Some((19.0760, 72.8777, "Mumbai")),
-        "ap-south-2"     => Some((17.3850, 78.4867, "Hyderabad")),
-        "sa-east-1"      => Some((-23.5505, -46.6333, "São Paulo")),
-        "me-south-1"     => Some((26.0667, 50.5577, "Bahrain")),
-        "me-central-1"   => Some((25.2048, 55.2708, "UAE")),
-        "af-south-1"     => Some((-33.9249, 18.4241, "Cape Town")),
-        "us-gov-west-1"  => Some((47.6062, -122.3321, "GovCloud West")),
-        "us-gov-east-1"  => Some((38.9072, -77.0369, "GovCloud East")),
+        "ap-south-1" => Some((19.0760, 72.8777, "Mumbai")),
+        "ap-south-2" => Some((17.3850, 78.4867, "Hyderabad")),
+        "sa-east-1" => Some((-23.5505, -46.6333, "São Paulo")),
+        "me-south-1" => Some((26.0667, 50.5577, "Bahrain")),
+        "me-central-1" => Some((25.2048, 55.2708, "UAE")),
+        "af-south-1" => Some((-33.9249, 18.4241, "Cape Town")),
+        "us-gov-west-1" => Some((47.6062, -122.3321, "GovCloud West")),
+        "us-gov-east-1" => Some((38.9072, -77.0369, "GovCloud East")),
         // Azure
-        "eastus"         => Some((37.3719, -79.8164, "East US")),
-        "eastus2"        => Some((36.6681, -78.3889, "East US 2")),
-        "westus"         => Some((37.7837, -122.4089, "West US")),
-        "westus2"        => Some((47.2330, -119.8520, "West US 2")),
-        "westus3"        => Some((33.4484, -112.0740, "West US 3")),
-        "centralus"      => Some((41.5908, -93.6208, "Central US")),
-        "northeurope"    => Some((53.3478, -6.2597, "North Europe")),
-        "westeurope"     => Some((52.3667, 4.9000, "West Europe")),
-        "uksouth"        => Some((50.9410, -0.7990, "UK South")),
-        "ukwest"         => Some((53.4270, -3.0840, "UK West")),
-        "francecentral"  => Some((46.3772, 2.3730, "France Central")),
+        "eastus" => Some((37.3719, -79.8164, "East US")),
+        "eastus2" => Some((36.6681, -78.3889, "East US 2")),
+        "westus" => Some((37.7837, -122.4089, "West US")),
+        "westus2" => Some((47.2330, -119.8520, "West US 2")),
+        "westus3" => Some((33.4484, -112.0740, "West US 3")),
+        "centralus" => Some((41.5908, -93.6208, "Central US")),
+        "northeurope" => Some((53.3478, -6.2597, "North Europe")),
+        "westeurope" => Some((52.3667, 4.9000, "West Europe")),
+        "uksouth" => Some((50.9410, -0.7990, "UK South")),
+        "ukwest" => Some((53.4270, -3.0840, "UK West")),
+        "francecentral" => Some((46.3772, 2.3730, "France Central")),
         "germanywestcentral" => Some((50.1109, 8.6821, "Germany West Central")),
-        "swedencentral"  => Some((60.6749, 17.1422, "Sweden Central")),
-        "eastasia"       => Some((22.2670, 114.1880, "East Asia")),
-        "southeastasia"  => Some((1.2834, 103.8607, "Southeast Asia")),
-        "japaneast"      => Some((35.6762, 139.6503, "Japan East")),
-        "japanwest"      => Some((34.6939, 135.5022, "Japan West")),
-        "australiaeast"  => Some((-33.8688, 151.2093, "Australia East")),
-        "brazilsouth"    => Some((-23.5505, -46.6333, "Brazil South")),
+        "swedencentral" => Some((60.6749, 17.1422, "Sweden Central")),
+        "eastasia" => Some((22.2670, 114.1880, "East Asia")),
+        "southeastasia" => Some((1.2834, 103.8607, "Southeast Asia")),
+        "japaneast" => Some((35.6762, 139.6503, "Japan East")),
+        "japanwest" => Some((34.6939, 135.5022, "Japan West")),
+        "australiaeast" => Some((-33.8688, 151.2093, "Australia East")),
+        "brazilsouth" => Some((-23.5505, -46.6333, "Brazil South")),
         // GCP
-        "us-central1"    => Some((41.2619, -95.8608, "Iowa")),
-        "us-east4"       => Some((38.9072, -77.0369, "N. Virginia")),
-        "us-west1"       => Some((45.5946, -121.1787, "Oregon")),
-        "us-west2"       => Some((34.0522, -118.2437, "Los Angeles")),
-        "us-west3"       => Some((40.7608, -111.8910, "Salt Lake City")),
-        "us-west4"       => Some((36.1699, -115.1398, "Las Vegas")),
+        "us-central1" => Some((41.2619, -95.8608, "Iowa")),
+        "us-east4" => Some((38.9072, -77.0369, "N. Virginia")),
+        "us-west1" => Some((45.5946, -121.1787, "Oregon")),
+        "us-west2" => Some((34.0522, -118.2437, "Los Angeles")),
+        "us-west3" => Some((40.7608, -111.8910, "Salt Lake City")),
+        "us-west4" => Some((36.1699, -115.1398, "Las Vegas")),
         "northamerica-northeast1" => Some((45.5017, -73.5673, "Montréal")),
         "northamerica-northeast2" => Some((43.6532, -79.3832, "Toronto")),
-        "europe-west1"   => Some((50.4501, 3.8181, "Belgium")),
-        "europe-west2"   => Some((51.5074, -0.1278, "London")),
-        "europe-west3"   => Some((50.1109, 8.6821, "Frankfurt")),
-        "europe-west4"   => Some((52.3667, 5.3833, "Netherlands")),
-        "europe-west6"   => Some((47.3769, 8.5417, "Zürich")),
-        "europe-north1"  => Some((60.5693, 27.1878, "Finland")),
-        "asia-east1"     => Some((24.0518, 120.5161, "Taiwan")),
-        "asia-east2"     => Some((22.3193, 114.1694, "Hong Kong")),
-        "asia-northeast1"=> Some((35.6762, 139.6503, "Tokyo")),
-        "asia-northeast3"=> Some((37.5665, 126.9780, "Seoul")),
-        "asia-south1"    => Some((19.0760, 72.8777, "Mumbai")),
-        "asia-southeast1"=> Some((1.3521, 103.8198, "Singapore")),
-        "asia-southeast2"=> Some((-6.2146, 106.8451, "Jakarta")),
+        "europe-west1" => Some((50.4501, 3.8181, "Belgium")),
+        "europe-west2" => Some((51.5074, -0.1278, "London")),
+        "europe-west3" => Some((50.1109, 8.6821, "Frankfurt")),
+        "europe-west4" => Some((52.3667, 5.3833, "Netherlands")),
+        "europe-west6" => Some((47.3769, 8.5417, "Zürich")),
+        "europe-north1" => Some((60.5693, 27.1878, "Finland")),
+        "asia-east1" => Some((24.0518, 120.5161, "Taiwan")),
+        "asia-east2" => Some((22.3193, 114.1694, "Hong Kong")),
+        "asia-northeast1" => Some((35.6762, 139.6503, "Tokyo")),
+        "asia-northeast3" => Some((37.5665, 126.9780, "Seoul")),
+        "asia-south1" => Some((19.0760, 72.8777, "Mumbai")),
+        "asia-southeast1" => Some((1.3521, 103.8198, "Singapore")),
+        "asia-southeast2" => Some((-6.2146, 106.8451, "Jakarta")),
         "australia-southeast1" => Some((-33.8688, 151.2093, "Sydney")),
-        "southamerica-east1"   => Some((-23.5505, -46.6333, "São Paulo")),
-        _                => None,
+        "southamerica-east1" => Some((-23.5505, -46.6333, "São Paulo")),
+        _ => None,
     }
 }
 
-/// GET /api/v1/orgs/:org_id/expenses/region-expenses
+/// GET /api/v1/orgs/{org_id}/expenses/region-expenses
 ///
 /// Returns cloud spend aggregated by region with geographic coordinates
 pub async fn region_expenses(

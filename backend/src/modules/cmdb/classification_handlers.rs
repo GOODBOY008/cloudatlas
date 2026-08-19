@@ -16,14 +16,12 @@ use crate::{
 };
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -100,7 +98,9 @@ pub async fn create_ci_classification(
     ensure_org_member(&state.db, org_id, claims.user_id()?).await?;
 
     if body.name.trim().is_empty() {
-        return Err(AppError::Validation("Classification name cannot be empty".into()));
+        return Err(AppError::Validation(
+            "Classification name cannot be empty".into(),
+        ));
     }
 
     let row = sqlx::query(
@@ -269,20 +269,16 @@ pub async fn delete_ci_classification(
     .await;
 
     // Unlink CI types rather than blocking the delete
-    sqlx::query(
-        "UPDATE ci_types SET classification_id = NULL WHERE classification_id = $1",
-    )
-    .bind(class_id)
-    .execute(&state.db)
-    .await?;
+    sqlx::query("UPDATE ci_types SET classification_id = NULL WHERE classification_id = $1")
+        .bind(class_id)
+        .execute(&state.db)
+        .await?;
 
-    sqlx::query(
-        "DELETE FROM ci_classifications WHERE id = $1 AND organization_id = $2",
-    )
-    .bind(class_id)
-    .bind(org_id)
-    .execute(&state.db)
-    .await?;
+    sqlx::query("DELETE FROM ci_classifications WHERE id = $1 AND organization_id = $2")
+        .bind(class_id)
+        .bind(org_id)
+        .execute(&state.db)
+        .await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

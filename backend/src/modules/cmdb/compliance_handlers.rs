@@ -15,14 +15,12 @@ use crate::{
 };
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -32,7 +30,14 @@ async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> Ap
 /// Field paths resolve against CI fields: `name`, `lifecycle_state`, `cloud_provider`,
 /// `tags.<key>`, `meta.<key[.nested]>`.
 const RULE_OPS: &[&str] = &[
-    "exists", "not_exists", "eq", "ne", "in", "contains", "gte", "lte",
+    "exists",
+    "not_exists",
+    "eq",
+    "ne",
+    "in",
+    "contains",
+    "gte",
+    "lte",
 ];
 
 /// Validate the `rules` JSONB array against the compliance rule schema.
@@ -66,7 +71,9 @@ pub fn validate_rules(rules: &Value) -> AppResult<()> {
             .and_then(|v| v.as_str())
             .unwrap_or_default();
         if field.is_empty() {
-            return Err(AppError::Validation(format!("rules[{i}].field is required")));
+            return Err(AppError::Validation(format!(
+                "rules[{i}].field is required"
+            )));
         }
         if !field.starts_with("tags.") && !field.starts_with("meta.") {
             match field {
@@ -98,10 +105,7 @@ pub fn validate_rules(rules: &Value) -> AppResult<()> {
 
 /// Resolve a dotted field path against a CI record (name / lifecycle_state /
 /// cloud_provider / tags.<key> / meta.<key[.nested]>).
-fn resolve_field<'a>(
-    root: &'a Value,
-    path: &str,
-) -> Option<&'a Value> {
+fn resolve_field<'a>(root: &'a Value, path: &str) -> Option<&'a Value> {
     let mut parts = path.split('.');
     let head = parts.next()?;
     let mut current = root.get(head)?;
@@ -118,7 +122,10 @@ fn evaluate_rule(ci: &Value, rule: &Value) -> bool {
         Some(o) => o,
         None => return false,
     };
-    let field = obj.get("field").and_then(|v| v.as_str()).unwrap_or_default();
+    let field = obj
+        .get("field")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default();
     let op = obj.get("op").and_then(|v| v.as_str()).unwrap_or_default();
     let value = obj.get("value");
 
@@ -128,9 +135,7 @@ fn evaluate_rule(ci: &Value, rule: &Value) -> bool {
         "exists" => resolved.is_some(),
         "not_exists" => resolved.is_none(),
         "eq" => match (resolved, value) {
-            (Some(actual), Some(expected)) => {
-                json_eq(actual, expected)
-            }
+            (Some(actual), Some(expected)) => json_eq(actual, expected),
             _ => false,
         },
         "ne" => match (resolved, value) {
@@ -139,7 +144,9 @@ fn evaluate_rule(ci: &Value, rule: &Value) -> bool {
             _ => false,
         },
         "in" => match (value, resolved) {
-            (Some(Value::Array(choices)), Some(actual)) => choices.iter().any(|c| json_eq(actual, c)),
+            (Some(Value::Array(choices)), Some(actual)) => {
+                choices.iter().any(|c| json_eq(actual, c))
+            }
             _ => false,
         },
         "contains" => match (resolved, value) {
@@ -149,15 +156,17 @@ fn evaluate_rule(ci: &Value, rule: &Value) -> bool {
             _ => false,
         },
         "gte" => match (resolved, value) {
-            (Some(actual), Some(expected)) => {
-                num_of(actual).zip(num_of(expected)).map(|(a, b)| a >= b).unwrap_or(false)
-            }
+            (Some(actual), Some(expected)) => num_of(actual)
+                .zip(num_of(expected))
+                .map(|(a, b)| a >= b)
+                .unwrap_or(false),
             _ => false,
         },
         "lte" => match (resolved, value) {
-            (Some(actual), Some(expected)) => {
-                num_of(actual).zip(num_of(expected)).map(|(a, b)| a <= b).unwrap_or(false)
-            }
+            (Some(actual), Some(expected)) => num_of(actual)
+                .zip(num_of(expected))
+                .map(|(a, b)| a <= b)
+                .unwrap_or(false),
             _ => false,
         },
         _ => false,
@@ -277,7 +286,9 @@ pub async fn list_compliance_policies(
         })
         .collect();
 
-    Ok(Json(json!({ "data": policies, "meta": page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": policies, "meta": page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_compliance_policy(
@@ -359,12 +370,16 @@ pub async fn update_compliance_policy(
     .bind(req.rules)
     .bind(req.severity.as_deref())
     .bind(req.is_active)
-    .bind(normalize_target_type(req.target_type.as_deref(), req.target_group_id))
+    .bind(normalize_target_type(
+        req.target_type.as_deref(),
+        req.target_group_id,
+    ))
     .bind(req.target_group_id)
     .fetch_optional(&state.db)
     .await?;
 
-    let r = row.ok_or_else(|| AppError::NotFound(format!("Compliance policy {policy_id} not found")))?;
+    let r =
+        row.ok_or_else(|| AppError::NotFound(format!("Compliance policy {policy_id} not found")))?;
 
     Ok(Json(json!({
         "data": {
@@ -439,7 +454,11 @@ async fn record_governance_run(
     let Ok(job_id) = ensure_scheduled_job(db, org_id, name, job_type, cron).await else {
         return;
     };
-    let status = if error.is_some() { "failed" } else { "succeeded" };
+    let status = if error.is_some() {
+        "failed"
+    } else {
+        "succeeded"
+    };
     let _ = sqlx::query(
         r#"INSERT INTO job_runs (job_id, organization_id, status, started_at, completed_at, result, error_message)
            VALUES ($1, $2, $3::job_status, NOW(), NOW(), $4, $5)"#,
@@ -480,8 +499,12 @@ pub async fn run_compliance_for_org(db: &sqlx::PgPool, org_id: Uuid) -> AppResul
         let target_group_id: Option<Uuid> = policy.try_get("target_group_id").unwrap_or(None);
 
         // Target CIs (T16): all / ci_type / dynamic_group membership.
-        let cis = if target_type == "dynamic_group" && target_group_id.is_some() {
-            let group_id = target_group_id.unwrap();
+        let dynamic_group_id = if target_type == "dynamic_group" {
+            target_group_id
+        } else {
+            None
+        };
+        let cis = if let Some(group_id) = dynamic_group_id {
             let group = sqlx::query(
                 "SELECT ci_type_id, conditions FROM ci_dynamic_groups WHERE id = $1 AND organization_id = $2",
             )
@@ -496,12 +519,21 @@ pub async fn run_compliance_for_org(db: &sqlx::PgPool, org_id: Uuid) -> AppResul
                     .unwrap_or_else(|_| json!([]));
                 let conditions: Vec<Value> = conds.as_array().cloned().unwrap_or_default();
                 let (members, _) = crate::modules::cmdb::handlers::run_dynamic_group_sql(
-                    db, org_id, &conditions, g_type.or(ci_type_id), 5000, 0,
+                    db,
+                    org_id,
+                    &conditions,
+                    g_type.or(ci_type_id),
+                    5000,
+                    0,
                 )
                 .await?;
                 let ids: Vec<Uuid> = members
                     .iter()
-                    .filter_map(|m| m.get("id").and_then(|v| v.as_str()).and_then(|x| Uuid::parse_str(x).ok()))
+                    .filter_map(|m| {
+                        m.get("id")
+                            .and_then(|v| v.as_str())
+                            .and_then(|x| Uuid::parse_str(x).ok())
+                    })
                     .collect();
                 sqlx::query(
                     r#"SELECT id, name, lifecycle_state::text AS lifecycle_state, cloud_provider::text AS cloud_provider,
@@ -589,8 +621,8 @@ pub async fn run_compliance_for_org(db: &sqlx::PgPool, org_id: Uuid) -> AppResul
             )
             .bind(&ids)
             // policy_id / org_id repeated per row via arrays
-            .bind(&vec![policy_id; ids.len()])
-            .bind(&vec![org_id; ids.len()])
+            .bind(vec![policy_id; ids.len()])
+            .bind(vec![org_id; ids.len()])
             .bind(&oks)
             .bind(&violation_sets)
             .execute(db)
@@ -646,7 +678,7 @@ pub async fn run_compliance_check(
     }
 }
 
-/// GET /api/v1/orgs/:org_id/compliance/last-run
+/// GET /api/v1/orgs/{org_id}/compliance/last-run
 ///
 /// Latest compliance run summary (manual or scheduled), sourced from
 /// `job_runs` (T12).
@@ -748,7 +780,9 @@ pub async fn list_compliance_results(
         })
         .collect();
 
-    Ok(Json(json!({ "data": results, "meta": page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": results, "meta": page_meta_json(total, &bounds) }),
+    ))
 }
 
 // ─── Baseline & Drift ─────────────────────────────────────────────────────────
@@ -810,7 +844,9 @@ pub async fn list_baselines(
         })
         .collect();
 
-    Ok(Json(json!({ "data": baselines, "meta": page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": baselines, "meta": page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_baseline(
@@ -904,7 +940,9 @@ pub async fn list_drift(
         })
         .collect();
 
-    Ok(Json(json!({ "data": drifts, "meta": page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": drifts, "meta": page_meta_json(total, &bounds) }),
+    ))
 }
 
 /// Drift lifecycle closure (T12): open/acknowledged → resolved.
@@ -986,7 +1024,9 @@ pub async fn rescan_drift_for_org(db: &sqlx::PgPool, org_id: Uuid) -> AppResult<
         let desired: Value = row
             .try_get::<Value, _>("desired_state")
             .unwrap_or_else(|_| json!({}));
-        let actual: Value = row.try_get::<Value, _>("meta").unwrap_or_else(|_| json!({}));
+        let actual: Value = row
+            .try_get::<Value, _>("meta")
+            .unwrap_or_else(|_| json!({}));
 
         let desired_obj = desired.as_object().cloned().unwrap_or_default();
 
@@ -1197,13 +1237,12 @@ pub async fn list_external_cmdb(
     .fetch_all(&state.db)
     .await?;
 
-    let total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM external_cmdb_configs WHERE organization_id = $1",
-    )
-    .bind(org_id)
-    .fetch_one(&state.db)
-    .await
-    .unwrap_or(0);
+    let total: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM external_cmdb_configs WHERE organization_id = $1")
+            .bind(org_id)
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(0);
 
     let configs: Vec<Value> = rows
         .iter()
@@ -1223,7 +1262,9 @@ pub async fn list_external_cmdb(
         })
         .collect();
 
-    Ok(Json(json!({ "data": configs, "meta": page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": configs, "meta": page_meta_json(total, &bounds) }),
+    ))
 }
 
 pub async fn create_external_cmdb(
@@ -1240,9 +1281,21 @@ pub async fn create_external_cmdb(
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
-    let auth_config = req.config.get("auth_config").cloned().unwrap_or_else(|| json!({}));
-    let field_mapping = req.config.get("field_mapping").cloned().unwrap_or_else(|| json!({}));
-    let options = req.config.get("options").cloned().unwrap_or_else(|| json!({}));
+    let auth_config = req
+        .config
+        .get("auth_config")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
+    let field_mapping = req
+        .config
+        .get("field_mapping")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
+    let options = req
+        .config
+        .get("options")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
     let ci_type_id = req
         .config
         .get("ci_type_id")
@@ -1315,27 +1368,57 @@ mod tests {
     #[test]
     fn rule_eq_numeric_and_string() {
         let ci = sample_ci();
-        assert!(evaluate_rule(&ci, &json!({"field": "tags.env", "op": "eq", "value": "prod"})));
-        assert!(!evaluate_rule(&ci, &json!({"field": "tags.env", "op": "eq", "value": "dev"})));
-        assert!(evaluate_rule(&ci, &json!({"field": "meta.cpu_count", "op": "eq", "value": 4})));
+        assert!(evaluate_rule(
+            &ci,
+            &json!({"field": "tags.env", "op": "eq", "value": "prod"})
+        ));
+        assert!(!evaluate_rule(
+            &ci,
+            &json!({"field": "tags.env", "op": "eq", "value": "dev"})
+        ));
+        assert!(evaluate_rule(
+            &ci,
+            &json!({"field": "meta.cpu_count", "op": "eq", "value": 4})
+        ));
         // string/number coercion
-        assert!(evaluate_rule(&ci, &json!({"field": "meta.memory_gb", "op": "eq", "value": "16"})));
+        assert!(evaluate_rule(
+            &ci,
+            &json!({"field": "meta.memory_gb", "op": "eq", "value": "16"})
+        ));
     }
 
     #[test]
     fn rule_gte_lte() {
         let ci = sample_ci();
-        assert!(evaluate_rule(&ci, &json!({"field": "meta.cpu_count", "op": "gte", "value": 2})));
-        assert!(!evaluate_rule(&ci, &json!({"field": "meta.cpu_count", "op": "gte", "value": 8})));
-        assert!(evaluate_rule(&ci, &json!({"field": "meta.memory_gb", "op": "lte", "value": 32})));
+        assert!(evaluate_rule(
+            &ci,
+            &json!({"field": "meta.cpu_count", "op": "gte", "value": 2})
+        ));
+        assert!(!evaluate_rule(
+            &ci,
+            &json!({"field": "meta.cpu_count", "op": "gte", "value": 8})
+        ));
+        assert!(evaluate_rule(
+            &ci,
+            &json!({"field": "meta.memory_gb", "op": "lte", "value": 32})
+        ));
     }
 
     #[test]
     fn rule_in_and_contains() {
         let ci = sample_ci();
-        assert!(evaluate_rule(&ci, &json!({"field": "cloud_provider", "op": "in", "value": ["aws", "gcp"]})));
-        assert!(!evaluate_rule(&ci, &json!({"field": "cloud_provider", "op": "in", "value": ["azure"]})));
-        assert!(evaluate_rule(&ci, &json!({"field": "name", "op": "contains", "value": "web"})));
+        assert!(evaluate_rule(
+            &ci,
+            &json!({"field": "cloud_provider", "op": "in", "value": ["aws", "gcp"]})
+        ));
+        assert!(!evaluate_rule(
+            &ci,
+            &json!({"field": "cloud_provider", "op": "in", "value": ["azure"]})
+        ));
+        assert!(evaluate_rule(
+            &ci,
+            &json!({"field": "name", "op": "contains", "value": "web"})
+        ));
     }
 
     #[test]

@@ -22,7 +22,11 @@ pub fn holt_winters_forecast(series: &[f64], h: usize, season: usize) -> Vec<f64
                 num += x * y;
                 den += x * x;
             }
-            if den.abs() > 1e-12 { num / den } else { 0.0 }
+            if den.abs() > 1e-12 {
+                num / den
+            } else {
+                0.0
+            }
         } else {
             0.0
         };
@@ -36,10 +40,7 @@ pub fn holt_winters_forecast(series: &[f64], h: usize, season: usize) -> Vec<f64
     let first_season: f64 = series[..season].iter().sum::<f64>() / season as f64;
     let mut level = first_season;
     let mut trend = (series[season.min(series.len() - 1)] - first_season) / m;
-    let mut seasonal: Vec<f64> = series[..season]
-        .iter()
-        .map(|y| y - first_season)
-        .collect();
+    let mut seasonal: Vec<f64> = series[..season].iter().map(|y| y - first_season).collect();
 
     let mut last = level + trend + seasonal[0];
     for (i, y) in series.iter().enumerate() {
@@ -84,10 +85,7 @@ fn one_step_sse(series: &[f64], season: usize, alpha: f64, beta: f64, gamma: f64
     let first_season: f64 = series[..season].iter().sum::<f64>() / season as f64;
     let mut level = first_season;
     let mut trend = (series[season.min(series.len() - 1)] - first_season) / season as f64;
-    let mut seasonal: Vec<f64> = series[..season]
-        .iter()
-        .map(|y| y - first_season)
-        .collect();
+    let mut seasonal: Vec<f64> = series[..season].iter().map(|y| y - first_season).collect();
 
     let mut sse = 0.0;
     for (i, y) in series.iter().enumerate() {

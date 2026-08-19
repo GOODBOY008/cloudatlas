@@ -17,14 +17,12 @@ use crate::{
 // ─── Shared guard ─────────────────────────────────────────────────────────────
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -55,7 +53,7 @@ pub struct PatchTagsRequest {
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 
-/// GET /api/v1/orgs/:org_id/resources
+/// GET /api/v1/orgs/{org_id}/resources
 ///
 /// List cloud resources tracked for the organization.
 /// Supports filtering by resource_type, pool_id, cloud_account_id, cloud_region, active.
@@ -139,10 +137,7 @@ pub async fn list_resources(
     .await
     .unwrap_or(0);
 
-    let data: Vec<Value> = rows
-        .iter()
-        .map(|r| resource_row_to_json(r))
-        .collect();
+    let data: Vec<Value> = rows.iter().map(resource_row_to_json).collect();
 
     Ok(Json(json!({
         "data": data,
@@ -150,7 +145,7 @@ pub async fn list_resources(
     })))
 }
 
-/// GET /api/v1/orgs/:org_id/resources/:resource_id
+/// GET /api/v1/orgs/{org_id}/resources/{resource_id}
 pub async fn get_resource(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -181,7 +176,7 @@ pub async fn get_resource(
     Ok(Json(json!({ "data": resource_row_to_json(&row) })))
 }
 
-/// PATCH /api/v1/orgs/:org_id/resources/:resource_id/pool
+/// PATCH /api/v1/orgs/{org_id}/resources/{resource_id}/pool
 ///
 /// Assign or unassign a resource to a pool (pass null pool_id to unassign).
 pub async fn patch_resource_pool(
@@ -224,7 +219,9 @@ pub async fn patch_resource_pool(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Resource {resource_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Resource {resource_id} not found"
+        )));
     }
 
     Ok(Json(json!({
@@ -236,7 +233,7 @@ pub async fn patch_resource_pool(
     })))
 }
 
-/// PATCH /api/v1/orgs/:org_id/resources/:resource_id/tags
+/// PATCH /api/v1/orgs/{org_id}/resources/{resource_id}/tags
 ///
 /// Replace the full tags object on a resource.
 pub async fn patch_resource_tags(
@@ -251,9 +248,7 @@ pub async fn patch_resource_tags(
 
     // Ensure tags value is an object.
     if !body.tags.is_object() {
-        return Err(AppError::Validation(
-            "tags must be a JSON object".into(),
-        ));
+        return Err(AppError::Validation("tags must be a JSON object".into()));
     }
 
     let result = sqlx::query(
@@ -269,7 +264,9 @@ pub async fn patch_resource_tags(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!("Resource {resource_id} not found")));
+        return Err(AppError::NotFound(format!(
+            "Resource {resource_id} not found"
+        )));
     }
 
     Ok((
@@ -440,16 +437,17 @@ pub async fn s3_duplicate_analysis(
     for group in &groups {
         let members: Vec<Value> = buckets
             .iter()
-            .filter(|b| {
-                group.contains(&b["name"].as_str().unwrap_or_default().to_string())
-            })
+            .filter(|b| group.contains(&b["name"].as_str().unwrap_or_default().to_string()))
             .cloned()
             .collect();
         if members.is_empty() {
             continue;
         }
         let redundant = members.len().saturating_sub(1) as f64;
-        let group_cost: f64 = members.iter().map(|m| m["total_cost"].as_f64().unwrap_or(0.0)).sum();
+        let group_cost: f64 = members
+            .iter()
+            .map(|m| m["total_cost"].as_f64().unwrap_or(0.0))
+            .sum();
         let redundant_cost = group_cost * (redundant / members.len() as f64);
         potential_savings += redundant_cost;
         dup_groups.push(json!({
@@ -503,7 +501,7 @@ mod tests {
 
 // ─── Resource → Recommendations drill-down (G12) ──────────────────────────────
 
-/// GET /orgs/:org_id/resources/:resource_id/recommendations
+/// GET /orgs/{org_id}/resources/{resource_id}/recommendations
 /// Recommendations linked to this resource (by cloud_resource_id).
 pub async fn resource_recommendations(
     State(state): State<AppState>,
@@ -565,7 +563,9 @@ pub async fn resource_recommendations(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 // ─── Metric ingestion (product gap D1) ────────────────────────────────────────
@@ -583,7 +583,7 @@ pub struct IngestMetricsRequest {
     pub points: Vec<MetricPoint>,
 }
 
-/// POST /orgs/:org_id/metrics — bulk ingestion (≤10k points) from metric
+/// POST /orgs/{org_id}/metrics — bulk ingestion (≤10k points) from metric
 /// exporters / discovery agents. Used by metric-aware recommendation detectors.
 pub async fn ingest_metrics(
     State(state): State<AppState>,
@@ -634,7 +634,7 @@ pub async fn ingest_metrics(
     ))
 }
 
-/// GET /orgs/:org_id/metrics?resource_id=…&metric=cpu_utilization&hours=24
+/// GET /orgs/{org_id}/metrics?resource_id=…&metric=cpu_utilization&hours=24
 /// — recent metric points for a resource (charting/debug).
 /// Time-series exception: `per_page` max is 2000 (not 200); envelope is shared.
 pub async fn list_metrics(
@@ -649,8 +649,15 @@ pub async fn list_metrics(
         .get("resource_id")
         .and_then(|v| Uuid::parse_str(v).ok())
         .ok_or_else(|| AppError::Validation("resource_id is required".into()))?;
-    let metric = q.get("metric").map(String::as_str).unwrap_or("cpu_utilization");
-    let hours: i64 = q.get("hours").and_then(|v| v.parse().ok()).unwrap_or(24).clamp(1, 720);
+    let metric = q
+        .get("metric")
+        .map(String::as_str)
+        .unwrap_or("cpu_utilization");
+    let hours: i64 = q
+        .get("hours")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(24)
+        .clamp(1, 720);
     let page = crate::utils::pagination::PageQuery {
         page: q.get("page").cloned(),
         per_page: q.get("per_page").cloned(),
@@ -702,12 +709,14 @@ pub async fn list_metrics(
         })
         .collect();
 
-    Ok(Json(json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) })))
+    Ok(Json(
+        json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
+    ))
 }
 
 // ─── Global search (product gap P3) ───────────────────────────────────────────
 
-/// GET /orgs/:org_id/search?q=… — cross-entity search: CIs, resources,
+/// GET /orgs/{org_id}/search?q=… — cross-entity search: CIs, resources,
 /// recommendations, services, pools (top 5 each).
 pub async fn global_search(
     State(state): State<AppState>,
@@ -719,7 +728,11 @@ pub async fn global_search(
 
     let query = q.get("q").cloned().unwrap_or_default();
     let pattern = format!("%{}%", query.to_lowercase());
-    let limit: i64 = q.get("limit").and_then(|v| v.parse().ok()).unwrap_or(5).clamp(1, 10);
+    let limit: i64 = q
+        .get("limit")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(5)
+        .clamp(1, 10);
 
     let mut result = serde_json::Map::new();
 
@@ -734,16 +747,23 @@ pub async fn global_search(
                   OR lower(COALESCE(cloud_resource_id, '')) LIKE $2)
            ORDER BY name LIMIT $3"#,
     )
-    .bind(org_id).bind(&pattern).bind(limit)
-    .fetch_all(&state.db).await.unwrap_or_default();
+    .bind(org_id)
+    .bind(&pattern)
+    .bind(limit)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
     result.insert(
         "cis".into(),
-        json!(cis.iter().map(|r| json!({
-            "id": r.get::<Uuid, _>("id"),
-            "name": r.get::<String, _>("name"),
-            "display_name": r.get::<Option<String>, _>("display_name"),
-            "lifecycle_state": r.get::<String, _>("lifecycle_state"),
-        })).collect::<Vec<_>>()),
+        json!(cis
+            .iter()
+            .map(|r| json!({
+                "id": r.get::<Uuid, _>("id"),
+                "name": r.get::<String, _>("name"),
+                "display_name": r.get::<Option<String>, _>("display_name"),
+                "lifecycle_state": r.get::<String, _>("lifecycle_state"),
+            }))
+            .collect::<Vec<_>>()),
     );
 
     // Resources
@@ -758,14 +778,17 @@ pub async fn global_search(
     .fetch_all(&state.db).await.unwrap_or_default();
     result.insert(
         "resources".into(),
-        json!(resources.iter().map(|r| json!({
-            "id": r.get::<Uuid, _>("id"),
-            "name": r.get::<Option<String>, _>("name"),
-            "resource_type": r.get::<Option<String>, _>("resource_type"),
-            "service": r.get::<Option<String>, _>("service_name"),
-            "region": r.get::<Option<String>, _>("cloud_region"),
-            "cost": r.get::<f64, _>("cost"),
-        })).collect::<Vec<_>>()),
+        json!(resources
+            .iter()
+            .map(|r| json!({
+                "id": r.get::<Uuid, _>("id"),
+                "name": r.get::<Option<String>, _>("name"),
+                "resource_type": r.get::<Option<String>, _>("resource_type"),
+                "service": r.get::<Option<String>, _>("service_name"),
+                "region": r.get::<Option<String>, _>("cloud_region"),
+                "cost": r.get::<f64, _>("cost"),
+            }))
+            .collect::<Vec<_>>()),
     );
 
     // Recommendations
@@ -776,17 +799,24 @@ pub async fn global_search(
              AND (title ILIKE $2 OR rec_type ILIKE $2)
            ORDER BY potential_savings DESC LIMIT $3"#,
     )
-    .bind(org_id).bind(&pattern).bind(limit)
-    .fetch_all(&state.db).await.unwrap_or_default();
+    .bind(org_id)
+    .bind(&pattern)
+    .bind(limit)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
     result.insert(
         "recommendations".into(),
-        json!(recs.iter().map(|r| json!({
-            "id": r.get::<Uuid, _>("id"),
-            "title": r.get::<String, _>("title"),
-            "rec_type": r.get::<String, _>("rec_type"),
-            "status": r.get::<String, _>("status"),
-            "savings": r.get::<f64, _>("savings"),
-        })).collect::<Vec<_>>()),
+        json!(recs
+            .iter()
+            .map(|r| json!({
+                "id": r.get::<Uuid, _>("id"),
+                "title": r.get::<String, _>("title"),
+                "rec_type": r.get::<String, _>("rec_type"),
+                "status": r.get::<String, _>("status"),
+                "savings": r.get::<f64, _>("savings"),
+            }))
+            .collect::<Vec<_>>()),
     );
 
     // Services
@@ -796,15 +826,22 @@ pub async fn global_search(
              AND (name ILIKE $2 OR display_name ILIKE $2)
            ORDER BY name LIMIT $3"#,
     )
-    .bind(org_id).bind(&pattern).bind(limit)
-    .fetch_all(&state.db).await.unwrap_or_default();
+    .bind(org_id)
+    .bind(&pattern)
+    .bind(limit)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
     result.insert(
         "services".into(),
-        json!(services.iter().map(|r| json!({
-            "id": r.get::<Uuid, _>("id"),
-            "name": r.get::<String, _>("name"),
-            "display_name": r.get::<String, _>("display_name"),
-        })).collect::<Vec<_>>()),
+        json!(services
+            .iter()
+            .map(|r| json!({
+                "id": r.get::<Uuid, _>("id"),
+                "name": r.get::<String, _>("name"),
+                "display_name": r.get::<String, _>("display_name"),
+            }))
+            .collect::<Vec<_>>()),
     );
 
     // Pools
@@ -814,22 +851,31 @@ pub async fn global_search(
              AND name ILIKE $2
            ORDER BY name LIMIT $3"#,
     )
-    .bind(org_id).bind(&pattern).bind(limit)
-    .fetch_all(&state.db).await.unwrap_or_default();
+    .bind(org_id)
+    .bind(&pattern)
+    .bind(limit)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
     result.insert(
         "pools".into(),
-        json!(pools.iter().map(|r| json!({
-            "id": r.get::<Uuid, _>("id"),
-            "name": r.get::<String, _>("name"),
-        })).collect::<Vec<_>>()),
+        json!(pools
+            .iter()
+            .map(|r| json!({
+                "id": r.get::<Uuid, _>("id"),
+                "name": r.get::<String, _>("name"),
+            }))
+            .collect::<Vec<_>>()),
     );
 
-    Ok(Json(json!({ "data": Value::Object(result), "query": query })))
+    Ok(Json(
+        json!({ "data": Value::Object(result), "query": query }),
+    ))
 }
 
 // ─── Demo data seeding (product gap P5) ───────────────────────────────────────
 
-/// POST /orgs/:org_id/demo-data — seed a demo pool, cloud account, resources,
+/// POST /orgs/{org_id}/demo-data — seed a demo pool, cloud account, resources,
 /// 60 days of expenses and a budget so new orgs can explore immediately.
 pub async fn seed_demo_data(
     State(state): State<AppState>,
@@ -837,7 +883,7 @@ pub async fn seed_demo_data(
     Path(org_id): Path<Uuid>,
 ) -> AppResult<Json<Value>> {
     ensure_org_member(&state.db, org_id, claims.user_id()?).await?;
-    let user_id = claims.user_id()?;
+    let _user_id = claims.user_id()?;
     let org_cur = crate::modules::billing::fx::org_currency(&state.db, org_id).await;
     let user_id = claims.user_id()?;
 
@@ -850,7 +896,9 @@ pub async fn seed_demo_data(
     .await
     .unwrap_or(false);
     if seeded {
-        return Ok(Json(json!({ "data": { "message": "Demo data already seeded" } })));
+        return Ok(Json(
+            json!({ "data": { "message": "Demo data already seeded" } }),
+        ));
     }
 
     // 1. Demo pool + budget

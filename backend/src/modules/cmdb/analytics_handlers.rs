@@ -1,6 +1,5 @@
 use axum::{
     extract::{Extension, Path, State},
-    http::StatusCode,
     Json,
 };
 use serde::Deserialize;
@@ -15,14 +14,12 @@ use crate::{
 };
 
 async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
-    sqlx::query(
-        "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?
-    .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
+    sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("Not a member of this organization".into()))?;
     Ok(())
 }
 
@@ -134,12 +131,11 @@ pub async fn cmdb_stats(
     .await?;
 
     // Dynamic groups
-    let total_groups: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM ci_dynamic_groups WHERE organization_id = $1",
-    )
-    .bind(org_id)
-    .fetch_one(&state.db)
-    .await?;
+    let total_groups: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM ci_dynamic_groups WHERE organization_id = $1")
+            .bind(org_id)
+            .fetch_one(&state.db)
+            .await?;
 
     // Recent audit entries (last 10)
     let recent_audit_rows = sqlx::query(
@@ -188,8 +184,6 @@ pub async fn cmdb_stats(
 
 // ─── Model Topology ────────────────────────────────────────────────────────
 /// Returns all CI types and the object associations between them.
-/// Used by the frontend to render the model topology graph.
-
 pub async fn model_topology(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -302,8 +296,10 @@ pub async fn bulk_import_cis(
 
     // T1/T2: attribute definitions + unique constraints, cached per CI type so
     // a 500-row import of one type does not re-fetch definitions per row.
-    let mut attr_cache: std::collections::HashMap<Uuid, Vec<crate::modules::cmdb::validation::AttrDef>> =
-        std::collections::HashMap::new();
+    let mut attr_cache: std::collections::HashMap<
+        Uuid,
+        Vec<crate::modules::cmdb::validation::AttrDef>,
+    > = std::collections::HashMap::new();
 
     for (idx, item) in body.items.iter().enumerate() {
         if item.name.trim().is_empty() {
@@ -317,13 +313,17 @@ pub async fn bulk_import_cis(
         let attr_defs = match attr_cache.get(&item.ci_type_id) {
             Some(defs) => defs.clone(),
             None => {
-                match crate::modules::cmdb::validation::load_attr_defs(&state.db, item.ci_type_id).await {
+                match crate::modules::cmdb::validation::load_attr_defs(&state.db, item.ci_type_id)
+                    .await
+                {
                     Ok(defs) => {
                         attr_cache.insert(item.ci_type_id, defs.clone());
                         defs
                     }
                     Err(e) => {
-                        errors.push(json!({ "index": idx, "name": item.name, "error": e.to_string() }));
+                        errors.push(
+                            json!({ "index": idx, "name": item.name, "error": e.to_string() }),
+                        );
                         continue;
                     }
                 }
@@ -337,7 +337,11 @@ pub async fn bulk_import_cis(
 
         // T2: unique constraints.
         if let Err(e) = crate::modules::cmdb::validation::check_unique_constraints(
-            &state.db, org_id, item.ci_type_id, &meta, None,
+            &state.db,
+            org_id,
+            item.ci_type_id,
+            &meta,
+            None,
         )
         .await
         {
@@ -369,10 +373,11 @@ pub async fn bulk_import_cis(
 
         match result {
             Ok(Some(_)) => created += 1,
-            Ok(None) => {
-                errors.push(json!({ "index": idx, "name": item.name, "error": "conflict: skipped" }))
+            Ok(None) => errors
+                .push(json!({ "index": idx, "name": item.name, "error": "conflict: skipped" })),
+            Err(e) => {
+                errors.push(json!({ "index": idx, "name": item.name, "error": e.to_string() }))
             }
-            Err(e) => errors.push(json!({ "index": idx, "name": item.name, "error": e.to_string() })),
         }
     }
 
@@ -494,7 +499,7 @@ pub struct CiEventsQuery {
     pub ci_id: Option<Uuid>,
 }
 
-/// GET /api/v1/orgs/:org_id/cmdb/events
+/// GET /api/v1/orgs/{org_id}/cmdb/events
 ///
 /// Polling event stream (lightweight resource watch): newest-first
 /// rows from `ci_events`, paged with the `after=<id>` cursor. The response
@@ -557,18 +562,21 @@ pub async fn list_ci_events(
     .bind(org_id)
     .bind(after)
     .bind(q.ci_id)
-    .bind(if type_filter.is_empty() { None } else { Some(type_filter) })
+    .bind(if type_filter.is_empty() {
+        None
+    } else {
+        Some(type_filter)
+    })
     .bind(limit)
     .fetch_all(&state.db)
     .await?;
 
-    let latest_id: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(MAX(id), 0) FROM ci_events WHERE organization_id = $1",
-    )
-    .bind(org_id)
-    .fetch_one(&state.db)
-    .await
-    .unwrap_or(0);
+    let latest_id: i64 =
+        sqlx::query_scalar("SELECT COALESCE(MAX(id), 0) FROM ci_events WHERE organization_id = $1")
+            .bind(org_id)
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(0);
 
     let events: Vec<Value> = rows
         .iter()
@@ -584,7 +592,11 @@ pub async fn list_ci_events(
         })
         .collect();
 
-    let next_after = events.last().and_then(|e| e.get("id")).and_then(|v| v.as_i64()).unwrap_or(after);
+    let next_after = events
+        .last()
+        .and_then(|e| e.get("id"))
+        .and_then(|v| v.as_i64())
+        .unwrap_or(after);
 
     Ok(Json(json!({
         "data": events,
@@ -651,7 +663,7 @@ pub struct StatsTrendsQuery {
     pub days: Option<i64>,
 }
 
-/// GET /api/v1/orgs/:org_id/cmdb/stats/trends
+/// GET /api/v1/orgs/{org_id}/cmdb/stats/trends
 ///
 /// Daily snapshots: total CI count and daily change volume over the window,
 /// plus per-type / per-lifecycle breakdowns per day.

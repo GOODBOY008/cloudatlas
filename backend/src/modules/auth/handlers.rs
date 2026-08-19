@@ -8,14 +8,14 @@ use serde_json::{json, Value};
 use sqlx::Row;
 use uuid::Uuid;
 
-use crate::{
-    error::{AppError, AppResult},
-    state::AppState,
-};
 use super::{
     dto::{AuthResponse, LoginRequest, RefreshRequest, RegisterRequest, UserResponse},
     models::User,
     service::{hash_password, make_slug, verify_password, Claims},
+};
+use crate::{
+    error::{AppError, AppResult},
+    state::AppState,
 };
 
 // ─── Register ────────────────────────────────────────────────────────────────
@@ -38,7 +38,8 @@ pub async fn register(
     // Basic validation
     crate::utils::validate::email(&body.email).map_err(AppError::Validation)?;
     crate::utils::validate::password(&body.password).map_err(AppError::Validation)?;
-    crate::utils::validate::name(&body.display_name, 100, "Display name").map_err(AppError::Validation)?;
+    crate::utils::validate::name(&body.display_name, 100, "Display name")
+        .map_err(AppError::Validation)?;
 
     // Guard against duplicate email
     let existing = sqlx::query("SELECT id FROM users WHERE email = $1")
@@ -75,7 +76,11 @@ pub async fn register(
     .await?;
 
     // Optionally bootstrap an organization for the new user
-    if let Some(org_name) = body.organization_name.as_deref().filter(|s| !s.trim().is_empty()) {
+    if let Some(org_name) = body
+        .organization_name
+        .as_deref()
+        .filter(|s| !s.trim().is_empty())
+    {
         let org_id = Uuid::new_v4();
         let slug = make_slug(org_name);
 
@@ -170,13 +175,12 @@ pub async fn login(
     }
 
     // TOTP two-factor (I5): when enabled, the code is mandatory.
-    let totp_secret: Option<String> = sqlx::query_scalar(
-        "SELECT totp_secret FROM users WHERE id = $1",
-    )
-    .bind(user.id)
-    .fetch_one(&state.db)
-    .await
-    .unwrap_or(None);
+    let totp_secret: Option<String> =
+        sqlx::query_scalar("SELECT totp_secret FROM users WHERE id = $1")
+            .bind(user.id)
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(None);
     if let Some(secret) = totp_secret.filter(|s| !s.is_empty()) {
         let code = body.totp_code.as_deref().unwrap_or("");
         if !crate::modules::auth::totp::verify_code(
@@ -299,8 +303,7 @@ pub async fn refresh_token(
     }
 
     let user_id = claims.user_id()?;
-    let access_claims =
-        Claims::new_access(user_id, &claims.email, state.config.jwt_access_expiry);
+    let access_claims = Claims::new_access(user_id, &claims.email, state.config.jwt_access_expiry);
     let access_token = access_claims.encode_token(&state.config.jwt_secret)?;
 
     Ok(Json(json!({
@@ -347,7 +350,9 @@ pub async fn logout(
     .execute(&state.db)
     .await?;
 
-    Ok(Json(json!({ "data": { "message": "Logged out successfully" } })))
+    Ok(Json(
+        json!({ "data": { "message": "Logged out successfully" } }),
+    ))
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -358,10 +363,8 @@ pub fn issue_token_pair(
     email: &str,
     state: &AppState,
 ) -> AppResult<(String, String, chrono::DateTime<Utc>)> {
-    let access_claims =
-        Claims::new_access(*user_id, email, state.config.jwt_access_expiry);
-    let refresh_claims =
-        Claims::new_refresh(*user_id, email, state.config.jwt_refresh_expiry);
+    let access_claims = Claims::new_access(*user_id, email, state.config.jwt_access_expiry);
+    let refresh_claims = Claims::new_refresh(*user_id, email, state.config.jwt_refresh_expiry);
 
     let access_token = access_claims.encode_token(&state.config.jwt_secret)?;
     let refresh_token = refresh_claims.encode_token(&state.config.jwt_secret)?;
@@ -409,9 +412,9 @@ pub struct VerifyEmailRequest {
 }
 
 fn generate_auth_token() -> String {
-    use rand::RngCore;
+    use rand::TryRng;
     let mut bytes = [0u8; 24];
-    rand::thread_rng().fill_bytes(&mut bytes);
+    rand::rng().try_fill_bytes(&mut bytes).expect("infallible");
     hex::encode(bytes)
 }
 
@@ -459,7 +462,9 @@ pub async fn forgot_password(
         .await;
     }
 
-    Ok(Json(json!({ "data": { "message": "If that email exists, a reset link has been sent" } })))
+    Ok(Json(
+        json!({ "data": { "message": "If that email exists, a reset link has been sent" } }),
+    ))
 }
 
 /// POST /auth/reset-password — validate token, set the new password.
@@ -535,12 +540,10 @@ pub async fn send_verification_email(
     Json(_): Json<serde_json::Value>,
 ) -> AppResult<Json<Value>> {
     let user_id = claims.user_id()?;
-    let row = sqlx::query_as::<_, (String,)>(
-        "SELECT email FROM users WHERE id = $1",
-    )
-    .bind(user_id)
-    .fetch_one(&state.db)
-    .await?;
+    let row = sqlx::query_as::<_, (String,)>("SELECT email FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_one(&state.db)
+        .await?;
 
     let token = generate_auth_token();
     let _ = sqlx::query(
@@ -558,13 +561,19 @@ pub async fn send_verification_email(
         "Verify your CloudAtlas email",
         &format!(
             "Confirm your email with this link:\n\n{}/verify-email?token={}",
-            state.config.app_url.as_deref().unwrap_or("http://localhost:5173"),
+            state
+                .config
+                .app_url
+                .as_deref()
+                .unwrap_or("http://localhost:5173"),
             token
         ),
     )
     .await;
 
-    Ok(Json(json!({ "data": { "message": "Verification email sent" } })))
+    Ok(Json(
+        json!({ "data": { "message": "Verification email sent" } }),
+    ))
 }
 
 // ─── TOTP two-factor (product gap I5) ────────────────────────────────────────
@@ -584,12 +593,10 @@ pub async fn enroll_2fa(
     let user_id = claims.user_id()?;
     verify_user_password(&state, user_id, req.password.as_deref().unwrap_or("")).await?;
 
-    let row = sqlx::query_as::<_, (String,)>(
-        "SELECT email FROM users WHERE id = $1",
-    )
-    .bind(user_id)
-    .fetch_one(&state.db)
-    .await?;
+    let row = sqlx::query_as::<_, (String,)>("SELECT email FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_one(&state.db)
+        .await?;
 
     let secret = crate::modules::auth::totp::generate_secret();
     let uri = crate::modules::auth::totp::otpauth_uri(&secret, &row.0, "CloudAtlas");
@@ -617,7 +624,8 @@ pub async fn verify_2fa(
         .ok_or_else(|| AppError::Validation("Secret is required (from enroll)".into()))?;
 
     let code = req.code.as_deref().unwrap_or("");
-    if !crate::modules::auth::totp::verify_code(secret, code, chrono::Utc::now().timestamp() as u64) {
+    if !crate::modules::auth::totp::verify_code(secret, code, chrono::Utc::now().timestamp() as u64)
+    {
         return Err(AppError::Validation("Invalid TOTP code".into()));
     }
 
@@ -627,7 +635,9 @@ pub async fn verify_2fa(
         .execute(&state.db)
         .await?;
 
-    Ok(Json(json!({ "data": { "message": "Two-factor authentication enabled" } })))
+    Ok(Json(
+        json!({ "data": { "message": "Two-factor authentication enabled" } }),
+    ))
 }
 
 /// POST /auth/2fa/disable — turn TOTP off (password required).
@@ -644,16 +654,20 @@ pub async fn disable_2fa(
         .execute(&state.db)
         .await?;
 
-    Ok(Json(json!({ "data": { "message": "Two-factor authentication disabled" } })))
+    Ok(Json(
+        json!({ "data": { "message": "Two-factor authentication disabled" } }),
+    ))
 }
 
-async fn verify_user_password(state: &AppState, user_id: uuid::Uuid, password: &str) -> AppResult<()> {
-    let row = sqlx::query_as::<_, (String,)>(
-        "SELECT password_hash FROM users WHERE id = $1",
-    )
-    .bind(user_id)
-    .fetch_one(&state.db)
-    .await?;
+async fn verify_user_password(
+    state: &AppState,
+    user_id: uuid::Uuid,
+    password: &str,
+) -> AppResult<()> {
+    let row = sqlx::query_as::<_, (String,)>("SELECT password_hash FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_one(&state.db)
+        .await?;
 
     if !crate::modules::auth::service::verify_password(password, &row.0)? {
         return Err(AppError::Validation("Password is incorrect".into()));

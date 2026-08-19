@@ -7,10 +7,10 @@ use crate::middleware::rate_limit::RateLimiter;
 
 #[derive(Clone, Debug)]
 pub struct AppState {
-    pub db:           PgPool,
-    pub config:       Arc<Config>,
+    pub db: PgPool,
+    pub config: Arc<Config>,
     pub rate_limiter: RateLimiter,
-    pub metrics:      Metrics,
+    pub metrics: Metrics,
 }
 
 impl AppState {

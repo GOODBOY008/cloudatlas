@@ -95,7 +95,11 @@ impl RateLimiter {
                 Err(_) => return true,
             };
             let redis_key = format!("rl:{key}");
-            let count: i64 = match redis::cmd("INCR").arg(&redis_key).query_async(&mut conn).await {
+            let count: i64 = match redis::cmd("INCR")
+                .arg(&redis_key)
+                .query_async(&mut conn)
+                .await
+            {
                 Ok(c) => c,
                 Err(_) => return true,
             };
@@ -167,7 +171,7 @@ mod tests {
         assert!(limiter.check("1.2.3.4"));
         assert!(limiter.check("1.2.3.4"));
         assert!(!limiter.check("1.2.3.4")); // 4th request in window — rejected
-        // Different key is unaffected
+                                            // Different key is unaffected
         assert!(limiter.check("5.6.7.8"));
     }
 

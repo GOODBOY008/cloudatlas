@@ -1,11 +1,10 @@
+use chrono::Utc;
 /// Unit tests for the expense module DTOs, pool response, and query structures.
 /// Tests are pure unit tests and do not require a live database.
-
 use cloudatlas_lib::modules::expense::dto::{
-    CreatePoolRequest, ExpenseQuery, PoolResponse, RegionCost, ServiceCost,
-    TopResourceEntry, TrendPoint, UpdatePoolRequest,
+    CreatePoolRequest, ExpenseQuery, PoolResponse, RegionCost, ServiceCost, TopResourceEntry,
+    TrendPoint, UpdatePoolRequest,
 };
-use chrono::Utc;
 use uuid::Uuid;
 
 // ─── ExpenseQuery defaults ────────────────────────────────────────────────────
@@ -82,9 +81,18 @@ fn test_trend_point_date_format() {
 #[test]
 fn test_trend_points_are_sortable() {
     let mut points = vec![
-        TrendPoint { date: "2024-03-03".into(), cost: 100.0 },
-        TrendPoint { date: "2024-03-01".into(), cost: 80.0 },
-        TrendPoint { date: "2024-03-02".into(), cost: 90.0 },
+        TrendPoint {
+            date: "2024-03-03".into(),
+            cost: 100.0,
+        },
+        TrendPoint {
+            date: "2024-03-01".into(),
+            cost: 80.0,
+        },
+        TrendPoint {
+            date: "2024-03-02".into(),
+            cost: 90.0,
+        },
     ];
     points.sort_by(|a, b| a.date.cmp(&b.date));
     assert_eq!(points[0].date, "2024-03-01");
