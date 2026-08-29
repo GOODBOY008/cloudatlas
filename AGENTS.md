@@ -278,8 +278,8 @@ CloudAtlas combines **FinOps cost optimization** and **CMDB asset management** i
 
 | Layer | Technology |
 |---|---|
-| Backend | Rust 1.78+, Axum 0.7, sqlx 0.7 (PostgreSQL), tokio async |
-| Frontend | React 18, TypeScript, Vite, Recharts, TailwindCSS |
+| Backend | Rust 1.94+, Axum 0.8, sqlx 0.9 (PostgreSQL), tokio async |
+| Frontend | React 18, TypeScript 5.9, Vite 8, Vitest 5, React Router 7, Recharts, TailwindCSS |
 | Database | PostgreSQL 15+ (only — no Redis, Kafka, ES) |
 | Auth | JWT (jsonwebtoken), Argon2id password hashing |
 | OpenAPI | utoipa 4 + utoipa-swagger-ui |

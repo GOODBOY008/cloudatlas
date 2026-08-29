@@ -4,11 +4,13 @@
 
 ### Unified FinOps + CMDB Platform
 
-**Manage cloud costs and infrastructure assets from a single pane of glass.**
+**One binary. One database. Total cloud cost & asset visibility.**
+
+Manage cloud costs and infrastructure assets from a single pane of glass.
 
 [![CI](https://github.com/GOODBOY008/cloudatlas/actions/workflows/ci.yml/badge.svg)](https://github.com/GOODBOY008/cloudatlas/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/Rust-1.78%2B-orange?logo=rust)](backend/Cargo.toml)
+[![Rust](https://img.shields.io/badge/Rust-1.94%2B-orange?logo=rust)](backend/Cargo.toml)
 [![React](https://img.shields.io/badge/React-18-61dafb?logo=react)](frontend/package.json)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B-336791?logo=postgresql)](backend/migrations)
 
@@ -25,6 +27,13 @@ CloudAtlas is an open-source platform that unifies **FinOps cost optimization** 
 Built with a **Rust (Axum) backend** and a **React + TypeScript frontend**, backed exclusively by **PostgreSQL** — no Redis, Kafka, or Elasticsearch required.
 
 The UI is fully bilingual — **English / 中文** — switchable at any time from the header (language, dark/light theme), including on the pre-auth screens.
+
+### Why CloudAtlas?
+
+- **FinOps and CMDB, in one place** — most tools do cost *or* assets. CloudAtlas bridges them: every configuration item carries its live cost, and every cost line maps back to an asset.
+- **One Rust binary, one PostgreSQL** — no Kafka, Redis, or Elasticsearch to operate. `docker compose up` and it runs.
+- **25+ optimization modules out of the box** — idle resources, rightsizing, storage cleanup, RI/savings-plan coverage, security findings, Kubernetes rightsizing — each with estimated savings.
+- **Self-hosted, bilingual EN/中文, Apache-2.0** — your billing data stays on your infrastructure.
 
 ---
 
@@ -59,6 +68,7 @@ The UI is fully bilingual — **English / 中文** — switchable at any time fr
 | 🪣 **S3 Duplicates** | Similar/duplicate bucket detection with cleanup savings estimate |
 | 📤 **BI Export** | Recurring CSV/JSON exports of expenses, resources, and recommendations for external BI tools |
 | 🧮 **Cost Comparison** | Side-by-side period comparison by service, region, cloud, or pool |
+| ☸️ **Kubernetes** | Cluster cost sync, container rightsizing, and K8s objects (cluster/ns/node/workload/pod) modeled as CIs |
 
 ### CMDB — Infrastructure Asset Management
 
@@ -124,7 +134,7 @@ docker compose up
 #    Health:      http://localhost:8080/health
 ```
 
-**Seed credentials** (from `007_seed.sql` — demo org **Acme Corp**):
+**Seed credentials** (demo org **Acme Corp**, seeded automatically by the baseline migration `001_init.sql`):
 
 | User | Email | Password |
 |------|-------|----------|
@@ -152,7 +162,7 @@ Prefer videos to reading? The [User Guide](docs/user-guide.md) walks through eve
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| [Rust](https://rustup.rs/) | 1.78+ | Backend compiler |
+| [Rust](https://rustup.rs/) | 1.94+ | Backend compiler |
 | [Node.js](https://nodejs.org/) | 20+ | Frontend build |
 | [Docker](https://docs.docker.com/get-docker/) | 24+ | Container runtime |
 | [cargo-watch](https://crates.io/crates/cargo-watch) | latest | Backend hot reload |
@@ -202,13 +212,14 @@ make help             # Show all available commands
 ### Running Tests
 
 ```bash
-# Backend tests (requires PostgreSQL)
+# Backend tests (requires PostgreSQL) — 9 integration suites
 cd backend && cargo test
 
-# Run specific test suite
+# Run a specific suite
 cargo test --test cmdb_tests
-cargo test --test auth_tests
-cargo test --test expense_tests
+cargo test --test billing_tests
+cargo test --test k8s_pipeline_tests
+# also: auth, expense, rec, cloud_account_dto, cloud_credentials, api_integration
 
 # Frontend type check
 cd frontend && npm run build
@@ -301,11 +312,11 @@ cloudatlas/
 │   │   ├── middleware/       # JWT auth, RBAC, CORS, logging
 │   │   ├── routes.rs         # Router + OpenAPI aggregation
 │   │   └── main.rs           # Entry point
-│   ├── migrations/           # SQL migration files (001–026)
-│   └── tests/                # Integration tests
+│   ├── migrations/           # SQL migrations (consolidated 001_init.sql baseline + incremental)
+│   └── tests/                # Integration tests (9 suites)
 ├── frontend/                 # React + TypeScript SPA
 │   └── src/
-│       ├── pages/            # 45+ pages: Dashboard, Expenses, CostMap, CMDB,
+│       ├── pages/            # 50+ pages: Dashboard, Expenses, CostMap, CMDB,
 │       │                     #   Recommendations, AI Center, BI Export, ...
 │       ├── components/       # Shared UI (Layout, GlobalSearch, common widgets)
 │       ├── store/            # Zustand stores (auth, theme, org)
@@ -313,7 +324,9 @@ cloudatlas/
 │       ├── lib/              # API client, auth helpers
 │       └── types/            # TypeScript interfaces
 ├── docker/                   # Dockerfiles (backend, frontend, migrate)
+├── deploy/                   # Helm chart (deploy/cloudatlas)
 ├── e2e/                      # Playwright end-to-end tests
+├── e2e-agent/                # LLM-driven browser test agent for e2e scenarios
 ├── scripts/                  # Helper scripts (smoke_test, check_env)
 ├── docs/                     # Design docs, ADRs, guides
 ├── .github/                  # CI/CD workflows, issue templates
@@ -350,7 +363,7 @@ See [`.env.example`](.env.example) for the complete reference with defaults.
 | Document | What's inside |
 |----------|---------------|
 | [Quickstart](docs/quickstart.md) | From clone to running platform — Docker or dev setup, verification, first tour |
-| [User Guide](docs/user-guide.md) | Page-by-page walkthrough of all 45+ pages — the best place to start |
+| [User Guide](docs/user-guide.md) | Page-by-page walkthrough of all 50+ pages — the best place to start |
 | [Architecture Design](docs/design.md) | Full technical design: data model, modules, scheduler |
 | [ADR Index](docs/adr/) | Architecture Decision Records (modular monolith, PostgreSQL-only, Rust/Axum, ...) |
 | [API Examples](docs/api-examples.md) | Copy-paste `curl` recipes for common workflows |
@@ -388,7 +401,16 @@ docker compose logs -f api
 
 ### Kubernetes / Helm
 
-CloudAtlas can be deployed to Kubernetes using the Docker images built from `docker/backend.Dockerfile` and `docker/frontend.Dockerfile`. A Helm chart is on the roadmap.
+A Helm chart is included at [`deploy/cloudatlas/`](deploy/cloudatlas/) — backend, frontend, migrate Job, optional in-cluster PostgreSQL, and Ingress:
+
+```bash
+helm install cloudatlas ./deploy/cloudatlas \
+  --set backend.jwtSecret=$(openssl rand -hex 64) \
+  --set backend.encryptionKey=$(openssl rand -hex 32) \
+  --set ingress.host=cloudatlas.example.com
+```
+
+Images are pulled from GHCR once a `v*` tag is published (see [release workflow](.github/workflows/release.yml)); point `image.repository`/`image.tag` at your own registry builds if you prefer.
 
 ### Environment Checklist for Production
 
@@ -399,6 +421,12 @@ CloudAtlas can be deployed to Kubernetes using the Docker images built from `doc
 - [ ] Disable `CLOUD_MOCK_ENABLED` and configure real cloud credentials
 - [ ] Restrict `CORS_ALLOWED_ORIGINS` to your domain(s)
 - [ ] Configure TLS termination (nginx / load balancer)
+
+---
+
+## 🔒 Security
+
+CloudAtlas stores your cloud credentials (encrypted with AES-256-GCM) and billing data — we take security seriously. See [SECURITY.md](SECURITY.md) for supported versions and how to privately report a vulnerability via GitHub Security Advisories. **Please do not open public issues for security problems.**
 
 ---
 

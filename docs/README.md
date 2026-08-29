@@ -7,7 +7,7 @@ This directory contains the documentation for CloudAtlas — a unified FinOps + 
 | Document | Audience | What's inside |
 |----------|----------|---------------|
 | [Quickstart](quickstart.md) | Everyone | From clone to running platform in ~10 min — Docker or hot-reload dev setup, login, verification, tour |
-| [User Guide](user-guide.md) | Everyone | Page-by-page walkthrough of all 45+ pages: getting started, cost management, CMDB, governance, administration, troubleshooting |
+| [User Guide](user-guide.md) | Everyone | Page-by-page walkthrough of all 50+ pages: getting started, cost management, CMDB, governance, administration, troubleshooting |
 | [README](../README.md) | Everyone | Project overview, feature list, quick start, architecture summary |
 | [Architecture Design](design.md) | Contributors | Full technical design: data model, modules, scheduler, API layout |
 | [FinOps + CMDB Intro](intro-finops-cmdb.md) | Everyone | Domain background: what FinOps and CMDB mean, and how CloudAtlas models them |
