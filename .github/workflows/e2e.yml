@@ -32,7 +32,7 @@ on:
 
 env:
   # Playwright version must match e2e/package.json
-  PLAYWRIGHT_VERSION: '1.45.0'
+  PLAYWRIGHT_VERSION: '1.63.0'
 
 jobs:
   # ─────────────────────────────────────────────────────────────────
@@ -62,8 +62,8 @@ jobs:
       - name: Build backend image
         uses: docker/build-push-action@v5
         with:
-          context: cloudatlas
-          file: cloudatlas/docker/backend.Dockerfile
+          context: .
+          file: docker/backend.Dockerfile
           push: false
           tags: cloudatlas/backend:${{ github.sha }}
           outputs: type=docker,dest=/tmp/backend.tar
@@ -73,8 +73,8 @@ jobs:
       - name: Build frontend image
         uses: docker/build-push-action@v5
         with:
-          context: cloudatlas
-          file: cloudatlas/docker/frontend.Dockerfile
+          context: .
+          file: docker/frontend.Dockerfile
           push: false
           tags: cloudatlas/frontend:${{ github.sha }}
           outputs: type=docker,dest=/tmp/frontend.tar
@@ -100,7 +100,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: cloudatlas
+        working-directory: .
 
     steps:
       - name: Checkout
@@ -122,10 +122,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: cloudatlas/e2e/package-lock.json
+          cache-dependency-path: e2e/package-lock.json
 
       - name: Install Playwright + dependencies
-        working-directory: cloudatlas/e2e
+        working-directory: e2e
         run: |
           npm ci
           npx playwright install chromium --with-deps
@@ -167,7 +167,7 @@ jobs:
           done
 
       - name: Run smoke tests
-        working-directory: cloudatlas/e2e
+        working-directory: e2e
         env:
           CI: true
           E2E_BASE_URL: http://localhost:3000
@@ -182,8 +182,8 @@ jobs:
         with:
           name: e2e-smoke-report-${{ github.sha }}
           path: |
-            cloudatlas/e2e/playwright-report/
-            cloudatlas/e2e/test-results/
+            e2e/playwright-report/
+            e2e/test-results/
           retention-days: 7
 
       - name: Collect Docker logs on failure
@@ -214,7 +214,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: cloudatlas
+        working-directory: .
 
     steps:
       - name: Checkout
@@ -236,10 +236,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: cloudatlas/e2e/package-lock.json
+          cache-dependency-path: e2e/package-lock.json
 
       - name: Install Playwright + dependencies
-        working-directory: cloudatlas/e2e
+        working-directory: e2e
         run: |
           npm ci
           npx playwright install ${{ matrix.browser }} --with-deps
@@ -275,7 +275,7 @@ jobs:
           done
 
       - name: Run full regression
-        working-directory: cloudatlas/e2e
+        working-directory: e2e
         env:
           CI: true
           E2E_BASE_URL: http://localhost:3000
@@ -297,8 +297,8 @@ jobs:
         with:
           name: e2e-regression-${{ matrix.browser }}-${{ github.sha }}
           path: |
-            cloudatlas/e2e/playwright-report/
-            cloudatlas/e2e/test-results/
+            e2e/playwright-report/
+            e2e/test-results/
           retention-days: 14
 
       - name: Publish HTML report to GitHub Pages (chromium only, main branch)
@@ -309,7 +309,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: cloudatlas/e2e/playwright-report
+          publish_dir: e2e/playwright-report
           destination_dir: e2e-report/${{ github.sha }}
           keep_files: false
 
