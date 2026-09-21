@@ -500,7 +500,7 @@ async fn deliver_pending_webhooks(state: &AppState) {
                     }
                     Err(e) => {
                         tracing::warn!(error = %e, url = %url, "webhook delivery failed");
-                        Err(())
+                        Err(format!("webhook delivery failed: {e}"))
                     }
                 }
             };
@@ -563,7 +563,7 @@ async fn send_email_notification(
     recipient: &str,
     event_type: &str,
     payload: &serde_json::Value,
-) -> Result<Option<i32>, ()> {
+) -> Result<Option<i32>, String> {
     let summary = payload
         .get("message")
         .and_then(|v| v.as_str())
