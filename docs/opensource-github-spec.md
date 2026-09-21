@@ -2,7 +2,9 @@
 
 Everything needed to take CloudAtlas public on GitHub, in one place: identity (name, slogan, description, topics), assets (badges, social preview), repository settings, the in-repo readiness state, and the release/launch playbook. Items are written as **copy-paste-ready** values wherever possible.
 
-> Status legend: ☐ todo · ☑ done/verified in-repo. This spec is the source of truth for the launch checklist. Last audit: **2026-09-20**.
+> Status legend: ☐ todo · ☑ done/verified in-repo. This spec is the source of truth for the launch checklist.
+>
+> **🚀 LAUNCHED 2026-09-21** — repo public at <https://github.com/GOODBOY008/cloudatlas>. Applied on launch day: About description + 20 topics, Discussions on (+ welcome post, discussion #2), squash-merge only + delete-branch-on-merge, `main` branch protection (4 CI checks + 1 review), welcome/roadmap issue pinned (#1), labels (documentation / help wanted / security), social preview asset committed (`docs/branding/social-preview.png` — still needs the manual UI upload, see §6), two launch-day CI fixes (e2e workflow stale paths, clippy `result_unit_err`). Remaining: §8 first release tag, §9 submissions to awesome-lists/communities, tag protection rule (API 404 — set manually in Settings → Tags).
 
 ---
 
@@ -10,9 +12,9 @@ Everything needed to take CloudAtlas public on GitHub, in one place: identity (n
 
 | Item | Value | Status |
 |------|-------|--------|
-| Repo name | `cloudatlas` | |
-| Owner / URL | `https://github.com/GOODBOY008/cloudatlas` | ☐ repo not created yet (no git remote) |
-| Visibility | Public (flip when §5 remaining items are done) | ☐ |
+| Repo name | `cloudatlas` | ☑ |
+| Owner / URL | `https://github.com/GOODBOY008/cloudatlas` | ☑ live 2026-09-21 |
+| Visibility | Public | ☑ |
 | Default branch | `main` | ☑ |
 | Repo layout | **Repository root = project root** (no nested `cloudatlas/` directory) — workflows, templates, and community files are all GitHub-detectable | ☑ verified |
 | License | Apache-2.0 at repo root | ☑ |

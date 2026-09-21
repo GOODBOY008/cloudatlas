@@ -242,7 +242,8 @@ jobs:
         working-directory: e2e
         run: |
           npm ci
-          npx playwright install ${{ matrix.browser }} --with-deps
+          # chromium is always needed: the setup project (global-setup) runs on it
+          npx playwright install ${{ matrix.browser }} chromium --with-deps
 
       - name: Start application stack
         run: |
@@ -300,18 +301,6 @@ jobs:
             e2e/playwright-report/
             e2e/test-results/
           retention-days: 14
-
-      - name: Publish HTML report to GitHub Pages (chromium only, main branch)
-        if: >
-          always() &&
-          matrix.browser == 'chromium' &&
-          github.ref == 'refs/heads/main'
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: e2e/playwright-report
-          destination_dir: e2e-report/${{ github.sha }}
-          keep_files: false
 
       - name: Collect Docker logs on failure
         if: failure()
