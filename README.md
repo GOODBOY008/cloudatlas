@@ -37,6 +37,25 @@ The UI is fully bilingual — **English / 中文** — switchable at any time fr
 
 ---
 
+## 🗺️ Roadmap
+
+Directions CloudAtlas is moving, so readers know what is planned versus what is
+already shipped. The items below are **not** released yet; check open issues and
+the ADRs for status.
+
+- **More cloud providers** — GCP and Azure billing + discovery adapters (AWS and
+  Alibaba Cloud ship today).
+- **Deeper Kubernetes** — cost allocation per namespace/label and a published
+  Helm chart for the K8s modules.
+- **FinOps depth** — RI / Savings-Plan coverage analytics and commitment
+  planning.
+- **CMDB depth** — a topology graph editor and more external CMDB connectors.
+- **AI** — smarter assistant grounding and anomaly explanations.
+
+Ideas and votes are welcome in [Discussions](https://github.com/GOODBOY008/cloudatlas/discussions).
+
+---
+
 ## 📸 Screenshots
 
 | | |

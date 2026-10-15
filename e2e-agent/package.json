@@ -5,8 +5,8 @@
   "description": "AI-agent driven E2E tests for CloudAtlas using Claude + Playwright",
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "run": "node --loader ts-node/esm src/index.ts",
+    "build": "node init && tsc",
+    "run": "node init && node --loader ts-node/esm src/index.ts",
     "agent": "tsx src/index.ts",
     "agent:smoke": "tsx src/index.ts --tags smoke",
     "agent:auth": "tsx src/index.ts --suite auth",

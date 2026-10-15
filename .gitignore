@@ -3,14 +3,11 @@
 .DS_Store
 
 # Editors and IDEs
-.vscode/
 .idea/
 *.swp
 *.swo
 
 # Environment and secrets
-.env
-.env.*
 !.env.example
 
 # Logs
@@ -26,6 +23,7 @@
 # Node.js / Vite
 /frontend/node_modules/
 /frontend/dist/
+temp_auto_push.bat
 /frontend/.vite/
 /frontend/coverage/
 
@@ -54,3 +52,7 @@ docker-compose.override.yml
 test-results/
 playwright-report/
 /docs/
+.gitignore
+branch_structure.json
+config.bat
+node_modules
