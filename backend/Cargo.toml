@@ -87,7 +87,7 @@ utoipa-swagger-ui = { version = "9", features = ["axum"] }
 
 # ── Crypto (credential encryption) ────────────────────────────
 aes-gcm        = "0.10"
-base64         = "0.22"
+base64         = "0.23"
 
 # ── Numeric ───────────────────────────────────────────────────
 rust_decimal   = { version = "1", features = ["serde"] }

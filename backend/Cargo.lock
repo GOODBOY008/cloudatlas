@@ -989,7 +989,7 @@ dependencies = [
  "aws-sdk-s3",
  "axum",
  "base32",
- "base64 0.22.1",
+ "base64 0.23.1",
  "chrono",
  "config",
  "cron",
