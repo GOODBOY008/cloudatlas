@@ -82,7 +82,7 @@ hmac                 = "0.12"
 sha1                 = "0.10"
 
 # ── OpenAPI ────────────────────────────────────────────────────
-utoipa         = { version = "5", features = ["axum_extras", "uuid", "chrono"] }
+utoipa         = { version = "6", features = ["axum_extras", "uuid", "chrono"] }
 utoipa-swagger-ui = { version = "9", features = ["axum"] }
 
 # ── Crypto (credential encryption) ────────────────────────────
