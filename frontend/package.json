@@ -10,13 +10,13 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.56.2",
+    "@tanstack/react-query": "^5.104.5",
     "axios": "^1.7.7",
-    "i18next": "^26.3.6",
-    "lucide-react": "^1.17.0",
+    "i18next": "^26.5.3",
+    "lucide-react": "^1.60.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-i18next": "^17.0.11",
+    "react-i18next": "^17.1.0",
     "react-router-dom": "^7.18.4",
     "react-simple-maps": "^3.0.0",
     "recharts": "^2.12.7",
@@ -25,15 +25,15 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/node": "^26.2.0",
+    "@testing-library/user-event": "^14.6.8",
+    "@types/node": "^26.6.5",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^6.1.1",
-    "@vitest/ui": "^5.0.1",
+    "@vitejs/plugin-react": "^6.1.2",
+    "@vitest/ui": "^5.0.5",
     "jsdom": "^29.1.1",
     "typescript": "^5.5.3",
-    "vite": "^8.3.0",
+    "vite": "^8.3.4",
     "vitest": "^5.0.1"
   },
   "overrides": {
