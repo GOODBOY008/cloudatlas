@@ -19,7 +19,7 @@
     "react-i18next": "^17.0.11",
     "react-router-dom": "^7.18.4",
     "react-simple-maps": "^3.0.0",
-    "recharts": "^2.12.7",
+    "recharts": "^3.10.1",
     "zustand": "^5.0.13"
   },
   "devDependencies": {
