@@ -1,0 +1,49 @@
+# Dependency update bot configuration.
+# After this file lands on the default branch, Dependabot opens PRs that run
+# the CI workflow (cargo clippy/test + npm build) before merge.
+version: 2
+updates:
+  # Actions used by .github/workflows/*.yml
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "ci(deps)"
+    labels:
+      - dependencies
+
+  # Rust backend dependencies (backend/Cargo.toml + Cargo.lock)
+  - package-ecosystem: cargo
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      cargo-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - dependencies
+      - rust
+
+  # Frontend dependencies (frontend/package.json + package-lock.json)
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      npm-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - dependencies
+      - frontend
