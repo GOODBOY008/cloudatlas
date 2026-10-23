@@ -78,7 +78,7 @@ aws-sdk-s3           = "1"
 aws-credential-types = "1"
 
 # ── Aliyun signing (HMAC-SHA1 RPC) ────────────────────────────
-hmac                 = "0.12"
+hmac                 = "0.13"
 sha1                 = "0.10"
 
 # ── OpenAPI ────────────────────────────────────────────────────
