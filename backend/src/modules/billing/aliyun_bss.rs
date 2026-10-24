@@ -16,6 +16,7 @@ use uuid::Uuid;
 
 use anyhow::anyhow;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use hmac::digest::KeyInit;
 use hmac::{Hmac, Mac};
 use sha1::Sha1;
 

@@ -2,6 +2,7 @@
 //! Secrets are base32 strings; verification tolerates ±1 time step.
 
 use base32::Alphabet;
+use hmac::digest::KeyInit;
 use hmac::{Hmac, Mac};
 use rand::TryRng;
 use sha1::Sha1;

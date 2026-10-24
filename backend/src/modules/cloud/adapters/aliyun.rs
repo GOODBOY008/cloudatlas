@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use anyhow::anyhow;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use chrono::Utc;
+use hmac::digest::KeyInit;
 use hmac::{Hmac, Mac};
 use serde_json::{json, Value};
 use sha1::Sha1;
