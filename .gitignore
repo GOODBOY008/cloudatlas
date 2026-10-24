@@ -3,7 +3,6 @@
 .DS_Store
 
 # Editors and IDEs
-.vscode/
 .idea/
 *.swp
 *.swo
@@ -26,6 +25,7 @@
 # Node.js / Vite
 /frontend/node_modules/
 /frontend/dist/
+temp_auto_push.bat
 /frontend/.vite/
 /frontend/coverage/
 
@@ -54,3 +54,5 @@ docker-compose.override.yml
 test-results/
 playwright-report/
 /docs/
+.gitignore
+branch_structure.json
