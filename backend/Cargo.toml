@@ -41,7 +41,7 @@ csv            = "1"
 flate2         = "1"
 
 # ── Authentication ─────────────────────────────────────────────
-jsonwebtoken   = "9"
+jsonwebtoken   = { version = "11", features = ["rust_crypto"] }
 argon2         = "0.5"
 rand           = "0.10"
 hex            = "0.4"
