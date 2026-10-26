@@ -320,12 +320,12 @@ fn parse_oss_buckets(xml: &str) -> Vec<DiscoveredResource> {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(e)) if e.name().as_ref() == b"Bucket" => in_bucket = true,
+            Ok(Event::Start(e)) if e.name().as_ref() == "Bucket" => in_bucket = true,
             Ok(Event::Start(e)) if in_bucket => {
-                field = String::from_utf8_lossy(e.name().as_ref()).into_owned();
+                field = e.name().as_ref().to_string();
             }
             Ok(Event::Text(t)) if in_bucket => {
-                let text = t.unescape().unwrap_or_default().to_string();
+                let text = t.xml10_content().into_owned();
                 match field.as_str() {
                     "Name" => name = text,
                     "Location" => location = text,
@@ -333,7 +333,7 @@ fn parse_oss_buckets(xml: &str) -> Vec<DiscoveredResource> {
                     _ => {}
                 }
             }
-            Ok(Event::End(e)) if e.name().as_ref() == b"Bucket" => {
+            Ok(Event::End(e)) if e.name().as_ref() == "Bucket" => {
                 if !name.is_empty() {
                     let location_str = location.clone();
                     resources.push(DiscoveredResource {
