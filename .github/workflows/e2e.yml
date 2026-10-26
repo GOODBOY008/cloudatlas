@@ -82,7 +82,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=frontend
 
       - name: Upload image tarballs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docker-images-${{ github.sha }}
           path: /tmp/*.tar
@@ -177,7 +177,7 @@ jobs:
         run: npx playwright test --grep @smoke --project=chromium
 
       - name: Upload smoke report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: e2e-smoke-report-${{ github.sha }}
@@ -293,7 +293,7 @@ jobs:
           npx playwright test $GREP --project=${{ matrix.browser }}
 
       - name: Upload regression report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: e2e-regression-${{ matrix.browser }}-${{ github.sha }}
