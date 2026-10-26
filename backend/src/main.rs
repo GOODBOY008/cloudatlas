@@ -23,14 +23,12 @@ async fn main() -> anyhow::Result<()> {
 
     // Optional error tracking (G7): SENTRY_DSN enables Sentry ingestion.
     let _sentry_guard = if let Some(dsn) = &cfg.sentry_dsn {
-        let guard = sentry::init((
-            dsn.clone(),
-            sentry::ClientOptions {
-                release: sentry::release_name!(),
-                environment: Some(cfg.app_env.clone().into()),
-                ..Default::default()
-            },
-        ));
+        // ClientOptions is #[non_exhaustive] since sentry 0.49 — build via
+        // default + field assignment instead of a struct literal.
+        let mut options = sentry::ClientOptions::default();
+        options.release = sentry::release_name!();
+        options.environment = Some(cfg.app_env.clone().into());
+        let guard = sentry::init((dsn.clone(), options));
         tracing::info!("Sentry error tracking enabled");
         Some(guard)
     } else {
