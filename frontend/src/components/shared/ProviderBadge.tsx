@@ -1,16 +1,16 @@
 import { providerLabel } from '../../lib/providers'
 
 const COLORS: Record<string, string> = {
-  aws: 'bg-orange-900/40 text-orange-300',
-  alibaba: 'bg-yellow-900/40 text-yellow-300',
-  azure: 'bg-blue-900/40 text-blue-300',
-  gcp: 'bg-red-900/40 text-red-300',
-  kubernetes: 'bg-indigo-900/40 text-indigo-300',
+  aws: 'bg-warning/10 text-warning',
+  alibaba: 'bg-warning/10 text-warning',
+  azure: 'bg-info/10 text-info',
+  gcp: 'bg-danger/10 text-danger',
+  kubernetes: 'bg-accent-soft/40 text-accent',
 }
 
 export function ProviderBadge({ provider }: { provider: string | null | undefined }) {
   return (
-    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${COLORS[provider ?? ''] ?? 'bg-gray-700 text-gray-400'}`}>
+    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${COLORS[provider ?? ''] ?? 'bg-emphasis text-secondary'}`}>
       {providerLabel(provider)}
     </span>
   )

@@ -41,10 +41,10 @@ interface ChecklistStatus {
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-xl font-semibold text-white mt-1">{value}</p>
-      {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
+    <div className="bg-surface border border-edge rounded-xl p-4">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="text-xl font-semibold text-primary mt-1">{value}</p>
+      {sub && <p className="text-xs text-muted mt-0.5">{sub}</p>}
     </div>
   )
 }
@@ -53,12 +53,12 @@ function RunBadge({ status }: { status: string }) {
   const { t } = useTranslation()
   const cls =
     status === 'completed'
-      ? 'bg-green-900/40 text-green-300'
+      ? 'bg-success/10 text-success'
       : status === 'running'
-        ? 'bg-yellow-900/40 text-yellow-300'
+        ? 'bg-warning/10 text-warning'
         : status === 'failed'
-          ? 'bg-red-900/40 text-red-300'
-          : 'bg-gray-800 text-gray-400'
+          ? 'bg-danger/10 text-danger'
+          : 'bg-subtle text-secondary'
   return (
     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>
       {t(`status.${status}`, { defaultValue: status })}
@@ -94,7 +94,7 @@ export default function Checklist() {
     onError: () => setError(t('checklist.updateFailed')),
   })
 
-  if (isLoading) return <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+  if (isLoading) return <div className="text-muted text-sm">{t('common.loading')}</div>
 
   const config = checklist?.modules_config ?? {}
 
@@ -117,12 +117,12 @@ export default function Checklist() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('checklist.title')}</h2>
+        <h2 className="page-title">{t('checklist.title')}</h2>
         <RunBadge status={checklist?.run_status ?? 'idle'} />
       </div>
 
       {isError && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           {t('checklist.loadFailed')}
         </div>
       )}
@@ -147,23 +147,23 @@ export default function Checklist() {
       </div>
 
       {checklist?.last_error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">
           {t('checklist.lastRunFailed', { error: checklist.last_error })}
         </div>
       )}
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">
           {error}
         </div>
       )}
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-800">
-          <h3 className="text-sm font-semibold text-white">{t('checklist.detectionModules')}</h3>
+      <div className="bg-surface border border-edge rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-edge">
+          <h3 className="text-sm font-semibold text-primary">{t('checklist.detectionModules')}</h3>
         </div>
-        <table className="w-full text-left">
-          <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+        <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+          <thead className="border-b border-edge text-xs uppercase text-muted">
             <tr>
               <th className="px-4 py-3 font-medium">{t('checklist.colModule')}</th>
               <th className="px-4 py-3 font-medium">{t('checklist.colEnabled')}</th>
@@ -173,36 +173,36 @@ export default function Checklist() {
           </thead>
           <tbody>
             {modules.map((m) => (
-              <tr key={m.name} className="border-b border-gray-700 last:border-0 hover:bg-gray-800/40 transition-colors">
+              <tr key={m.name} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
                 <td className="px-4 py-3">
-                  <span className="text-sm text-white font-mono">{m.name}</span>
+                  <span className="text-sm text-primary font-mono">{m.name}</span>
                 </td>
                 <td className="px-4 py-3">
                   <button
                     onClick={() => toggleModule(m.name, !m.enabled)}
                     disabled={patchMutation.isPending}
                     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${
-                      m.enabled ? 'bg-green-600' : 'bg-gray-700'
+                      m.enabled ? 'bg-success-solid' : 'bg-emphasis'
                     }`}
                     title={m.enabled ? t('checklist.disableTitle') : t('checklist.enableTitle')}
                   >
                     <span
-                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-surface transition-transform ${
                         m.enabled ? 'translate-x-[18px]' : 'translate-x-[3px]'
                       }`}
                     />
                   </button>
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-400">
-                  {m.thresholdDays ?? <span className="text-gray-600">{t('checklist.thresholdDefault')}</span>}
+                <td className="px-4 py-3 text-sm text-secondary">
+                  {m.thresholdDays ?? <span className="text-muted">{t('checklist.thresholdDefault')}</span>}
                 </td>
-                <td className="px-4 py-3 text-xs text-gray-500">
+                <td className="px-4 py-3 text-xs text-muted">
                   {m.enabled ? t('checklist.activeInEngine') : t('checklist.skippedByEngine')}
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
   )

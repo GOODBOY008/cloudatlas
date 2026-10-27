@@ -12,7 +12,7 @@ export default function LanguageToggle() {
         setStoredLanguage(next)
       }}
       aria-label={t('header.switchLanguage')}
-      className="fixed top-4 right-4 px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
+      className="icon-button text-xs font-medium"
     >
       {i18n.language === 'zh' ? 'EN' : t('common.languageName')}
     </button>

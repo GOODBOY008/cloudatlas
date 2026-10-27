@@ -110,14 +110,14 @@ export default function CIClassifications() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">{t('ciClassifications.title')}</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h1 className="page-title">{t('ciClassifications.title')}</h1>
+          <p className="text-sm text-secondary mt-0.5">
             {t('ciClassifications.subtitle')}
           </p>
         </div>
         <button
           onClick={() => { resetForm(); setShowForm(true) }}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
         >
           {t('ciClassifications.newClassification')}
         </button>
@@ -125,52 +125,52 @@ export default function CIClassifications() {
 
       {/* Create / Edit Form */}
       {showForm && (
-        <div className="bg-gray-800 rounded-xl border border-gray-700 p-5 space-y-4">
-          <h2 className="text-base font-semibold text-white">
+        <div className="bg-subtle rounded-xl border border-strong p-5 space-y-4">
+          <h2 className="text-base font-semibold text-primary">
             {editingId ? t('ciClassifications.editTitle') : t('ciClassifications.newTitle')}
           </h2>
           {formError && (
-            <p className="text-red-400 text-sm">{formError}</p>
+            <p className="text-danger text-sm">{formError}</p>
           )}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('ciClassifications.nameKey')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('ciClassifications.nameKey')}</label>
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
                 disabled={!!editingId}
                 placeholder={t('ciClassifications.namePlaceholder')}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-50"
+                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary disabled:opacity-50"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('cmdb.displayName')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('cmdb.displayName')}</label>
               <input
                 value={displayName}
                 onChange={e => setDisplayName(e.target.value)}
                 placeholder={t('ciClassifications.displayPlaceholder')}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">{t('common.description')}</label>
+            <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
             <input
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder={t('ciClassifications.optionalDesc')}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+              className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('ciClassifications.icon')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('ciClassifications.icon')}</label>
               <div className="flex flex-wrap gap-2 mb-2">
                 {ICONS.map(ic => (
                   <button
                     key={ic}
                     onClick={() => setIcon(ic)}
-                    className={`text-xl p-1 rounded border ${icon === ic ? 'border-indigo-500 bg-indigo-900/30' : 'border-gray-700 hover:border-gray-500'}`}
+                    className={`text-xl p-1 rounded border ${icon === ic ? 'border-accent bg-accent-soft/30' : 'border-strong hover:border-strong'}`}
                   >
                     {ic}
                   </button>
@@ -178,12 +178,12 @@ export default function CIClassifications() {
               </div>
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('ciClassifications.sortOrder')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('ciClassifications.sortOrder')}</label>
               <input
                 type="number"
                 value={sortOrder}
                 onChange={e => setSortOrder(Number(e.target.value))}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
               />
             </div>
           </div>
@@ -191,13 +191,13 @@ export default function CIClassifications() {
             <button
               disabled={busy || !name.trim() || !displayName.trim()}
               onClick={() => editingId ? updateMutation.mutate() : createMutation.mutate()}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
+              className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm font-medium rounded-lg"
             >
               {busy ? t('ciClassifications.saving') : editingId ? t('ciClassifications.update') : t('ciClassifications.create')}
             </button>
             <button
               onClick={resetForm}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg"
+              className="px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg"
             >
               {t('common.cancel')}
             </button>
@@ -207,17 +207,17 @@ export default function CIClassifications() {
 
       {/* Table */}
       {isLoading ? (
-        <p className="text-gray-500 text-sm">{t('ciClassifications.loading')}</p>
+        <p className="text-muted text-sm">{t('ciClassifications.loading')}</p>
       ) : classifications.length === 0 ? (
-        <div className="text-center py-16 text-gray-600">
+        <div className="text-center py-16 text-muted">
           <p className="text-4xl mb-3">📂</p>
           <p className="text-sm">{t('ciClassifications.empty')}</p>
         </div>
       ) : (
-        <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-surface rounded-xl border border-edge overflow-hidden">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-gray-500 border-b border-gray-800">
+              <tr className="text-xs text-muted border-b border-edge">
                 <th className="text-left px-4 py-3 font-medium">{t('ciClassifications.icon')}</th>
                 <th className="text-left px-4 py-3 font-medium">{t('common.name')}</th>
                 <th className="text-left px-4 py-3 font-medium">{t('cmdb.displayName')}</th>
@@ -229,30 +229,30 @@ export default function CIClassifications() {
             </thead>
             <tbody>
               {classifications.map(c => (
-                <tr key={c.id} className="border-b border-gray-800/60 hover:bg-gray-800/30">
+                <tr key={c.id} className="border-b border-edge/60 hover:bg-subtle/30">
                   <td className="px-4 py-3 text-xl">{c.icon ?? '📂'}</td>
-                  <td className="px-4 py-3 text-white font-mono text-xs">
+                  <td className="px-4 py-3 text-primary font-mono text-xs">
                     {c.name}
                     {c.is_builtin && (
-                      <span className="ml-2 px-1.5 py-0.5 bg-gray-700 text-gray-400 text-xs rounded">
+                      <span className="ml-2 px-1.5 py-0.5 bg-emphasis text-secondary text-xs rounded">
                         {t('ciClassifications.builtin')}
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-white">{c.display_name}</td>
-                  <td className="px-4 py-3 text-gray-400 truncate max-w-[200px]">
+                  <td className="px-4 py-3 text-primary">{c.display_name}</td>
+                  <td className="px-4 py-3 text-secondary truncate max-w-[200px]">
                     {c.description ?? '—'}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <span className="text-indigo-400 font-medium">{c.ci_type_count}</span>
+                    <span className="text-accent font-medium">{c.ci_type_count}</span>
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-500">{c.sort_order}</td>
+                  <td className="px-4 py-3 text-right text-muted">{c.sort_order}</td>
                   <td className="px-4 py-3 text-right">
                     {!c.is_builtin && (
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => startEdit(c)}
-                          className="text-xs text-blue-400 hover:text-blue-300"
+                          className="text-xs text-info hover:text-info"
                         >
                           {t('common.edit')}
                         </button>
@@ -261,7 +261,7 @@ export default function CIClassifications() {
                             if (confirm(t('ciClassifications.deleteConfirm', { name: c.display_name })))
                               deleteMutation.mutate(c.id)
                           }}
-                          className="text-xs text-red-400 hover:text-red-300"
+                          className="text-xs text-danger hover:text-danger"
                         >
                           {t('common.delete')}
                         </button>
@@ -271,7 +271,7 @@ export default function CIClassifications() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
     </div>

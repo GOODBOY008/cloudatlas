@@ -203,10 +203,10 @@ export default function CloudAccounts() {
     <>
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('cloudAccounts.title')}</h2>
+        <h2 className="page-title">{t('cloudAccounts.title')}</h2>
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
         >
           {showForm ? t('common.cancel') : t('cloudAccounts.addAccount')}
         </button>
@@ -214,30 +214,30 @@ export default function CloudAccounts() {
 
       {/* Add account form */}
       {showForm && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
-          <h3 className="text-sm font-semibold text-gray-200 mb-4">{t('cloudAccounts.newAccount')}</h3>
+        <div className="bg-surface border border-edge rounded-xl p-5 mb-6">
+          <h3 className="text-sm font-semibold text-primary mb-4">{t('cloudAccounts.newAccount')}</h3>
           {formError && (
-            <div className="mb-3 p-2 rounded bg-red-900/40 border border-red-700 text-red-300 text-sm">{formError}</div>
+            <div className="mb-3 p-2 rounded bg-danger/10 border border-danger/25 text-danger text-sm">{formError}</div>
           )}
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label htmlFor="account-name" className="block text-xs text-gray-400 mb-1">{t('cloudAccounts.accountName')}</label>
+              <label htmlFor="account-name" className="block text-xs text-secondary mb-1">{t('cloudAccounts.accountName')}</label>
               <input
                 id="account-name"
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder={t('cloudAccounts.namePlaceholder')}
               />
             </div>
             <div>
-              <label htmlFor="provider" className="block text-xs text-gray-400 mb-1">{t('cloudAccounts.provider')}</label>
+              <label htmlFor="provider" className="block text-xs text-secondary mb-1">{t('cloudAccounts.provider')}</label>
               <select
                 id="provider"
                 value={form.provider}
                 onChange={(e) => setForm({ ...form, provider: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
               >
                 {CLOUD_PROVIDERS.map((p) => (
                   <option key={p} value={p}>{providerLabel(p)}</option>
@@ -246,7 +246,7 @@ export default function CloudAccounts() {
             </div>
             {(CREDENTIAL_FIELDS[form.provider] ?? []).map((f) => (
               <div key={f.key}>
-                <label htmlFor={`cred-${f.key}`} className="block text-xs text-gray-400 mb-1">
+                <label htmlFor={`cred-${f.key}`} className="block text-xs text-secondary mb-1">
                   {t(f.label)}
                 </label>
                 <input
@@ -254,13 +254,13 @@ export default function CloudAccounts() {
                   type={f.secret ? 'password' : 'text'}
                   value={form.credentials[f.key] ?? ''}
                   onChange={(e) => setForm({ ...form, credentials: { ...form.credentials, [f.key]: e.target.value } })}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 />
               </div>
             ))}
             {(CONFIG_FIELDS[form.provider] ?? []).map((f) => (
               <div key={f.key}>
-                <label htmlFor={`cfg-${f.key}`} className="block text-xs text-gray-400 mb-1">
+                <label htmlFor={`cfg-${f.key}`} className="block text-xs text-secondary mb-1">
                   {t(f.label)}
                 </label>
                 <input
@@ -269,27 +269,27 @@ export default function CloudAccounts() {
                   value={form.config[f.key] ?? ''}
                   placeholder={f.placeholder}
                   onChange={(e) => setForm({ ...form, config: { ...form.config, [f.key]: e.target.value } })}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 />
               </div>
             ))}
             {form.provider === 'other' && (
               <div className="sm:col-span-3">
-                <p className="text-xs text-gray-500">{t('cloudAccounts.credOtherHint')}</p>
+                <p className="text-xs text-muted">{t('cloudAccounts.credOtherHint')}</p>
               </div>
             )}
             {form.provider === 'kubernetes' && (
               <div className="sm:col-span-3">
-                <p className="text-xs text-gray-500">{t('cloudAccounts.credK8sHint')}</p>
+                <p className="text-xs text-muted">{t('cloudAccounts.credK8sHint')}</p>
               </div>
             )}
             <div>
-              <label htmlFor="external-id" className="block text-xs text-gray-400 mb-1">{t('cloudAccounts.externalId')}</label>
+              <label htmlFor="external-id" className="block text-xs text-secondary mb-1">{t('cloudAccounts.externalId')}</label>
               <input
                 id="external-id"
                 value={form.external_id}
                 onChange={(e) => setForm({ ...form, external_id: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="123456789012"
               />
             </div>
@@ -297,7 +297,7 @@ export default function CloudAccounts() {
               <button
                 type="submit"
                 disabled={addMutation.isPending}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+                className="px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm font-medium rounded-lg transition-colors"
               >
                 {addMutation.isPending ? t('cloudAccounts.adding') : t('cloudAccounts.addAccount')}
               </button>
@@ -307,15 +307,15 @@ export default function CloudAccounts() {
       )}
 
       {isError && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           {t('cloudAccounts.loadFailed')}
         </div>
       )}
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-surface border border-edge rounded-xl overflow-hidden">
+        <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-800 text-gray-400 text-left">
+            <tr className="border-b border-edge text-secondary text-left">
               <th className="px-4 py-3 font-medium">{t('common.name')}</th>
               <th className="px-4 py-3 font-medium">{t('cloudAccounts.provider')}</th>
               <th className="px-4 py-3 font-medium">{t('cloudAccounts.currency')}</th>
@@ -328,25 +328,25 @@ export default function CloudAccounts() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">{t('common.loading')}</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-muted">{t('common.loading')}</td>
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">{t('cloudAccounts.noAccounts')}</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-muted">{t('cloudAccounts.noAccounts')}</td>
               </tr>
             ) : (
               data.map((acct) => (
-                <tr key={acct.id} className="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-white">{acct.name}</td>
+                <tr key={acct.id} className="border-b border-edge hover:bg-subtle/50 transition-colors">
+                  <td className="px-4 py-3 font-medium text-primary">{acct.name}</td>
                   <td className="px-4 py-3"><ProviderBadge provider={acct.provider} /></td>
-                  <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs font-mono font-medium bg-gray-700 text-gray-300">{acct.currency}</span></td>
-                  <td className="px-4 py-3 text-gray-300">{acct.resource_count.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">
+                  <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs font-mono font-medium bg-emphasis text-secondary">{acct.currency}</span></td>
+                  <td className="px-4 py-3 text-secondary">{acct.resource_count.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-secondary text-xs">
                     {acct.last_sync_at ? new Date(acct.last_sync_at).toLocaleString() : '—'}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${acct.is_active ? 'bg-green-900/40 text-green-300' : 'bg-red-900/40 text-red-300'}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${acct.is_active ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
                         {acct.is_active ? t('common.active') : t('common.inactive')}
                       </span>
                       {(() => {
@@ -355,7 +355,7 @@ export default function CloudAccounts() {
                           return (
                             <span
                               data-testid={`job-chip-${acct.id}`}
-                              className="px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-900/60 text-indigo-300 inline-flex items-center gap-1"
+                              className="px-2 py-0.5 rounded-full text-xs font-medium bg-accent-soft/60 text-accent inline-flex items-center gap-1"
                             >
                               {t('cloudAccounts.syncInProgress')}
                               {job.progress_current !== null && job.progress_total !== null && job.progress_total > 0 && (
@@ -371,7 +371,7 @@ export default function CloudAccounts() {
                           return (
                             <span
                               data-testid={`job-chip-${acct.id}`}
-                              className="px-2 py-0.5 rounded-full text-xs font-medium bg-sky-900/60 text-sky-300"
+                              className="px-2 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info"
                             >
                               {t('cloudAccounts.importInProgress')}
                               {billing.phase ? ` · ${t(`jobs.phase.${billing.phase}`, { defaultValue: billing.phase })}` : ''}
@@ -386,7 +386,7 @@ export default function CloudAccounts() {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => { setEditAcct(acct); setEditName(acct.name); setEditCurrency(acct.currency ?? 'USD'); setEditCreds({}); setEditConfig(prefillConfig(acct.config ?? {})); setEditClear(false) }}
-                        className="px-2.5 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600 text-gray-200"
+                        className="px-2.5 py-1 text-xs rounded bg-emphasis hover:bg-emphasis text-primary"
                       >
                         {t('common.edit')}
                       </button>
@@ -398,7 +398,7 @@ export default function CloudAccounts() {
                           },
                           onError: () => setAlertMsg(t('cloudAccounts.testFailed')),
                         })}
-                        className="px-2.5 py-1 text-xs rounded bg-sky-800/60 hover:bg-sky-700/60 text-sky-200"
+                        className="px-2.5 py-1 text-xs rounded bg-info/10 hover:bg-info/20 text-info"
                       >
                         {t('cloudAccounts.test')}
                       </button>
@@ -406,13 +406,13 @@ export default function CloudAccounts() {
                         onClick={() => syncMutation.mutate(acct.id)}
                         disabled={syncDisabled(acct.id)}
                         title={syncDisabled(acct.id) ? t('jobs.conflictBody') : undefined}
-                        className="px-2.5 py-1 text-xs rounded bg-indigo-700/60 hover:bg-indigo-600/60 disabled:opacity-50 disabled:cursor-not-allowed text-indigo-100"
+                        className="px-2.5 py-1 text-xs rounded bg-accent/60 hover:bg-accent-hover/60 disabled:opacity-50 disabled:cursor-not-allowed text-accent"
                       >
                         {syncDisabled(acct.id) ? t('cloudAccounts.syncing') : t('cloudAccounts.sync')}
                       </button>
                       <button
                         onClick={() => setDeleteAcct(acct)}
-                        className="px-2.5 py-1 text-xs rounded bg-red-900/40 hover:bg-red-800/50 text-red-300"
+                        className="px-2.5 py-1 text-xs rounded bg-danger/10 hover:bg-danger/10 text-danger"
                       >
                         {t('common.delete')}
                       </button>
@@ -422,7 +422,7 @@ export default function CloudAccounts() {
               ))
             )}
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
 
@@ -447,9 +447,9 @@ export default function CloudAccounts() {
           }}
         >
           <div className="flex items-center gap-3 mb-4">
-            <label className="block text-xs text-gray-400">{t('cloudAccounts.accountName')}</label>
+            <label className="block text-xs text-secondary">{t('cloudAccounts.accountName')}</label>
             {editAcct.has_credentials && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-900/40 text-green-300">
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">
                 {t('cloudAccounts.credsConfigured')}
               </span>
             )}
@@ -458,14 +458,14 @@ export default function CloudAccounts() {
             autoFocus
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-5"
+            className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent mb-5"
           />
-          <label className="block text-xs text-gray-400 mb-1">{t('cloudAccounts.currency')}</label>
-          <p className="text-[11px] text-gray-500 mb-1.5">{t('cloudAccounts.currencyHint')}</p>
+          <label className="block text-xs text-secondary mb-1">{t('cloudAccounts.currency')}</label>
+          <p className="text-[11px] text-muted mb-1.5">{t('cloudAccounts.currencyHint')}</p>
           <select
             value={editCurrency}
             onChange={(e) => setEditCurrency(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-5"
+            className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent mb-5"
           >
             {['USD', 'CNY', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD'].map((c) => (
               <option key={c} value={c}>{c}</option>
@@ -473,12 +473,12 @@ export default function CloudAccounts() {
           </select>
 
           {(CREDENTIAL_FIELDS[editAcct.provider] ?? []).length > 0 && (
-            <div className="border-t border-gray-800 pt-4 mb-5">
-              <p className="text-xs text-gray-400 mb-3">{t('cloudAccounts.credentials')}</p>
+            <div className="border-t border-edge pt-4 mb-5">
+              <p className="text-xs text-secondary mb-3">{t('cloudAccounts.credentials')}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {(CREDENTIAL_FIELDS[editAcct.provider] ?? []).map((f) => (
                   <div key={f.key}>
-                    <label htmlFor={`edit-cred-${f.key}`} className="block text-xs text-gray-400 mb-1">
+                    <label htmlFor={`edit-cred-${f.key}`} className="block text-xs text-secondary mb-1">
                       {t(f.label)}
                     </label>
                     <input
@@ -487,7 +487,7 @@ export default function CloudAccounts() {
                       value={editCreds[f.key] ?? ''}
                       onChange={(e) => setEditCreds({ ...editCreds, [f.key]: e.target.value })}
                       placeholder={t('cloudAccounts.credsKeepPlaceholder')}
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     />
                   </div>
                 ))}
@@ -498,7 +498,7 @@ export default function CloudAccounts() {
                   onClick={() => (editClear ? clearMutation.mutate(editAcct.id) : setEditClear(true))}
                   disabled={clearMutation.isPending}
                   className={`mt-3 px-3 py-1.5 text-xs rounded transition-colors ${
-                    editClear ? 'bg-red-700 hover:bg-red-600 text-white' : 'bg-red-900/40 hover:bg-red-800/50 text-red-300'
+                    editClear ? 'bg-danger-solid hover:bg-danger-solid/90 text-white' : 'bg-danger/10 hover:bg-danger/10 text-danger'
                   }`}
                 >
                   {clearMutation.isPending ? t('cloudAccounts.deleting') : (editClear ? t('cloudAccounts.credsClearConfirm') : t('cloudAccounts.credsClear'))}
@@ -508,12 +508,12 @@ export default function CloudAccounts() {
           )}
 
           {(CONFIG_FIELDS[editAcct.provider] ?? []).length > 0 && (
-            <div className="border-t border-gray-800 pt-4 mb-5">
-              <p className="text-xs text-gray-400 mb-3">{t('cloudAccounts.configuration')}</p>
+            <div className="border-t border-edge pt-4 mb-5">
+              <p className="text-xs text-secondary mb-3">{t('cloudAccounts.configuration')}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {(CONFIG_FIELDS[editAcct.provider] ?? []).map((f) => (
                   <div key={f.key}>
-                    <label htmlFor={`edit-cfg-${f.key}`} className="block text-xs text-gray-400 mb-1">
+                    <label htmlFor={`edit-cfg-${f.key}`} className="block text-xs text-secondary mb-1">
                       {t(f.label)}
                     </label>
                     <input
@@ -522,7 +522,7 @@ export default function CloudAccounts() {
                       value={editConfig[f.key] ?? ''}
                       placeholder={f.placeholder}
                       onChange={(e) => setEditConfig({ ...editConfig, [f.key]: e.target.value })}
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                     />
                   </div>
                 ))}
@@ -534,14 +534,14 @@ export default function CloudAccounts() {
             <button
               type="button"
               onClick={() => setEditAcct(null)}
-              className="px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+              className="px-3 py-1.5 text-sm text-secondary hover:text-primary transition-colors"
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={updateMutation.isPending}
-              className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm rounded-lg transition-colors"
+              className="px-4 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm rounded-lg transition-colors"
             >
               {updateMutation.isPending ? t('cloudAccounts.saving') : t('common.save')}
             </button>
@@ -553,20 +553,20 @@ export default function CloudAccounts() {
     {/* Delete Confirm Modal */}
     {deleteAcct && (
       <Modal title={t('cloudAccounts.deleteTitle')} onClose={() => setDeleteAcct(null)}>
-        <p className="text-sm text-gray-300 mb-6">
+        <p className="text-sm text-secondary mb-6">
           {t('cloudAccounts.deleteConfirm', { name: deleteAcct.name })}
         </p>
         <div className="flex justify-end gap-2">
           <button
             onClick={() => setDeleteAcct(null)}
-            className="px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+            className="px-3 py-1.5 text-sm text-secondary hover:text-primary transition-colors"
           >
             {t('common.cancel')}
           </button>
           <button
             onClick={() => { deleteMutation.mutate(deleteAcct.id); setDeleteAcct(null) }}
             disabled={deleteMutation.isPending}
-            className="px-4 py-1.5 bg-red-700 hover:bg-red-600 disabled:opacity-60 text-white text-sm rounded-lg transition-colors"
+            className="px-4 py-1.5 bg-danger-solid hover:bg-danger-solid/90 disabled:opacity-60 text-white text-sm rounded-lg transition-colors"
           >
             {deleteMutation.isPending ? t('cloudAccounts.deleting') : t('common.delete')}
           </button>
@@ -577,11 +577,11 @@ export default function CloudAccounts() {
     {/* Test Result Alert Modal */}
     {alertMsg && (
       <Modal title={t('cloudAccounts.testTitle')} onClose={() => setAlertMsg(null)}>
-        <p className="text-sm text-gray-300 mb-6">{alertMsg}</p>
+        <p className="text-sm text-secondary mb-6">{alertMsg}</p>
         <div className="flex justify-end">
           <button
             onClick={() => setAlertMsg(null)}
-            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors"
+            className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg transition-colors"
           >
             {t('cloudAccounts.ok')}
           </button>

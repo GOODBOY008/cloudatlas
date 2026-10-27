@@ -1,7 +1,7 @@
 # CloudAtlas User Guide
 
 > **CloudAtlas** — Unified FinOps + CMDB Platform  
-> Version 2.1 · August 2026
+> Updated October 27, 2026 · Frontend design and navigation refresh
 
 ---
 
@@ -70,6 +70,8 @@
     - [Assignment Rules](#119-assignment-rules)
     - [Settings](#1110-settings)
 12. [Language & Theme](#12-language--theme)
+    - [Global Search & Copilot](#global-search--copilot)
+    - [System Keyboard Shortcuts](#system-keyboard-shortcuts)
 13. [API Reference](#13-api-reference)
 14. [Troubleshooting](#14-troubleshooting)
 
@@ -99,11 +101,15 @@ The CloudAtlas sidebar is organized into six groups:
 | **Overview** | Dashboard, Recommendations, Checklist, AI Center |
 | **Cost Management** | Cost Explorer, Cost Map, Showback, Budgets & Quotas, Cost Comparison, S3 Duplicates, BI Export |
 | **Resource Management** | Resources, Pools, Shared Environments, Resource Lifecycle, K8s Rightsizing, Archive |
-| **Asset Inventory** | Configuration Items, Services, Dynamic Groups, CI Types, Classifications, Associations, Model Topology, Service Templates, CI Import, Inventory Stats, External CMDB |
+| **Asset Inventory** | Configuration Items, Services, Dynamic Groups, CI Types, Classifications, Associations, Model Topology, Service Templates, CI Topology, Field Templates, CI Import, Inventory Stats, External CMDB |
 | **Governance** | Compliance, Tagging Coverage, Tagging Policies, Constraints, Drift Detection, Anomaly Detection, Power Schedules, Apply Rules |
 | **Administration** | Cloud Accounts, Billing Import, Cost Centers, Alerts, Alert Events, Events, Webhooks, Integrations, Rules, Settings |
 
-A dark/light theme toggle and an EN / 中文 language switch are available in the top-right corner of the header. Your preferences are saved automatically. The header also has a **Global Search** box and a labeled **Copilot** button (shortcut: ⌘/Ctrl+I) that opens the Copilot side panel.
+Click a sidebar section heading to expand or collapse its pages. Overview and Cost Management start expanded; the section containing the current page also opens automatically. The active page is highlighted, and the header shows its section and page name. On smaller screens, use the **Menu** button to open the navigation drawer; choosing a page closes it.
+
+The workspace card beneath the CloudAtlas logo shows the current organization. If you belong to multiple organizations, click it to switch workspaces.
+
+The top-right header contains **Search**, notifications, the language switch, and the sun/moon theme toggle. Open the assistant through **Ask Copilot** at the bottom of the sidebar or the floating launcher on mobile. See [System Keyboard Shortcuts](#system-keyboard-shortcuts) for keyboard access.
 
 ---
 
@@ -158,10 +164,10 @@ The seed data creates a demo organization **Acme Corp** with three pre-configure
 
 The seed also includes two mock cloud accounts with discovered resources, 30+ days of expenses, 13 cost pools, and recommendations — so every page has data to explore without connecting a real cloud.
 
-After logging in you will land on the **Dashboard**, which shows:
+After logging in you will land on the **Dashboard**, titled **Workspace overview**, which shows:
 
-- Total cloud spend this month vs last month
-- 30-day cost trend chart with forecast
+- Month-to-date cloud spend
+- Daily spending over the last 30 days and a separate forecast panel
 - Active recommendations count
 - Top 5 spending resources
 - Budget utilization across pools
@@ -251,24 +257,25 @@ Cloud accounts are the source of both resource discovery (CMDB) and billing data
 
 ### 6.1 Dashboard
 
-The **Dashboard** is your central command center, aggregating key FinOps and CMDB metrics at a glance.
+The **Dashboard** presents a **Workspace overview** of your costs, resources, and items needing attention. **Explore costs** opens the Cost Explorer.
 
 **Summary cards** (clickable — navigate to detail pages):
 
 | Card | Shows |
 |---|---|
-| **Total Cost MTD** | Month-to-date cloud spend with month-over-month delta |
+| **Total Cost MTD** | Month-to-date cloud spend |
 | **Resources** | Total tracked cloud resources count |
 | **Active Recommendations** | Open optimization findings |
 | **Pools** | Number of cost pools |
 
 **Charts and panels:**
 
-- **30-Day Cost Trend** — area chart showing daily spend over the last 30 days
-- **30-Day Forecast** — projected monthly spend with trend percentage
+- **Spending overview** — daily spend over the last 30 days, with the period total
+- **30-Day Forecast** — projected monthly spend with trend percentage; an empty state appears until enough data is available
 - **Anomaly Alerts** — card highlighting detected cost anomalies
-- **Top 5 Resources** — highest-spending resources this month
+- **Top Resources** — the five highest-spending resources over the last 30 days
 - **Pools Needing Attention** — pools exceeding 80% of their budget
+- **Make your next move** — shortcuts to cloud account management and the asset inventory
 
 ### 6.2 Recommendations
 
@@ -1503,13 +1510,35 @@ CloudAtlas ships with a full **English / 中文** translation of every page. To 
 
 ### Switching theme
 
-- Click the sun/moon button in the header to toggle **dark / light mode**.
-- The preference is saved automatically.
+- CloudAtlas uses a slate-and-teal palette, with **light mode** as the default for browsers without a saved preference. Existing dark-mode preferences are preserved.
+- Click the sun/moon button in the header to toggle **light / dark mode**. The same control is available on login and password-reset screens.
+- The preference is saved in your browser and restored on reload. Cards, tables, forms, charts, and maps adapt to the selected theme.
+- On narrow screens, wide tables scroll horizontally inside their own panels. Focus a scrollable table with **Tab** to use the keyboard, or scroll it with a trackpad or touch gesture.
+- Focused controls have a visible outline, and the interface respects your system's reduced-motion preference.
 
 ### Global search & Copilot
 
-- The header search box queries across pages and key entities to jump straight to what you need.
-- The **Copilot** button (or ⌘/Ctrl+I) opens a right-docked, resizable AI assistant panel that shares the screen with the page you are on — no modal blocking. On narrow screens a floating ✦ launcher appears in the bottom-right corner instead. The panel streams answers, offers page-aware starter suggestions plus a page-context pill, and supports stop/copy on replies. Requires AI features to be enabled (see [AI Center](#64-ai-center)).
+- Click **Search** in the header, or press **⌘K / Ctrl+K**, to open global search. Enter at least two characters to find configuration items, resources, recommendations, services, and pools. Use **Tab** to focus a result and **Enter** to open its page.
+- Click **Ask Copilot** in the sidebar, use the floating launcher on mobile, or press **⌘I / Ctrl+I**. On desktop, Copilot docks on the right; drag its left edge to resize it. Below 1024 px, it opens as a bottom sheet.
+- Copilot streams answers, offers page-aware suggestions and an optional page-context attachment, and supports stopping and copying replies. Press **Enter** in its message field to send. AI availability depends on your deployment configuration; see [AI Center](#64-ai-center).
+
+### System keyboard shortcuts
+
+These are CloudAtlas application shortcuts. Global search and Copilot shortcuts are available after signing in.
+
+| Action | macOS | Windows / Linux | Context |
+|---|---|---|---|
+| Toggle global search | **⌘K** | **Ctrl+K** | Any authenticated page; focuses the search field on opening |
+| Toggle Copilot | **⌘I** | **Ctrl+I** | Any authenticated page |
+| Close an overlay | **Esc** | **Esc** | Global search, Copilot, mobile navigation, shared dialogs, and the workspace selector |
+| Move focus forward / backward | **Tab / Shift+Tab** | **Tab / Shift+Tab** | Links, buttons, form fields, search results, and scrollable tables |
+| Activate a focused link or button | **Enter** | **Enter** | Includes opening a focused search result |
+| Activate a focused button | **Space** | **Space** | Includes sidebar section toggles and theme/language controls |
+| Send a Copilot message | **Enter** | **Enter** | Focus the message field; a non-empty message is required |
+| Widen / narrow Copilot | **← / →** | **← / →** | Focus the desktop panel's left divider with Tab; changes width by 16 px within its allowed range |
+| Jump past navigation | **Tab**, then **Enter** | **Tab**, then **Enter** | From the start of the page, activate the revealed **Skip to content** link |
+
+Global search, mobile navigation, and shared dialogs keep Tab focus inside the overlay while open and restore focus to the previously focused control when closed. The theme and language switches are buttons; they do not have dedicated global key combinations.
 
 ---
 

@@ -179,14 +179,14 @@ export default function ServiceTemplates() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">{t('serviceTemplates.title')}</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h1 className="page-title">{t('serviceTemplates.title')}</h1>
+          <p className="text-sm text-secondary mt-0.5">
             {t('serviceTemplates.subtitle')}
           </p>
         </div>
         <button
           onClick={() => { resetTemplateForm(); setShowTemplateForm(true) }}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg"
+          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg"
         >
           {t('serviceTemplates.newTemplate')}
         </button>
@@ -194,39 +194,39 @@ export default function ServiceTemplates() {
 
       {/* Template Form */}
       {showTemplateForm && (
-        <div className="bg-gray-800 rounded-xl border border-gray-700 p-5 space-y-4">
-          <h2 className="text-base font-semibold text-white">
+        <div className="bg-subtle rounded-xl border border-strong p-5 space-y-4">
+          <h2 className="text-base font-semibold text-primary">
             {editTemplateId ? t('serviceTemplates.editTitle') : t('serviceTemplates.newTitle')}
           </h2>
-          {tError && <p className="text-red-400 text-sm">{tError}</p>}
+          {tError && <p className="text-danger text-sm">{tError}</p>}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('serviceTemplates.nameKeyLabel')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.nameKeyLabel')}</label>
               <input
                 value={tName}
                 onChange={e => setTName(e.target.value)}
                 disabled={!!editTemplateId}
                 placeholder={t('serviceTemplates.nameKeyPlaceholder')}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-50"
+                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary disabled:opacity-50"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('serviceTemplates.displayName')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.displayName')}</label>
               <input
                 value={tDisplay}
                 onChange={e => setTDisplay(e.target.value)}
                 placeholder={t('serviceTemplates.displayNamePlaceholder')}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('serviceTemplates.serviceType')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.serviceType')}</label>
               <select
                 value={tType}
                 onChange={e => setTType(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
               >
                 <option value="">{t('serviceTemplates.none')}</option>
                 {SERVICE_TYPES.map(st => (
@@ -235,36 +235,36 @@ export default function ServiceTemplates() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('serviceTemplates.tagsLabel')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.tagsLabel')}</label>
               <input
                 value={tTags}
                 onChange={e => setTTags(e.target.value)}
                 placeholder={t('serviceTemplates.tagsPlaceholder')}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">{t('common.description')}</label>
+            <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
             <input
               value={tDesc}
               onChange={e => setTDesc(e.target.value)}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+              className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
             />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={tActive} onChange={e => setTActive(e.target.checked)} className="w-4 h-4" />
-            <span className="text-sm text-gray-300">{t('common.active')}</span>
+            <span className="text-sm text-secondary">{t('common.active')}</span>
           </label>
           <div className="flex gap-3">
             <button
               disabled={tBusy || !tName.trim() || !tDisplay.trim()}
               onClick={() => editTemplateId ? updateTemplate.mutate() : createTemplate.mutate()}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
+              className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm font-medium rounded-lg"
             >
               {tBusy ? t('serviceTemplates.saving') : editTemplateId ? t('serviceTemplates.update') : t('serviceTemplates.create')}
             </button>
-            <button onClick={resetTemplateForm} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg">
+            <button onClick={resetTemplateForm} className="px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg">
               {t('common.cancel')}
             </button>
           </div>
@@ -275,9 +275,9 @@ export default function ServiceTemplates() {
         {/* Template List */}
         <div className="w-64 shrink-0 space-y-2">
           {isLoading ? (
-            <p className="text-gray-500 text-sm">{t('common.loading')}</p>
+            <p className="text-muted text-sm">{t('common.loading')}</p>
           ) : templates.length === 0 ? (
-            <div className="text-center py-10 text-gray-600 text-sm">{t('serviceTemplates.noTemplates')}</div>
+            <div className="text-center py-10 text-muted text-sm">{t('serviceTemplates.noTemplates')}</div>
           ) : (
             templates.map(tmpl => (
               <div
@@ -285,24 +285,24 @@ export default function ServiceTemplates() {
                 onClick={() => setSelectedTemplate(tmpl)}
                 className={`p-3 rounded-xl border cursor-pointer transition-colors ${
                   selectedTemplate?.id === tmpl.id
-                    ? 'bg-indigo-900/30 border-indigo-700'
-                    : 'bg-gray-900 border-gray-800 hover:border-gray-700'
+                    ? 'bg-accent-soft/30 border-accent'
+                    : 'bg-surface border-edge hover:border-strong'
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium text-white">{tmpl.display_name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5 font-mono">{tmpl.name}</p>
+                    <p className="text-sm font-medium text-primary">{tmpl.display_name}</p>
+                    <p className="text-xs text-muted mt-0.5 font-mono">{tmpl.name}</p>
                   </div>
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${tmpl.is_active ? 'bg-green-900/40 text-green-300' : 'bg-gray-700 text-gray-500'}`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${tmpl.is_active ? 'bg-success/10 text-success' : 'bg-emphasis text-muted'}`}>
                     {tmpl.is_active ? t('serviceTemplates.statusActive') : t('serviceTemplates.statusInactive')}
                   </span>
                 </div>
                 {tmpl.service_type && (
-                  <p className="text-xs text-gray-500 mt-1">{t(`serviceTemplates.types.${tmpl.service_type}`, { defaultValue: tmpl.service_type.replace(/_/g, ' ') })}</p>
+                  <p className="text-xs text-muted mt-1">{t(`serviceTemplates.types.${tmpl.service_type}`, { defaultValue: tmpl.service_type.replace(/_/g, ' ') })}</p>
                 )}
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-indigo-400">{t('serviceTemplates.ciTypesCount', { count: tmpl.item_count })}</span>
+                  <span className="text-xs text-accent">{t('serviceTemplates.ciTypesCount', { count: tmpl.item_count })}</span>
                   <div className="flex gap-2">
                     <button
                       onClick={e => {
@@ -313,14 +313,14 @@ export default function ServiceTemplates() {
                         setTTags((tmpl.tags ?? []).join(', ')); setTActive(tmpl.is_active)
                         setShowTemplateForm(true)
                       }}
-                      className="text-xs text-blue-400 hover:text-blue-300"
+                      className="text-xs text-info hover:text-info"
                     >{t('common.edit')}</button>
                     <button
                       onClick={e => {
                         e.stopPropagation()
                         if (confirm(t('serviceTemplates.confirmDeleteTemplate', { name: tmpl.display_name }))) deleteTemplate.mutate(tmpl.id)
                       }}
-                      className="text-xs text-red-400 hover:text-red-300"
+                      className="text-xs text-danger hover:text-danger"
                     >{t('common.delete')}</button>
                   </div>
                 </div>
@@ -331,39 +331,39 @@ export default function ServiceTemplates() {
 
         {/* Detail Panel */}
         {selectedTemplate ? (
-          <div className="flex-1 bg-gray-900 rounded-xl border border-gray-800 p-4 space-y-4">
+          <div className="flex-1 bg-surface rounded-xl border border-edge p-4 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-white">{selectedTemplate.display_name}</h2>
+              <h2 className="text-sm font-semibold text-primary">{selectedTemplate.display_name}</h2>
               <button
                 onClick={() => setShowItemForm(true)}
-                className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
+                className="text-xs px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent rounded-lg"
               >
                 {t('serviceTemplates.addCiType')}
               </button>
             </div>
             {selectedTemplate.description && (
-              <p className="text-sm text-gray-400">{selectedTemplate.description}</p>
+              <p className="text-sm text-secondary">{selectedTemplate.description}</p>
             )}
             {selectedTemplate.tags && selectedTemplate.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {selectedTemplate.tags.map(tag => (
-                  <span key={tag} className="text-xs px-2 py-0.5 bg-gray-800 text-gray-400 rounded-full">{tag}</span>
+                  <span key={tag} className="text-xs px-2 py-0.5 bg-subtle text-secondary rounded-full">{tag}</span>
                 ))}
               </div>
             )}
 
             {/* Add Item Form */}
             {showItemForm && (
-              <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 space-y-3">
-                <h3 className="text-sm font-semibold text-white">{t('serviceTemplates.addCiTypeTitle')}</h3>
-                {iError && <p className="text-red-400 text-xs">{iError}</p>}
+              <div className="bg-subtle rounded-xl border border-strong p-4 space-y-3">
+                <h3 className="text-sm font-semibold text-primary">{t('serviceTemplates.addCiTypeTitle')}</h3>
+                {iError && <p className="text-danger text-xs">{iError}</p>}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">{t('serviceTemplates.ciType')}</label>
+                    <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.ciType')}</label>
                     <select
                       value={iCITypeId}
                       onChange={e => setICITypeId(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                      className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                     >
                       <option value="">{t('serviceTemplates.select')}</option>
                       {ciTypes.map(ct => (
@@ -372,51 +372,51 @@ export default function ServiceTemplates() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">{t('serviceTemplates.role')}</label>
+                    <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.role')}</label>
                     <input
                       value={iRole}
                       onChange={e => setIRole(e.target.value)}
                       placeholder={t('serviceTemplates.rolePlaceholder')}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                      className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">{t('serviceTemplates.minCount')}</label>
+                    <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.minCount')}</label>
                     <input
                       type="number"
                       value={iMin}
                       min={0}
                       onChange={e => setIMin(Number(e.target.value))}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                      className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">{t('serviceTemplates.maxCountLabel')}</label>
+                    <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.maxCountLabel')}</label>
                     <input
                       type="number"
                       value={iMax}
                       min={1}
                       onChange={e => setIMax(e.target.value)}
                       placeholder={t('serviceTemplates.unlimited')}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                      className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                     />
                   </div>
                 </div>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={iRequired} onChange={e => setIRequired(e.target.checked)} className="w-4 h-4" />
-                  <span className="text-sm text-gray-300">{t('serviceTemplates.required')}</span>
+                  <span className="text-sm text-secondary">{t('serviceTemplates.required')}</span>
                 </label>
                 <div className="flex gap-2">
                   <button
                     disabled={addItem.isPending || !iCITypeId}
                     onClick={() => addItem.mutate()}
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs rounded-lg"
+                    className="px-3 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-xs rounded-lg"
                   >
                     {addItem.isPending ? t('serviceTemplates.adding') : t('serviceTemplates.add')}
                   </button>
                   <button
                     onClick={() => { setShowItemForm(false); setIError('') }}
-                    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded-lg"
+                    className="px-3 py-1.5 bg-emphasis hover:bg-emphasis text-primary text-xs rounded-lg"
                   >{t('common.cancel')}</button>
                 </div>
               </div>
@@ -424,9 +424,9 @@ export default function ServiceTemplates() {
 
             {/* Items Table */}
             {templateDetail?.items && templateDetail.items.length > 0 ? (
-              <table className="w-full text-sm">
+              <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                 <thead>
-                  <tr className="text-xs text-gray-500 border-b border-gray-800">
+                  <tr className="text-xs text-muted border-b border-edge">
                     <th className="text-left py-2">{t('serviceTemplates.ciType')}</th>
                     <th className="text-left py-2">{t('serviceTemplates.role')}</th>
                     <th className="text-center py-2">{t('serviceTemplates.required')}</th>
@@ -436,35 +436,35 @@ export default function ServiceTemplates() {
                 </thead>
                 <tbody>
                   {templateDetail.items.map(item => (
-                    <tr key={item.id} className="border-b border-gray-800/40">
-                      <td className="py-2 text-white">{item.ci_type_display}</td>
-                      <td className="py-2 text-gray-400 text-xs">{item.role ?? '—'}</td>
+                    <tr key={item.id} className="border-b border-edge/40">
+                      <td className="py-2 text-primary">{item.ci_type_display}</td>
+                      <td className="py-2 text-secondary text-xs">{item.role ?? '—'}</td>
                       <td className="py-2 text-center">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${item.is_required ? 'bg-red-900/40 text-red-300' : 'bg-gray-700 text-gray-400'}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${item.is_required ? 'bg-danger/10 text-danger' : 'bg-emphasis text-secondary'}`}>
                           {item.is_required ? t('serviceTemplates.requiredBadge') : t('serviceTemplates.optionalBadge')}
                         </span>
                       </td>
-                      <td className="py-2 text-center text-gray-400 text-xs">
+                      <td className="py-2 text-center text-secondary text-xs">
                         {item.min_count}–{item.max_count ?? '∞'}
                       </td>
                       <td className="py-2 text-right">
                         <button
                           onClick={() => { if (confirm(t('serviceTemplates.confirmRemoveItem'))) removeItem.mutate(item.id) }}
-                          className="text-xs text-red-400 hover:text-red-300"
+                          className="text-xs text-danger hover:text-danger"
                         >{t('serviceTemplates.remove')}</button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             ) : (
-              <div className="text-center py-10 text-gray-600 text-sm">
+              <div className="text-center py-10 text-muted text-sm">
                 {t('serviceTemplates.noItems')}
               </div>
             )}
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-600 text-sm">
+          <div className="flex-1 flex items-center justify-center text-muted text-sm">
             {t('serviceTemplates.selectTemplate')}
           </div>
         )}

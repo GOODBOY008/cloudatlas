@@ -40,7 +40,7 @@ const PROVIDER_COLORS: Record<string, string> = {
 }
 
 const TREEMAP_COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b',
+  '#299d87', '#7b87c2', '#c983a0', '#f59e0b',
   '#10b981', '#3b82f6', '#ef4444', '#14b8a6',
 ]
 
@@ -138,21 +138,21 @@ function MapTooltip({
   if (!entry) return null
   return (
     <div
-      className="pointer-events-none absolute z-50 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs shadow-lg min-w-[160px]"
+      className="pointer-events-none absolute z-50 bg-surface border border-strong rounded-lg px-3 py-2 text-xs shadow-lg min-w-[160px]"
       style={{ top: position.y + 12, left: position.x + 12 }}
     >
-      <p className="font-semibold text-white">{entry.label || entry.region}</p>
-      <p className="text-gray-400">{entry.region}</p>
-      <p className="text-gray-300 mt-1">
-        <span className="text-gray-500">{t('costMap.cost')}: </span>
-        <span className="text-indigo-300 font-medium">${entry.total_cost.toLocaleString()}</span>
+      <p className="font-semibold text-primary">{entry.label || entry.region}</p>
+      <p className="text-secondary">{entry.region}</p>
+      <p className="text-secondary mt-1">
+        <span className="text-muted">{t('costMap.cost')}: </span>
+        <span className="text-accent font-medium">${entry.total_cost.toLocaleString()}</span>
       </p>
-      <p className="text-gray-300">
-        <span className="text-gray-500">{t('costMap.resources')}: </span>
+      <p className="text-secondary">
+        <span className="text-muted">{t('costMap.resources')}: </span>
         {entry.resource_count}
       </p>
-      <p className="text-gray-300">
-        <span className="text-gray-500">{t('costMap.share')}: </span>
+      <p className="text-secondary">
+        <span className="text-muted">{t('costMap.share')}: </span>
         {entry.pct}%
       </p>
       <p className="mt-1">
@@ -175,10 +175,10 @@ function MapTooltip({
 function StatusBadge({ status }: { status: BudgetRow['status'] }) {
   const { t } = useTranslation()
   const map = {
-    on_track:   { text: 'On Track',    cls: 'bg-green-900/50 text-green-300' },
-    warning:    { text: 'Warning',     cls: 'bg-yellow-900/50 text-yellow-300' },
-    over_budget:{ text: 'Over Budget', cls: 'bg-red-900/50 text-red-300' },
-    no_budget:  { text: 'No Budget',   cls: 'bg-gray-800 text-gray-500' },
+    on_track:   { text: 'On Track',    cls: 'bg-success/10 text-success' },
+    warning:    { text: 'Warning',     cls: 'bg-warning/10 text-warning' },
+    over_budget:{ text: 'Over Budget', cls: 'bg-danger/10 text-danger' },
+    no_budget:  { text: 'No Budget',   cls: 'bg-subtle text-muted' },
   }
   const s = map[status]
   return (
@@ -253,8 +253,8 @@ export default function CostMap() {
   // Theme-dependent style tokens
   const mapTheme = isDark
     ? {
-        mapBg:       '#0f172a',
-        geoFill:     '#1e293b',
+        mapBg:       '#0f1620',
+        geoFill:     '#273547',
         geoStroke:   '#334155',
         geoHover:    '#334155',
         labelFill:   '#e2e8f0',
@@ -262,10 +262,10 @@ export default function CostMap() {
         axisTickStyle: { fill: '#9ca3af', fontSize: 11 } as Record<string, unknown>,
       }
     : {
-        mapBg:       '#e2e8f0',
-        geoFill:     '#cbd5e1',
-        geoStroke:   '#94a3b8',
-        geoHover:    '#94a3b8',
+        mapBg:       '#f2f5f8',
+        geoFill:     '#dce5ec',
+        geoStroke:   '#b9c9d4',
+        geoHover:    '#a8bfc9',
         labelFill:   '#0f172a',
         tooltip:     { background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 8, color: '#111827' } as React.CSSProperties,
         axisTickStyle: { fill: '#6b7280', fontSize: 11 } as Record<string, unknown>,
@@ -392,12 +392,12 @@ export default function CostMap() {
   }))
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto bg-gray-950 text-gray-100 dark:bg-gray-950 dark:text-gray-100">
+    <div className="flex flex-col text-primary">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-gray-800 flex items-center gap-4 flex-wrap">
+      <div className="page-header">
         <div>
-          <h1 className="text-xl font-bold text-white">{t('costMap.title')}</h1>
-          <p className="text-xs text-gray-500 mt-0.5">{t('costMap.subtitle')}</p>
+          <h1 className="page-title">{t('costMap.title')}</h1>
+          <p className="text-xs text-muted mt-0.5">{t('costMap.subtitle')}</p>
         </div>
 
         {/* Date range */}
@@ -408,8 +408,8 @@ export default function CostMap() {
               onClick={() => setActiveRange(i)}
               className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                 activeRange === i
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  ? 'bg-accent text-on-accent'
+                  : 'bg-subtle text-secondary hover:bg-emphasis'
               }`}
             >
               {r.label}
@@ -420,34 +420,34 @@ export default function CostMap() {
 
       {/* Total cost banner */}
       {regionData && activeTab === 'World Map' && (
-        <div className="mx-6 mt-4 px-5 py-3 bg-gray-900 rounded-lg flex items-center gap-6 border border-gray-800">
+        <div className="mt-1 px-5 py-4 bg-surface rounded-lg flex items-center gap-6 border border-edge">
           <div>
-            <p className="text-xs text-gray-500">{t('costMap.totalSpend')}</p>
-            <p className="text-2xl font-bold text-white">${regionData.total_cost.toLocaleString()}</p>
+            <p className="text-xs text-muted">{t('costMap.totalSpend')}</p>
+            <p className="text-2xl font-bold text-primary">${regionData.total_cost.toLocaleString()}</p>
           </div>
-          <div className="h-8 w-px bg-gray-700" />
+          <div className="h-8 w-px bg-emphasis" />
           <div>
-            <p className="text-xs text-gray-500">{t('costMap.regions')}</p>
-            <p className="text-lg font-semibold text-indigo-300">{expenses.length}</p>
+            <p className="text-xs text-muted">{t('costMap.regions')}</p>
+            <p className="text-lg font-semibold text-accent">{expenses.length}</p>
           </div>
-          <div className="h-8 w-px bg-gray-700" />
+          <div className="h-8 w-px bg-emphasis" />
           <div>
-            <p className="text-xs text-gray-500">{t('costMap.period')}</p>
-            <p className="text-sm text-gray-300">{regionData.start_date} → {regionData.end_date}</p>
+            <p className="text-xs text-muted">{t('costMap.period')}</p>
+            <p className="text-sm text-secondary">{regionData.start_date} → {regionData.end_date}</p>
           </div>
         </div>
       )}
 
       {/* View tabs */}
-      <div className="px-6 mt-4 flex gap-1 border-b border-gray-800 pb-0">
+      <div className="mt-5 flex gap-1 overflow-x-auto border-b border-edge pb-0">
         {VIEW_TABS.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab
-                ? 'border-indigo-500 text-indigo-300'
-                : 'border-transparent text-gray-500 hover:text-gray-300'
+                ? 'border-accent text-accent'
+                : 'border-transparent text-muted hover:text-secondary'
             }`}
           >
             {viewTabLabels[tab]}
@@ -455,22 +455,22 @@ export default function CostMap() {
         ))}
       </div>
 
-      <div className="flex-1 px-6 py-4 space-y-6">
+      <div className="flex-1 py-5 space-y-6">
 
         {/* ── World Map ───────────────────────────────────────────────────── */}
         {activeTab === 'World Map' && (
           <div className="space-y-6">
             {regionLoading ? (
-              <div className="flex items-center justify-center h-64 text-gray-500 text-sm">{t('common.loading')}</div>
+              <div className="flex items-center justify-center h-64 text-muted text-sm">{t('common.loading')}</div>
             ) : (
               <>
                 {/* Map */}
-                <div className="bg-gray-900 rounded-xl border border-gray-800 p-2 relative">
+                <div className="bg-surface rounded-xl border border-edge p-2 relative">
                   <div className="flex items-center justify-between px-3 py-2">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('costMap.cloudRegionSpend')}</p>
+                    <p className="text-xs font-semibold text-secondary uppercase tracking-wider">{t('costMap.cloudRegionSpend')}</p>
                     <div className="flex gap-2">
                       {Object.entries(PROVIDER_COLORS).filter(([k]) => k !== 'unknown').map(([k, c]) => (
-                        <span key={k} className="flex items-center gap-1.5 text-xs text-gray-400">
+                        <span key={k} className="flex items-center gap-1.5 text-xs text-secondary">
                           <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: c }} />
                           {k.toUpperCase()}
                         </span>
@@ -556,7 +556,7 @@ export default function CostMap() {
                         <button
                           key={label}
                           onClick={() => setMapZoom((z) => Math.max(0.8, Math.min(8, z + delta)))}
-                          className="w-7 h-7 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded text-gray-300 text-sm font-bold flex items-center justify-center"
+                          className="w-7 h-7 bg-subtle hover:bg-emphasis border border-strong rounded text-secondary text-sm font-bold flex items-center justify-center"
                         >
                           {label}
                         </button>
@@ -564,7 +564,7 @@ export default function CostMap() {
                       <button
                         onClick={() => { setMapZoom(autoZoom); setMapCenter(autoCenter) }}
                         title={t('costMap.resetFit')}
-                        className="w-7 h-7 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded text-gray-500 text-[10px] flex items-center justify-center"
+                        className="w-7 h-7 bg-subtle hover:bg-emphasis border border-strong rounded text-muted text-[10px] flex items-center justify-center"
                       >
                         ⊕
                       </button>
@@ -574,8 +574,8 @@ export default function CostMap() {
 
                 {/* Provider breakdown bar chart */}
                 {byProvider.length > 0 && (
-                  <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-                    <p className="text-sm font-semibold text-gray-300 mb-4">{t('costMap.spendByProvider')}</p>
+                  <div className="bg-surface rounded-xl border border-edge p-5">
+                    <p className="text-sm font-semibold text-secondary mb-4">{t('costMap.spendByProvider')}</p>
                     <ResponsiveContainer width="100%" height={120}>
                       <BarChart data={byProvider} layout="vertical" margin={{ left: 16, right: 24 }}>
                         <XAxis type="number" tick={mapTheme.axisTickStyle} tickFormatter={(v: number) => `$${v.toLocaleString()}`} />
@@ -588,7 +588,7 @@ export default function CostMap() {
                           {byProvider.map((entry) => (
                             <Cell
                               key={entry.name}
-                              fill={PROVIDER_COLORS[entry.name.toLowerCase()] ?? '#6366f1'}
+                              fill={PROVIDER_COLORS[entry.name.toLowerCase()] ?? '#299d87'}
                             />
                           ))}
                         </Bar>
@@ -598,14 +598,14 @@ export default function CostMap() {
                 )}
 
                 {/* Region table */}
-                <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-                  <div className="px-5 py-3 border-b border-gray-800">
-                    <p className="text-sm font-semibold text-gray-300">{t('costMap.regionBreakdown')}</p>
+                <div className="bg-surface rounded-xl border border-edge overflow-hidden">
+                  <div className="px-5 py-3 border-b border-edge">
+                    <p className="text-sm font-semibold text-secondary">{t('costMap.regionBreakdown')}</p>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
+                        <tr className="border-b border-edge text-xs text-muted uppercase tracking-wider">
                           <th className="px-5 py-3 text-left">{t('cmdb.region')}</th>
                           <th className="px-5 py-3 text-left">{t('costMap.location')}</th>
                           <th className="px-5 py-3 text-left">{t('costMap.cloud')}</th>
@@ -617,15 +617,15 @@ export default function CostMap() {
                       <tbody>
                         {expenses.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="px-5 py-8 text-center text-gray-600 text-sm">
+                            <td colSpan={6} className="px-5 py-8 text-center text-muted text-sm">
                               {t('costMap.noExpenseData')}
                             </td>
                           </tr>
                         ) : (
                           expenses.map((e) => (
-                            <tr key={`${e.region}-${e.cloud_type}`} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
-                              <td className="px-5 py-3 font-mono text-xs text-gray-300">{e.region}</td>
-                              <td className="px-5 py-3 text-gray-400">{e.label}</td>
+                            <tr key={`${e.region}-${e.cloud_type}`} className="border-b border-edge/50 hover:bg-subtle/30 transition-colors">
+                              <td className="px-5 py-3 font-mono text-xs text-secondary">{e.region}</td>
+                              <td className="px-5 py-3 text-secondary">{e.label}</td>
                               <td className="px-5 py-3">
                                 <span
                                   className="inline-block rounded px-2 py-0.5 text-xs font-medium"
@@ -637,26 +637,26 @@ export default function CostMap() {
                                   {e.cloud_type.toUpperCase()}
                                 </span>
                               </td>
-                              <td className="px-5 py-3 text-right text-gray-400">{e.resource_count}</td>
-                              <td className="px-5 py-3 text-right font-semibold text-white">
+                              <td className="px-5 py-3 text-right text-secondary">{e.resource_count}</td>
+                              <td className="px-5 py-3 text-right font-semibold text-primary">
                                 ${e.total_cost.toLocaleString()}
                               </td>
                               <td className="px-5 py-3 text-right">
                                 <div className="flex items-center justify-end gap-2">
-                                  <div className="w-16 bg-gray-800 rounded-full h-1.5">
+                                  <div className="w-16 bg-subtle rounded-full h-1.5">
                                     <div
-                                      className="h-1.5 rounded-full bg-indigo-500"
+                                      className="h-1.5 rounded-full bg-accent"
                                       style={{ width: `${Math.min(100, e.pct)}%` }}
                                     />
                                   </div>
-                                  <span className="text-gray-400 text-xs w-10 text-right">{e.pct}%</span>
+                                  <span className="text-secondary text-xs w-10 text-right">{e.pct}%</span>
                                 </div>
                               </td>
                             </tr>
                           ))
                         )}
                       </tbody>
-                    </table>
+                    </table></div>
                   </div>
                 </div>
               </>
@@ -668,13 +668,13 @@ export default function CostMap() {
         {activeTab === 'Treemap' && (
           <div className="space-y-4">
             {/* Dimension controls */}
-            <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 flex flex-wrap gap-4 items-center">
+            <div className="bg-surface rounded-xl border border-edge p-4 flex flex-wrap gap-4 items-center">
               <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-500">{t('costMap.groupBy')}</label>
+                <label className="text-xs text-muted">{t('costMap.groupBy')}</label>
                 <select
                   value={primaryDim}
                   onChange={(e) => { setPrimaryDim(e.target.value); setDrillFilter(null) }}
-                  className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
+                  className="bg-subtle border border-strong rounded px-2 py-1 text-sm text-primary focus:outline-none focus:border-accent"
                 >
                   {DIM_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{dimLabels[o.value]}</option>
@@ -682,11 +682,11 @@ export default function CostMap() {
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-500">{t('costMap.thenBy')}</label>
+                <label className="text-xs text-muted">{t('costMap.thenBy')}</label>
                 <select
                   value={secondaryDim}
                   onChange={(e) => setSecondaryDim(e.target.value)}
-                  className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
+                  className="bg-subtle border border-strong rounded px-2 py-1 text-sm text-primary focus:outline-none focus:border-accent"
                 >
                   <option value="">{t('costMap.none')}</option>
                   {DIM_OPTIONS.filter((o) => o.value !== primaryDim).map((o) => (
@@ -697,13 +697,13 @@ export default function CostMap() {
               {/* Drill-down breadcrumb */}
               {drillFilter && (
                 <div className="flex items-center gap-2 ml-auto">
-                  <span className="text-xs text-gray-500">{t('costMap.filteredBy')}</span>
-                  <span className="px-2 py-0.5 rounded bg-indigo-900/60 text-indigo-300 text-xs font-medium">
+                  <span className="text-xs text-muted">{t('costMap.filteredBy')}</span>
+                  <span className="px-2 py-0.5 rounded bg-accent-soft/60 text-accent text-xs font-medium">
                     {dimLabels[drillFilter.dim] ?? drillFilter.dim}: {drillFilter.val}
                   </span>
                   <button
                     onClick={() => setDrillFilter(null)}
-                    className="text-gray-500 hover:text-white text-xs"
+                    className="text-muted hover:text-primary text-xs"
                   >
                     ✕ {t('costMap.clear')}
                   </button>
@@ -712,19 +712,19 @@ export default function CostMap() {
             </div>
 
             {costMapLoading ? (
-              <div className="flex items-center justify-center h-64 text-gray-500 text-sm">{t('common.loading')}</div>
+              <div className="flex items-center justify-center h-64 text-muted text-sm">{t('common.loading')}</div>
             ) : !costMapData || costMapData.nodes.length === 0 ? (
-              <div className="flex items-center justify-center h-64 text-gray-600 text-sm">{t('costMap.noData')}</div>
+              <div className="flex items-center justify-center h-64 text-muted text-sm">{t('costMap.noData')}</div>
             ) : (
               <>
-                <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+                <div className="bg-surface rounded-xl border border-edge p-5">
                   <div className="flex items-center justify-between mb-4">
-                    <p className="text-sm font-semibold text-gray-300">
+                    <p className="text-sm font-semibold text-secondary">
                       {t('costMap.costBreakdownBy', { dim: dimLabels[costMapData.dims.primary] ?? costMapData.dims.primary })}
                       {costMapData.dims.secondary ? t('costMap.drillArrow', { dim: dimLabels[costMapData.dims.secondary] ?? costMapData.dims.secondary }) : ''}
                     </p>
-                    <p className="text-xs text-gray-500">
-                      {t('costMap.total')}: <span className="text-white font-semibold">${costMapData.total_cost.toLocaleString()}</span>
+                    <p className="text-xs text-muted">
+                      {t('costMap.total')}: <span className="text-primary font-semibold">${costMapData.total_cost.toLocaleString()}</span>
                     </p>
                   </div>
                   <ResponsiveContainer width="100%" height={400}>
@@ -737,13 +737,13 @@ export default function CostMap() {
                 </div>
 
                 {/* Top nodes table with drill-down */}
-                <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-                  <div className="px-5 py-3 border-b border-gray-800">
-                    <p className="text-xs text-gray-500">{t('costMap.clickToDrill')}</p>
+                <div className="bg-surface rounded-xl border border-edge overflow-hidden">
+                  <div className="px-5 py-3 border-b border-edge">
+                    <p className="text-xs text-muted">{t('costMap.clickToDrill')}</p>
                   </div>
-                  <table className="w-full text-sm">
+                  <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
+                      <tr className="border-b border-edge text-xs text-muted uppercase tracking-wider">
                         <th className="px-5 py-3 text-left">{t('common.name')}</th>
                         <th className="px-5 py-3 text-right">{t('costMap.resources')}</th>
                         <th className="px-5 py-3 text-right">{t('costMap.cost')}</th>
@@ -754,29 +754,29 @@ export default function CostMap() {
                       {costMapData.nodes.map((n) => (
                         <tr
                           key={n.key}
-                          className="border-b border-gray-800/50 hover:bg-gray-800/40 cursor-pointer transition-colors"
+                          className="border-b border-edge/50 hover:bg-subtle/40 cursor-pointer transition-colors"
                           onClick={() => setDrillFilter({ dim: primaryDim, val: n.key })}
                         >
-                          <td className="px-5 py-3 text-gray-200">{n.label}</td>
-                          <td className="px-5 py-3 text-right text-gray-400">{n.resource_count}</td>
-                          <td className="px-5 py-3 text-right font-semibold text-white">
+                          <td className="px-5 py-3 text-primary">{n.label}</td>
+                          <td className="px-5 py-3 text-right text-secondary">{n.resource_count}</td>
+                          <td className="px-5 py-3 text-right font-semibold text-primary">
                             ${n.cost.toLocaleString()}
                           </td>
                           <td className="px-5 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <div className="w-16 bg-gray-800 rounded-full h-1.5">
+                              <div className="w-16 bg-subtle rounded-full h-1.5">
                                 <div
-                                  className="h-1.5 rounded-full bg-indigo-500"
+                                  className="h-1.5 rounded-full bg-accent"
                                   style={{ width: `${Math.min(100, n.pct)}%` }}
                                 />
                               </div>
-                              <span className="text-gray-400 text-xs w-10 text-right">{n.pct}%</span>
+                              <span className="text-secondary text-xs w-10 text-right">{n.pct}%</span>
                             </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 </div>
               </>
             )}
@@ -787,14 +787,14 @@ export default function CostMap() {
         {activeTab === 'Unit Economics' && (
           <div className="space-y-4">
             {unitEconLoading ? (
-              <div className="flex items-center justify-center h-64 text-gray-500 text-sm">{t('common.loading')}</div>
+              <div className="flex items-center justify-center h-64 text-muted text-sm">{t('common.loading')}</div>
             ) : !unitEcon || unitEcon.data.length === 0 ? (
-              <div className="flex items-center justify-center h-64 text-gray-600 text-sm">{t('costMap.noData')}</div>
+              <div className="flex items-center justify-center h-64 text-muted text-sm">{t('costMap.noData')}</div>
             ) : (
               <>
                 {/* Bar chart */}
-                <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-                  <p className="text-sm font-semibold text-gray-300 mb-4">{t('costMap.totalCostByType')}</p>
+                <div className="bg-surface rounded-xl border border-edge p-5">
+                  <p className="text-sm font-semibold text-secondary mb-4">{t('costMap.totalCostByType')}</p>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={unitEcon.data} margin={{ left: 8, right: 16 }}>
                       <XAxis dataKey="resource_type" tick={mapTheme.axisTickStyle} />
@@ -813,14 +813,14 @@ export default function CostMap() {
                 </div>
 
                 {/* Unit economics table */}
-                <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-                  <div className="px-5 py-3 border-b border-gray-800">
-                    <p className="text-sm font-semibold text-gray-300">{t('costMap.perResourceTypeEconomics')}</p>
+                <div className="bg-surface rounded-xl border border-edge overflow-hidden">
+                  <div className="px-5 py-3 border-b border-edge">
+                    <p className="text-sm font-semibold text-secondary">{t('costMap.perResourceTypeEconomics')}</p>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
+                        <tr className="border-b border-edge text-xs text-muted uppercase tracking-wider">
                           <th className="px-5 py-3 text-left">{t('costMap.resourceType')}</th>
                           <th className="px-5 py-3 text-right">{t('costMap.count')}</th>
                           <th className="px-5 py-3 text-right">{t('resources.colTotalCost')}</th>
@@ -831,27 +831,27 @@ export default function CostMap() {
                       </thead>
                       <tbody>
                         {unitEcon.data.map((row, i) => (
-                          <tr key={row.resource_type} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                          <tr key={row.resource_type} className="border-b border-edge/50 hover:bg-subtle/30">
                             <td className="px-5 py-3 flex items-center gap-2">
                               <span
                                 className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
                                 style={{ background: TREEMAP_COLORS[i % TREEMAP_COLORS.length] }}
                               />
-                              <span className="text-gray-200">{row.resource_type}</span>
+                              <span className="text-primary">{row.resource_type}</span>
                             </td>
-                            <td className="px-5 py-3 text-right text-gray-400">{row.resource_count}</td>
-                            <td className="px-5 py-3 text-right font-semibold text-white">
+                            <td className="px-5 py-3 text-right text-secondary">{row.resource_count}</td>
+                            <td className="px-5 py-3 text-right font-semibold text-primary">
                               ${row.total_cost.toLocaleString()}
                             </td>
-                            <td className="px-5 py-3 text-right text-gray-300">
+                            <td className="px-5 py-3 text-right text-secondary">
                               ${row.avg_daily_cost.toLocaleString()}
                             </td>
-                            <td className="px-5 py-3 text-right text-gray-300">
+                            <td className="px-5 py-3 text-right text-secondary">
                               ${row.avg_cost_per_resource.toLocaleString()}
                             </td>
                             <td className="px-5 py-3 text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <div className="w-16 bg-gray-800 rounded-full h-1.5">
+                                <div className="w-16 bg-subtle rounded-full h-1.5">
                                   <div
                                     className="h-1.5 rounded-full"
                                     style={{
@@ -860,13 +860,13 @@ export default function CostMap() {
                                     }}
                                   />
                                 </div>
-                                <span className="text-gray-400 text-xs w-10 text-right">{row.pct_of_total}%</span>
+                                <span className="text-secondary text-xs w-10 text-right">{row.pct_of_total}%</span>
                               </div>
                             </td>
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </table></div>
                   </div>
                 </div>
               </>
@@ -878,51 +878,51 @@ export default function CostMap() {
         {activeTab === 'Budget Matrix' && (
           <div className="space-y-4">
             {budgetLoading ? (
-              <div className="flex items-center justify-center h-64 text-gray-500 text-sm">{t('common.loading')}</div>
+              <div className="flex items-center justify-center h-64 text-muted text-sm">{t('common.loading')}</div>
             ) : !budgetMatrix || budgetMatrix.data.length === 0 ? (
-              <div className="flex items-center justify-center h-64 text-gray-600 text-sm">{t('costMap.noPools')}</div>
+              <div className="flex items-center justify-center h-64 text-muted text-sm">{t('costMap.noPools')}</div>
             ) : (
               <>
                 {/* Summary cards */}
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
                     {
                       label: t('status.over_budget'),
                       count: budgetMatrix.data.filter((r) => r.status === 'over_budget').length,
-                      cls: 'text-red-400',
+                      cls: 'text-danger',
                     },
                     {
                       label: t('costMap.warning80'),
                       count: budgetMatrix.data.filter((r) => r.status === 'warning').length,
-                      cls: 'text-yellow-400',
+                      cls: 'text-warning',
                     },
                     {
                       label: t('status.on_track'),
                       count: budgetMatrix.data.filter((r) => r.status === 'on_track').length,
-                      cls: 'text-green-400',
+                      cls: 'text-success',
                     },
                     {
                       label: t('status.no_budget'),
                       count: budgetMatrix.data.filter((r) => r.status === 'no_budget').length,
-                      cls: 'text-gray-500',
+                      cls: 'text-muted',
                     },
                   ].map((s) => (
-                    <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-                      <p className="text-xs text-gray-500">{s.label}</p>
+                    <div key={s.label} className="bg-surface border border-edge rounded-xl p-4">
+                      <p className="text-xs text-muted">{s.label}</p>
                       <p className={`text-2xl font-bold ${s.cls}`}>{s.count}</p>
                     </div>
                   ))}
                 </div>
 
                 {/* Matrix table */}
-                <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-                  <div className="px-5 py-3 border-b border-gray-800">
-                    <p className="text-sm font-semibold text-gray-300">{t('costMap.poolBudgetVsActual')}</p>
+                <div className="bg-surface rounded-xl border border-edge overflow-hidden">
+                  <div className="px-5 py-3 border-b border-edge">
+                    <p className="text-sm font-semibold text-secondary">{t('costMap.poolBudgetVsActual')}</p>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
+                        <tr className="border-b border-edge text-xs text-muted uppercase tracking-wider">
                           <th className="px-5 py-3 text-left">{t('costMap.pool')}</th>
                           <th className="px-5 py-3 text-left">{t('common.type')}</th>
                           <th className="px-5 py-3 text-right">{t('costMap.budget')}</th>
@@ -934,19 +934,19 @@ export default function CostMap() {
                       </thead>
                       <tbody>
                         {budgetMatrix.data.map((row) => (
-                          <tr key={row.pool_id ?? row.pool_name} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                            <td className="px-5 py-3 font-medium text-gray-200">{row.pool_name}</td>
-                            <td className="px-5 py-3 text-gray-500 text-xs capitalize">{row.pool_type}</td>
-                            <td className="px-5 py-3 text-right text-gray-400">
+                          <tr key={row.pool_id ?? row.pool_name} className="border-b border-edge/50 hover:bg-subtle/30">
+                            <td className="px-5 py-3 font-medium text-primary">{row.pool_name}</td>
+                            <td className="px-5 py-3 text-muted text-xs capitalize">{row.pool_type}</td>
+                            <td className="px-5 py-3 text-right text-secondary">
                               {row.budget != null ? `$${row.budget.toLocaleString()}` : '—'}
                             </td>
-                            <td className="px-5 py-3 text-right font-semibold text-white">
+                            <td className="px-5 py-3 text-right font-semibold text-primary">
                               ${row.actual.toLocaleString()}
                             </td>
                             <td className={`px-5 py-3 text-right text-sm font-medium ${
-                              row.variance == null ? 'text-gray-600'
-                              : row.variance >= 0 ? 'text-green-400'
-                              : 'text-red-400'
+                              row.variance == null ? 'text-muted'
+                              : row.variance >= 0 ? 'text-success'
+                              : 'text-danger'
                             }`}>
                               {row.variance != null
                                 ? `${row.variance >= 0 ? '+' : ''}$${row.variance.toLocaleString()}`
@@ -955,22 +955,22 @@ export default function CostMap() {
                             <td className="px-5 py-3">
                               {row.utilization_pct != null ? (
                                 <div className="flex items-center gap-2">
-                                  <div className="flex-1 bg-gray-800 rounded-full h-2">
+                                  <div className="flex-1 bg-subtle rounded-full h-2">
                                     <div
                                       className={`h-2 rounded-full transition-all ${
-                                        row.status === 'over_budget' ? 'bg-red-500'
-                                        : row.status === 'warning' ? 'bg-yellow-500'
-                                        : 'bg-green-500'
+                                        row.status === 'over_budget' ? 'bg-danger-solid'
+                                        : row.status === 'warning' ? 'bg-warning-solid'
+                                        : 'bg-success-solid'
                                       }`}
                                       style={{ width: `${Math.min(100, row.utilization_pct)}%` }}
                                     />
                                   </div>
-                                  <span className="text-xs text-gray-400 w-10 text-right flex-shrink-0">
+                                  <span className="text-xs text-secondary w-10 text-right flex-shrink-0">
                                     {row.utilization_pct}%
                                   </span>
                                 </div>
                               ) : (
-                                <span className="text-gray-700 text-xs">—</span>
+                                <span className="text-secondary text-xs">—</span>
                               )}
                             </td>
                             <td className="px-5 py-3 text-center">
@@ -979,7 +979,7 @@ export default function CostMap() {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </table></div>
                   </div>
                 </div>
               </>

@@ -172,23 +172,23 @@ export default function AssociationKinds() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">{t('assocKinds.title')}</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h1 className="page-title">{t('assocKinds.title')}</h1>
+          <p className="text-sm text-secondary mt-0.5">
             {t('assocKinds.subtitle')}
           </p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-800/60 p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-subtle/60 p-1 rounded-lg w-fit">
         {(['kinds', 'mappings'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-1.5 text-sm rounded-md font-medium transition-colors capitalize ${
               activeTab === tab
-                ? 'bg-gray-700 text-white'
-                : 'text-gray-400 hover:text-gray-200'
+                ? 'bg-emphasis text-primary'
+                : 'text-secondary hover:text-primary'
             }`}
           >
             {tab === 'kinds' ? t('assocKinds.title') : t('assocKinds.tabMappings')}
@@ -202,46 +202,46 @@ export default function AssociationKinds() {
           <div className="flex justify-end">
             <button
               onClick={() => { resetKindForm(); setShowKindForm(true) }}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg"
+              className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg"
             >
               {t('assocKinds.newKind')}
             </button>
           </div>
 
           {showKindForm && (
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-5 space-y-4">
-              <h2 className="text-base font-semibold text-white">
+            <div className="bg-subtle rounded-xl border border-strong p-5 space-y-4">
+              <h2 className="text-base font-semibold text-primary">
                 {editKindId ? t('assocKinds.editKind') : t('assocKinds.newKindTitle')}
               </h2>
-              {kindError && <p className="text-red-400 text-sm">{kindError}</p>}
+              {kindError && <p className="text-danger text-sm">{kindError}</p>}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">{t('assocKinds.nameKey')}</label>
+                  <label className="block text-xs text-secondary mb-1">{t('assocKinds.nameKey')}</label>
                   <input
                     value={kindName}
                     onChange={e => setKindName(e.target.value)}
                     disabled={!!editKindId}
                     placeholder={t('assocKinds.namePlaceholder')}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-50"
+                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary disabled:opacity-50"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">{t('cmdb.displayName')}</label>
+                  <label className="block text-xs text-secondary mb-1">{t('cmdb.displayName')}</label>
                   <input
                     value={kindDisplay}
                     onChange={e => setKindDisplay(e.target.value)}
                     placeholder={t('assocKinds.displayPlaceholder')}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('common.description')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
                 <input
                   value={kindDesc}
                   onChange={e => setKindDesc(e.target.value)}
                   placeholder={t('assocKinds.optionalDesc')}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                  className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                 />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -251,7 +251,7 @@ export default function AssociationKinds() {
                   onChange={e => setKindDirectional(e.target.checked)}
                   className="w-4 h-4"
                 />
-                <span className="text-sm text-gray-300">
+                <span className="text-sm text-secondary">
                   {t('assocKinds.directional')}
                 </span>
               </label>
@@ -259,11 +259,11 @@ export default function AssociationKinds() {
                 <button
                   disabled={kindBusy || !kindName.trim() || !kindDisplay.trim()}
                   onClick={() => editKindId ? updateKindMutation.mutate() : createKindMutation.mutate()}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm font-medium rounded-lg"
                 >
                   {kindBusy ? t('assocKinds.saving') : editKindId ? t('assocKinds.update') : t('assocKinds.create')}
                 </button>
-                <button onClick={resetKindForm} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg">
+                <button onClick={resetKindForm} className="px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg">
                   {t('common.cancel')}
                 </button>
               </div>
@@ -271,12 +271,12 @@ export default function AssociationKinds() {
           )}
 
           {loadingKinds ? (
-            <p className="text-gray-500 text-sm">{t('common.loading')}</p>
+            <p className="text-muted text-sm">{t('common.loading')}</p>
           ) : (
-            <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="bg-surface rounded-xl border border-edge overflow-hidden">
+              <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                 <thead>
-                  <tr className="text-xs text-gray-500 border-b border-gray-800">
+                  <tr className="text-xs text-muted border-b border-edge">
                     <th className="text-left px-4 py-3">{t('common.name')}</th>
                     <th className="text-left px-4 py-3">{t('assocKinds.colDisplay')}</th>
                     <th className="text-left px-4 py-3">{t('assocKinds.colDirection')}</th>
@@ -286,20 +286,20 @@ export default function AssociationKinds() {
                 </thead>
                 <tbody>
                   {kinds.map(k => (
-                    <tr key={k.id} className="border-b border-gray-800/60 hover:bg-gray-800/30">
-                      <td className="px-4 py-3 font-mono text-xs text-white">
+                    <tr key={k.id} className="border-b border-edge/60 hover:bg-subtle/30">
+                      <td className="px-4 py-3 font-mono text-xs text-primary">
                         {k.name}
                         {k.is_builtin && (
-                          <span className="ml-2 px-1.5 py-0.5 bg-gray-700 text-gray-400 text-xs rounded">{t('assocKinds.builtin')}</span>
+                          <span className="ml-2 px-1.5 py-0.5 bg-emphasis text-secondary text-xs rounded">{t('assocKinds.builtin')}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-white">{k.display_name}</td>
+                      <td className="px-4 py-3 text-primary">{k.display_name}</td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${k.is_directional ? 'bg-blue-900/40 text-blue-300' : 'bg-gray-700 text-gray-400'}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${k.is_directional ? 'bg-info/10 text-info' : 'bg-emphasis text-secondary'}`}>
                           {k.is_directional ? t('assocKinds.directionalBadge') : t('assocKinds.bidirectionalBadge')}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right text-indigo-400 font-medium">{k.usage_count}</td>
+                      <td className="px-4 py-3 text-right text-accent font-medium">{k.usage_count}</td>
                       <td className="px-4 py-3 text-right">
                         {!k.is_builtin && (
                           <div className="flex justify-end gap-2">
@@ -309,11 +309,11 @@ export default function AssociationKinds() {
                                 setKindDisplay(k.display_name); setKindDesc(k.description ?? '')
                                 setKindDirectional(k.is_directional); setShowKindForm(true)
                               }}
-                              className="text-xs text-blue-400 hover:text-blue-300"
+                              className="text-xs text-info hover:text-info"
                             >{t('common.edit')}</button>
                             <button
                               onClick={() => { if (confirm(t('assocKinds.deleteKindConfirm', { name: k.display_name }))) deleteKindMutation.mutate(k.id) }}
-                              className="text-xs text-red-400 hover:text-red-300"
+                              className="text-xs text-danger hover:text-danger"
                             >{t('common.delete')}</button>
                           </div>
                         )}
@@ -321,7 +321,7 @@ export default function AssociationKinds() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           )}
         </div>
@@ -333,23 +333,23 @@ export default function AssociationKinds() {
           <div className="flex justify-end">
             <button
               onClick={() => setShowMappingForm(true)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg"
+              className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg"
             >
               {t('assocKinds.newMapping')}
             </button>
           </div>
 
           {showMappingForm && (
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-5 space-y-4">
-              <h2 className="text-base font-semibold text-white">{t('assocKinds.newMappingTitle')}</h2>
-              {mapError && <p className="text-red-400 text-sm">{mapError}</p>}
+            <div className="bg-subtle rounded-xl border border-strong p-5 space-y-4">
+              <h2 className="text-base font-semibold text-primary">{t('assocKinds.newMappingTitle')}</h2>
+              {mapError && <p className="text-danger text-sm">{mapError}</p>}
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">{t('assocKinds.srcType')}</label>
+                  <label className="block text-xs text-secondary mb-1">{t('assocKinds.srcType')}</label>
                   <select
                     value={mapSrcType}
                     onChange={e => setMapSrcType(e.target.value)}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                   >
                     <option value="">{t('assocKinds.selectType')}</option>
                     {ciTypes.map(t => (
@@ -358,11 +358,11 @@ export default function AssociationKinds() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">{t('assocKinds.kind')}</label>
+                  <label className="block text-xs text-secondary mb-1">{t('assocKinds.kind')}</label>
                   <select
                     value={mapKindId}
                     onChange={e => setMapKindId(e.target.value)}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                   >
                     <option value="">{t('assocKinds.selectKind')}</option>
                     {kinds.map(k => (
@@ -371,11 +371,11 @@ export default function AssociationKinds() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">{t('assocKinds.dstType')}</label>
+                  <label className="block text-xs text-secondary mb-1">{t('assocKinds.dstType')}</label>
                   <select
                     value={mapDstType}
                     onChange={e => setMapDstType(e.target.value)}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                   >
                     <option value="">{t('assocKinds.selectType')}</option>
                     {ciTypes.map(t => (
@@ -386,11 +386,11 @@ export default function AssociationKinds() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">{t('assocKinds.cardinality')}</label>
+                  <label className="block text-xs text-secondary mb-1">{t('assocKinds.cardinality')}</label>
                   <select
                     value={mapCardinality}
                     onChange={e => setMapCardinality(e.target.value)}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                   >
                     {CARDINALITIES.map(c => (
                       <option key={c} value={c}>{c.replace(/_/g, ':')}</option>
@@ -398,11 +398,11 @@ export default function AssociationKinds() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">{t('common.description')}</label>
+                  <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
                   <input
                     value={mapDesc}
                     onChange={e => setMapDesc(e.target.value)}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                   />
                 </div>
               </div>
@@ -410,13 +410,13 @@ export default function AssociationKinds() {
                 <button
                   disabled={createMappingMutation.isPending || !mapSrcType || !mapKindId || !mapDstType}
                   onClick={() => createMappingMutation.mutate()}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm font-medium rounded-lg"
                 >
                   {createMappingMutation.isPending ? t('assocKinds.saving') : t('assocKinds.createMapping')}
                 </button>
                 <button
                   onClick={() => { setShowMappingForm(false); setMapError('') }}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg"
+                  className="px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg"
                 >
                   {t('common.cancel')}
                 </button>
@@ -425,12 +425,12 @@ export default function AssociationKinds() {
           )}
 
           {loadingMappings ? (
-            <p className="text-gray-500 text-sm">{t('common.loading')}</p>
+            <p className="text-muted text-sm">{t('common.loading')}</p>
           ) : (
-            <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="bg-surface rounded-xl border border-edge overflow-hidden">
+              <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                 <thead>
-                  <tr className="text-xs text-gray-500 border-b border-gray-800">
+                  <tr className="text-xs text-muted border-b border-edge">
                     <th className="text-left px-4 py-3">{t('assocKinds.colSrcType')}</th>
                     <th className="text-center px-4 py-3">{t('assocKinds.colRelation')}</th>
                     <th className="text-left px-4 py-3">{t('assocKinds.colDstType')}</th>
@@ -441,20 +441,20 @@ export default function AssociationKinds() {
                 </thead>
                 <tbody>
                   {mappings.map(m => (
-                    <tr key={m.id} className="border-b border-gray-800/60 hover:bg-gray-800/30">
-                      <td className="px-4 py-3 text-white">{m.src_type_display}</td>
+                    <tr key={m.id} className="border-b border-edge/60 hover:bg-subtle/30">
+                      <td className="px-4 py-3 text-primary">{m.src_type_display}</td>
                       <td className="px-4 py-3 text-center">
-                        <span className="text-xs px-2 py-0.5 bg-indigo-900/30 text-indigo-300 rounded-full">
+                        <span className="text-xs px-2 py-0.5 bg-accent-soft/30 text-accent rounded-full">
                           {m.is_directional ? `→ ${m.kind_display}` : `↔ ${m.kind_display}`}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-white">{m.dst_type_display}</td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{m.cardinality.replace(/_/g, ':')}</td>
-                      <td className="px-4 py-3 text-right text-indigo-400 font-medium">{m.instance_count}</td>
+                      <td className="px-4 py-3 text-primary">{m.dst_type_display}</td>
+                      <td className="px-4 py-3 text-secondary text-xs">{m.cardinality.replace(/_/g, ':')}</td>
+                      <td className="px-4 py-3 text-right text-accent font-medium">{m.instance_count}</td>
                       <td className="px-4 py-3 text-right">
                         <button
                           onClick={() => { if (confirm(t('assocKinds.deleteMappingConfirm'))) deleteMappingMutation.mutate(m.id) }}
-                          className="text-xs text-red-400 hover:text-red-300"
+                          className="text-xs text-danger hover:text-danger"
                         >
                           {t('common.delete')}
                         </button>
@@ -462,7 +462,7 @@ export default function AssociationKinds() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           )}
         </div>

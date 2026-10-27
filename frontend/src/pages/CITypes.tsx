@@ -93,13 +93,13 @@ function BuiltinBadge({ isBuiltin }: { isBuiltin: boolean }) {
   const { t } = useTranslation()
   if (isBuiltin) {
     return (
-      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-800 text-gray-400">
+      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-subtle text-secondary">
         {t('ciTypes.badgeBuiltin')}
       </span>
     )
   }
   return (
-    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-900/40 text-green-300">
+    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">
       {t('ciTypes.badgeCustom')}
     </span>
   )
@@ -108,12 +108,12 @@ function BuiltinBadge({ isBuiltin }: { isBuiltin: boolean }) {
 function TypeBadge({ type }: { type: string }) {
   const cls =
     type === 'enum'
-      ? 'bg-purple-900/40 text-purple-300'
+      ? 'bg-violet/10 text-violet'
       : type === 'json' || type === 'list'
-        ? 'bg-blue-900/40 text-blue-300'
+        ? 'bg-info/10 text-info'
         : type === 'boolean' || type === 'datetime'
-          ? 'bg-yellow-900/40 text-yellow-300'
-          : 'bg-gray-800 text-gray-300'
+          ? 'bg-warning/10 text-warning'
+          : 'bg-subtle text-secondary'
   return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{type}</span>
 }
 
@@ -308,45 +308,45 @@ export default function CITypes() {
   }
 
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('ciTypes.title')}</h2>
+        <h2 className="page-title">{t('ciTypes.title')}</h2>
         <button
           onClick={openCreateType}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
         >
           {t('ciTypes.newType')}
         </button>
       </div>
 
       {isError && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           {t('ciTypes.loadFailed')}
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
         {/* Type list */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden self-start max-h-[70vh] overflow-y-auto">
+        <div className="bg-surface border border-edge rounded-xl overflow-hidden self-start max-h-[70vh] overflow-y-auto">
           {isLoading ? (
-            <div className="p-5 text-gray-500 text-sm">{t('common.loading')}</div>
+            <div className="p-5 text-muted text-sm">{t('common.loading')}</div>
           ) : (
             <ul>
               {types.map((t) => (
                 <li key={t.id}>
                   <button
                     onClick={() => setSelectedId(t.id)}
-                    className={`w-full text-left px-4 py-3 flex items-center gap-3 border-b border-gray-800 last:border-0 transition-colors ${
-                      selectedId === t.id ? 'bg-indigo-600/20' : 'hover:bg-gray-800/50'
+                    className={`w-full text-left px-4 py-3 flex items-center gap-3 border-b border-edge last:border-0 transition-colors ${
+                      selectedId === t.id ? 'bg-accent/20' : 'hover:bg-subtle/50'
                     }`}
                   >
                     <span className="text-lg">{t.icon ?? '📦'}</span>
                     <span className="flex-1 min-w-0">
-                      <span className="block text-sm text-white truncate">{t.display_name}</span>
-                      <span className="block text-xs text-gray-500 font-mono">{t.name}</span>
+                      <span className="block text-sm text-primary truncate">{t.display_name}</span>
+                      <span className="block text-xs text-muted font-mono">{t.name}</span>
                     </span>
                     <BuiltinBadge isBuiltin={t.is_builtin} />
                   </button>
@@ -359,18 +359,18 @@ export default function CITypes() {
         {/* Detail pane */}
         <div className="space-y-4">
           {!selected ? (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-10 text-center text-gray-500 text-sm">
+            <div className="bg-surface border border-edge rounded-xl px-5 py-10 text-center text-muted text-sm">
               {t('ciTypes.selectHint')}
             </div>
           ) : (
             <>
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+              <div className="bg-surface border border-edge rounded-xl p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-3xl">{selected.icon ?? '📦'}</span>
                     <div>
-                      <h3 className="text-lg font-semibold text-white">{selected.display_name}</h3>
-                      <p className="text-xs text-gray-500 font-mono">{selected.name}</p>
+                      <h3 className="text-lg font-semibold text-primary">{selected.display_name}</h3>
+                      <p className="text-xs text-muted font-mono">{selected.name}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -382,7 +382,7 @@ export default function CITypes() {
                             deleteTypeMutation.mutate(selected.id)
                           }
                         }}
-                        className="text-red-400 hover:text-red-300 text-xs"
+                        className="text-danger hover:text-danger text-xs"
                       >
                         {t('ciTypes.deleteType')}
                       </button>
@@ -391,23 +391,23 @@ export default function CITypes() {
                 </div>
                 <dl className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4 text-sm">
                   <div>
-                    <dt className="text-xs text-gray-500">{t('ciTypes.classification')}</dt>
-                    <dd className="text-gray-300">
+                    <dt className="text-xs text-muted">{t('ciTypes.classification')}</dt>
+                    <dd className="text-secondary">
                       {classifications.find((c) => c.id === selected.classification_id)
                         ?.display_name ?? '—'}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-gray-500">{t('ciTypes.cloudProvider')}</dt>
-                    <dd className="text-gray-300">{providerLabel(selected.cloud_provider)}</dd>
+                    <dt className="text-xs text-muted">{t('ciTypes.cloudProvider')}</dt>
+                    <dd className="text-secondary">{providerLabel(selected.cloud_provider)}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-gray-500">{t('ciTypes.sortOrder')}</dt>
-                    <dd className="text-gray-300">{selected.sort_order}</dd>
+                    <dt className="text-xs text-muted">{t('ciTypes.sortOrder')}</dt>
+                    <dd className="text-secondary">{selected.sort_order}</dd>
                   </div>
                   <div className="col-span-2 md:col-span-3">
-                    <dt className="text-xs text-gray-500">{t('common.description')}</dt>
-                    <dd className="text-gray-300">{selected.description ?? '—'}</dd>
+                    <dt className="text-xs text-muted">{t('common.description')}</dt>
+                    <dd className="text-secondary">{selected.description ?? '—'}</dd>
                   </div>
                 </dl>
                 {!selected.is_builtin && (
@@ -426,7 +426,7 @@ export default function CITypes() {
                           payload: { display_name: typeForm.display_name.trim() },
                         })
                       }
-                      className="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium rounded-lg transition-colors"
+                      className="px-3 py-2 bg-subtle hover:bg-emphasis text-primary text-xs font-medium rounded-lg transition-colors"
                     >
                       {t('ciTypes.rename')}
                     </button>
@@ -434,9 +434,9 @@ export default function CITypes() {
                 )}
               </div>
 
-              <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-                  <h4 className="text-sm font-semibold text-white">{t('ciTypes.attributes')}</h4>
+              <div className="bg-surface border border-edge rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
+                  <h4 className="text-sm font-semibold text-primary">{t('ciTypes.attributes')}</h4>
                   {!selected.is_builtin && (
                     <button
                       onClick={() => {
@@ -444,21 +444,21 @@ export default function CITypes() {
                         setAttrFormError('')
                         setShowAttrModal(true)
                       }}
-                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors"
+                      className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-xs font-medium rounded-lg transition-colors"
                     >
                       {t('ciTypes.addAttribute')}
                     </button>
                   )}
                 </div>
                 {attrsLoading ? (
-                  <div className="p-5 text-gray-500 text-sm">{t('common.loading')}</div>
+                  <div className="p-5 text-muted text-sm">{t('common.loading')}</div>
                 ) : attributes.length === 0 ? (
-                  <div className="p-5 text-center text-gray-500 text-sm">
+                  <div className="p-5 text-center text-muted text-sm">
                     {t('ciTypes.noAttributes')}
                   </div>
                 ) : (
-                  <table className="w-full text-left">
-                    <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+                  <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+                    <thead className="border-b border-edge text-xs uppercase text-muted">
                       <tr>
                         <th className="px-4 py-3 font-medium">{t('common.name')}</th>
                         <th className="px-4 py-3 font-medium">{t('common.type')}</th>
@@ -471,24 +471,24 @@ export default function CITypes() {
                     </thead>
                     <tbody>
                       {attributes.map((a) => (
-                        <tr key={a.id} className="border-b border-gray-700 last:border-0 hover:bg-gray-800/40 transition-colors">
+                        <tr key={a.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
                           <td className="px-4 py-3">
-                            <span className="text-sm text-white">{a.display_name}</span>
-                            <span className="block text-xs text-gray-500 font-mono">{a.name}</span>
+                            <span className="text-sm text-primary">{a.display_name}</span>
+                            <span className="block text-xs text-muted font-mono">{a.name}</span>
                           </td>
                           <td className="px-4 py-3">
                             <TypeBadge type={a.attribute_type} />
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-300">
+                          <td className="px-4 py-3 text-sm text-secondary">
                             {a.is_required ? '✓' : '—'}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-300">
+                          <td className="px-4 py-3 text-sm text-secondary">
                             {a.is_unique ? '✓' : '—'}
                           </td>
-                          <td className="px-4 py-3 text-xs text-gray-400 font-mono">
+                          <td className="px-4 py-3 text-xs text-secondary font-mono">
                             {a.default_value ?? '—'}
                           </td>
-                          <td className="px-4 py-3 text-xs text-gray-400">
+                          <td className="px-4 py-3 text-xs text-secondary">
                             {Array.isArray(a.enum_values) ? a.enum_values.join(', ') : '—'}
                           </td>
                           <td className="px-4 py-3">
@@ -499,7 +499,7 @@ export default function CITypes() {
                                     deleteAttrMutation.mutate(a.id)
                                   }
                                 }}
-                                className="text-red-400 hover:text-red-300 text-xs"
+                                className="text-danger hover:text-danger text-xs"
                               >
                                 {t('common.delete')}
                               </button>
@@ -508,14 +508,14 @@ export default function CITypes() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 )}
               </div>
 
               {/* Unique constraints (T2) */}
-              <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-                  <h4 className="text-sm font-semibold text-white">{t('ciTypes.uniqueConstraints')}</h4>
+              <div className="bg-surface border border-edge rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
+                  <h4 className="text-sm font-semibold text-primary">{t('ciTypes.uniqueConstraints')}</h4>
                   <button
                     onClick={() => {
                       setConstraintName('')
@@ -523,18 +523,18 @@ export default function CITypes() {
                       setConstraintError('')
                       setShowConstraintModal(true)
                     }}
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors"
+                    className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-xs font-medium rounded-lg transition-colors"
                   >
                     {t('ciTypes.addConstraint')}
                   </button>
                 </div>
                 {constraints.length === 0 ? (
-                  <div className="p-5 text-center text-gray-500 text-sm">
+                  <div className="p-5 text-center text-muted text-sm">
                     {t('ciTypes.noConstraints')}
                   </div>
                 ) : (
-                  <table className="w-full text-left">
-                    <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+                  <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+                    <thead className="border-b border-edge text-xs uppercase text-muted">
                       <tr>
                         <th className="px-4 py-3 font-medium">{t('common.name')}</th>
                         <th className="px-4 py-3 font-medium">{t('ciTypes.constraintAttrs')}</th>
@@ -543,12 +543,12 @@ export default function CITypes() {
                     </thead>
                     <tbody>
                       {constraints.map((c) => (
-                        <tr key={c.id} className="border-b border-gray-700 last:border-0 hover:bg-gray-800/40 transition-colors">
-                          <td className="px-4 py-3 text-sm text-white">{c.name}</td>
+                        <tr key={c.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                          <td className="px-4 py-3 text-sm text-primary">{c.name}</td>
                           <td className="px-4 py-3">
                             <div className="flex flex-wrap gap-1">
                               {c.attr_names.map((a) => (
-                                <span key={a} className="px-1.5 py-0.5 bg-gray-700 text-gray-300 text-xs rounded font-mono">
+                                <span key={a} className="px-1.5 py-0.5 bg-emphasis text-secondary text-xs rounded font-mono">
                                   {a}
                                 </span>
                               ))}
@@ -561,7 +561,7 @@ export default function CITypes() {
                                   deleteConstraintMutation.mutate(c.id)
                                 }
                               }}
-                              className="text-red-400 hover:text-red-300 text-xs"
+                              className="text-danger hover:text-danger text-xs"
                             >
                               {t('common.delete')}
                             </button>
@@ -569,7 +569,7 @@ export default function CITypes() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 )}
               </div>
             </>
@@ -584,14 +584,14 @@ export default function CITypes() {
           onClick={() => setShowTypeModal(false)}
         >
           <div
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">{t('ciTypes.newTypeTitle')}</h3>
+            <h3 className="text-lg font-semibold text-primary mb-4">{t('ciTypes.newTypeTitle')}</h3>
             <form onSubmit={handleTypeSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">{t('ciTypes.nameSnake')}</label>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.nameSnake')}</label>
                   <input
                     value={typeForm.name}
                     onChange={(e) => setTypeForm({ ...typeForm, name: e.target.value })}
@@ -600,7 +600,7 @@ export default function CITypes() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">{t('ciTypes.displayName')}</label>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.displayName')}</label>
                   <input
                     value={typeForm.display_name}
                     onChange={(e) => setTypeForm({ ...typeForm, display_name: e.target.value })}
@@ -611,7 +611,7 @@ export default function CITypes() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">{t('ciTypes.classification')}</label>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.classification')}</label>
                   <select
                     value={typeForm.classification_id}
                     onChange={(e) => setTypeForm({ ...typeForm, classification_id: e.target.value })}
@@ -626,7 +626,7 @@ export default function CITypes() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">{t('ciTypes.cloudProvider')}</label>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.cloudProvider')}</label>
                   <select
                     value={typeForm.cloud_provider}
                     onChange={(e) => setTypeForm({ ...typeForm, cloud_provider: e.target.value })}
@@ -641,7 +641,7 @@ export default function CITypes() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('common.description')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('common.description')}</label>
                 <textarea
                   value={typeForm.description}
                   onChange={(e) => setTypeForm({ ...typeForm, description: e.target.value })}
@@ -651,7 +651,7 @@ export default function CITypes() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">{t('ciTypes.icon')}</label>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.icon')}</label>
                   <div className="flex flex-wrap gap-1">
                     {ICONS.map((icon) => (
                       <button
@@ -660,8 +660,8 @@ export default function CITypes() {
                         onClick={() => setTypeForm({ ...typeForm, icon })}
                         className={`w-8 h-8 rounded-lg text-base transition-colors ${
                           typeForm.icon === icon
-                            ? 'bg-indigo-600'
-                            : 'bg-gray-800 hover:bg-gray-700'
+                            ? 'bg-accent'
+                            : 'bg-subtle hover:bg-emphasis'
                         }`}
                       >
                         {icon}
@@ -670,7 +670,7 @@ export default function CITypes() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">{t('ciTypes.sortOrder')}</label>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.sortOrder')}</label>
                   <input
                     type="number"
                     value={typeForm.sort_order}
@@ -680,7 +680,7 @@ export default function CITypes() {
                 </div>
               </div>
               {typeFormError && (
-                <div className="p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">
                   {typeFormError}
                 </div>
               )}
@@ -688,14 +688,14 @@ export default function CITypes() {
                 <button
                   type="button"
                   onClick={() => setShowTypeModal(false)}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createTypeMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {t('ciTypes.createType')}
                 </button>
@@ -712,16 +712,16 @@ export default function CITypes() {
           onClick={() => setShowAttrModal(false)}
         >
           <div
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">
+            <h3 className="text-lg font-semibold text-primary mb-4">
               {t('ciTypes.addAttrTo', { name: selected.display_name })}
             </h3>
             <form onSubmit={handleAttrSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">{t('ciTypes.nameSnake')}</label>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.nameSnake')}</label>
                   <input
                     value={attrForm.name}
                     onChange={(e) => setAttrForm({ ...attrForm, name: e.target.value })}
@@ -730,7 +730,7 @@ export default function CITypes() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">{t('ciTypes.displayName')}</label>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.displayName')}</label>
                   <input
                     value={attrForm.display_name}
                     onChange={(e) => setAttrForm({ ...attrForm, display_name: e.target.value })}
@@ -740,7 +740,7 @@ export default function CITypes() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('ciTypes.attributeType')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.attributeType')}</label>
                 <select
                   value={attrForm.attribute_type}
                   onChange={(e) => setAttrForm({ ...attrForm, attribute_type: e.target.value })}
@@ -755,7 +755,7 @@ export default function CITypes() {
               </div>
               {attrForm.attribute_type === 'enum' && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">
+                  <label className="block text-xs font-medium text-secondary mb-1">
                     {t('ciTypes.enumValues')}
                   </label>
                   <input
@@ -767,7 +767,7 @@ export default function CITypes() {
                 </div>
               )}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('ciTypes.defaultValue')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.defaultValue')}</label>
                 <input
                   value={attrForm.default_value}
                   onChange={(e) => setAttrForm({ ...attrForm, default_value: e.target.value })}
@@ -776,27 +776,27 @@ export default function CITypes() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-secondary cursor-pointer">
                   <input
                     type="checkbox"
                     checked={attrForm.is_required}
                     onChange={(e) => setAttrForm({ ...attrForm, is_required: e.target.checked })}
-                    className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                    className="rounded border-strong bg-subtle text-accent focus:ring-accent"
                   />
                   {t('ciTypes.required')}
                 </label>
-                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-secondary cursor-pointer">
                   <input
                     type="checkbox"
                     checked={attrForm.is_unique}
                     onChange={(e) => setAttrForm({ ...attrForm, is_unique: e.target.checked })}
-                    className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                    className="rounded border-strong bg-subtle text-accent focus:ring-accent"
                   />
                   {t('ciTypes.unique')}
                 </label>
               </div>
               {attrFormError && (
-                <div className="p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">
                   {attrFormError}
                 </div>
               )}
@@ -804,14 +804,14 @@ export default function CITypes() {
                 <button
                   type="button"
                   onClick={() => setShowAttrModal(false)}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createAttrMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {t('ciTypes.addAttributeSubmit')}
                 </button>
@@ -827,15 +827,15 @@ export default function CITypes() {
           onClick={() => setShowConstraintModal(false)}
         >
           <div
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md shadow-xl"
+            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-md shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">
+            <h3 className="text-lg font-semibold text-primary mb-4">
               {t('ciTypes.addConstraintTo', { name: selected.display_name })}
             </h3>
             <form onSubmit={handleConstraintSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('common.name')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
                 <input
                   value={constraintName}
                   onChange={(e) => setConstraintName(e.target.value)}
@@ -844,12 +844,12 @@ export default function CITypes() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-2">
+                <label className="block text-xs font-medium text-secondary mb-2">
                   {t('ciTypes.constraintAttrs')} ({constraintAttrs.size})
                 </label>
                 <div className="space-y-1 max-h-48 overflow-y-auto">
                   {attributes.map((a) => (
-                    <label key={a.id} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                    <label key={a.id} className="flex items-center gap-2 text-sm text-secondary cursor-pointer">
                       <input
                         type="checkbox"
                         checked={constraintAttrs.has(a.name)}
@@ -861,16 +861,16 @@ export default function CITypes() {
                             return next
                           })
                         }
-                        className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                        className="rounded border-strong bg-subtle text-accent focus:ring-accent"
                       />
                       <span className="font-mono text-xs">{a.name}</span>
-                      <span className="text-gray-500 text-xs">({a.display_name})</span>
+                      <span className="text-muted text-xs">({a.display_name})</span>
                     </label>
                   ))}
                 </div>
               </div>
               {constraintError && (
-                <div className="p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">
                   {constraintError}
                 </div>
               )}
@@ -878,14 +878,14 @@ export default function CITypes() {
                 <button
                   type="button"
                   onClick={() => setShowConstraintModal(false)}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createConstraintMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {t('ciTypes.createConstraint')}
                 </button>

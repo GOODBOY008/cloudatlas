@@ -44,7 +44,7 @@ function ConditionRow({
 }) {
   const { t } = useTranslation()
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-3 py-1.5 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent'
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <select
@@ -75,7 +75,7 @@ function ConditionRow({
       <button
         type="button"
         onClick={() => onRemove(idx)}
-        className="text-red-400 hover:text-red-300 text-lg leading-none"
+        className="text-danger hover:text-danger text-lg leading-none"
         title={t('rules.remove')}
       >
         ×
@@ -199,23 +199,23 @@ export default function Rules() {
   }
 
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('rules.title')}</h2>
+        <h2 className="page-title">{t('rules.title')}</h2>
         <div className="flex gap-3">
           <button
             onClick={() => applyMutation.mutate()}
             disabled={applyMutation.isPending}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-emphasis hover:bg-emphasis disabled:opacity-60 text-primary text-sm font-medium rounded-lg transition-colors"
           >
             {applyMutation.isPending ? t('rules.applying') : t('rules.applyRules')}
           </button>
           <button
             onClick={openCreate}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
           >
             {t('rules.newRule')}
           </button>
@@ -223,21 +223,21 @@ export default function Rules() {
       </div>
 
       {applyMutation.isSuccess && (
-        <div className="mb-4 p-3 rounded-lg bg-green-900/40 border border-green-700 text-green-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-success/10 border border-success/25 text-success text-sm">
           {t('rules.appliedSuccess')}
         </div>
       )}
 
       {isError && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           {t('rules.loadFailed')}
         </div>
       )}
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-surface border border-edge rounded-xl overflow-hidden">
+        <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-800 text-gray-400 text-left">
+            <tr className="border-b border-edge text-secondary text-left">
               <th className="px-4 py-3 font-medium">{t('common.name')}</th>
               <th className="px-4 py-3 font-medium">{t('rules.colPriority')}</th>
               <th className="px-4 py-3 font-medium">{t('rules.colConditions')}</th>
@@ -250,13 +250,13 @@ export default function Rules() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted">
                   {t('common.loading')}
                 </td>
               </tr>
             ) : rules.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted">
                   {t('rules.noRules')}
                 </td>
               </tr>
@@ -264,29 +264,29 @@ export default function Rules() {
               rules.map((rule) => (
                 <tr
                   key={rule.id}
-                  className="border-b border-gray-800 hover:bg-gray-800/50 transition-colors"
+                  className="border-b border-edge hover:bg-subtle/50 transition-colors"
                 >
-                  <td className="px-4 py-3 font-medium text-white">{rule.name}</td>
-                  <td className="px-4 py-3 text-gray-300">{rule.priority}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs max-w-xs">
+                  <td className="px-4 py-3 font-medium text-primary">{rule.name}</td>
+                  <td className="px-4 py-3 text-secondary">{rule.priority}</td>
+                  <td className="px-4 py-3 text-secondary text-xs max-w-xs">
                     {rule.conditions.map((c, i) => (
-                      <span key={i} className="inline-block bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 mr-1 mb-1">
+                      <span key={i} className="inline-block bg-subtle border border-strong rounded px-1.5 py-0.5 mr-1 mb-1">
                         {c.condition_type === 'tag_is' && c.key
                           ? `tag:${c.key}=${c.value}`
                           : `${c.condition_type}:${c.value}`}
                       </span>
                     ))}
                   </td>
-                  <td className="px-4 py-3 text-gray-300">
+                  <td className="px-4 py-3 text-secondary">
                     {rule.pool_name ?? pools.find((p) => p.id === rule.pool_id)?.name ?? rule.pool_id.slice(0, 8)}
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-xs text-gray-400 uppercase">{rule.logic_operator}</span>
+                    <span className="text-xs text-secondary uppercase">{rule.logic_operator}</span>
                   </td>
                   <td className="px-4 py-3">
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        rule.is_active ? 'bg-green-900/40 text-green-300' : 'bg-gray-700 text-gray-400'
+                        rule.is_active ? 'bg-success/10 text-success' : 'bg-emphasis text-secondary'
                       }`}
                     >
                       {rule.is_active ? t('common.active') : t('common.inactive')}
@@ -296,14 +296,14 @@ export default function Rules() {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => openEdit(rule)}
-                        className="text-indigo-400 hover:text-indigo-300 text-xs"
+                        className="text-accent hover:text-accent text-xs"
                       >
                         {t('common.edit')}
                       </button>
                       <button
                         onClick={() => deleteMutation.mutate(rule.id)}
                         disabled={deleteMutation.isPending}
-                        className="text-red-400 hover:text-red-300 text-xs disabled:opacity-50"
+                        className="text-danger hover:text-danger text-xs disabled:opacity-50"
                       >
                         {t('common.delete')}
                       </button>
@@ -313,24 +313,24 @@ export default function Rules() {
               ))
             )}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-xl p-6 w-full max-w-lg border border-gray-800 shadow-xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-base font-semibold text-white mb-4">
+          <div className="bg-surface rounded-xl p-6 w-full max-w-lg border border-edge shadow-xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-base font-semibold text-primary mb-4">
               {editingId ? t('rules.editTitle') : t('rules.newTitle')}
             </h3>
             {formError && (
-              <div className="mb-3 p-2 rounded bg-red-900/40 border border-red-700 text-red-300 text-sm">
+              <div className="mb-3 p-2 rounded bg-danger/10 border border-danger/25 text-danger text-sm">
                 {formError}
               </div>
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('common.name')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('common.name')}</label>
                 <input
                   required
                   value={form.name}
@@ -341,7 +341,7 @@ export default function Rules() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">{t('rules.priorityLabel')}</label>
+                  <label className="block text-xs text-secondary mb-1">{t('rules.priorityLabel')}</label>
                   <input
                     type="number"
                     min={1}
@@ -352,7 +352,7 @@ export default function Rules() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">{t('rules.logicOperator')}</label>
+                  <label className="block text-xs text-secondary mb-1">{t('rules.logicOperator')}</label>
                   <select
                     value={form.logic_operator}
                     onChange={(e) =>
@@ -366,7 +366,7 @@ export default function Rules() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('rules.assignToPool')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('rules.assignToPool')}</label>
                 <select
                   required
                   value={form.pool_id}
@@ -383,11 +383,11 @@ export default function Rules() {
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs text-gray-400">{t('rules.conditions')}</label>
+                  <label className="text-xs text-secondary">{t('rules.conditions')}</label>
                   <button
                     type="button"
                     onClick={addCondition}
-                    className="text-xs text-indigo-400 hover:text-indigo-300"
+                    className="text-xs text-accent hover:text-accent"
                   >
                     {t('rules.addCondition')}
                   </button>
@@ -410,9 +410,9 @@ export default function Rules() {
                   id="is-active"
                   checked={form.is_active}
                   onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                  className="w-4 h-4 rounded border-gray-700 accent-indigo-600"
+                  className="w-4 h-4 rounded border-strong accent-indigo-600"
                 />
-                <label htmlFor="is-active" className="text-sm text-gray-300">
+                <label htmlFor="is-active" className="text-sm text-secondary">
                   {t('common.active')}
                 </label>
               </div>
@@ -420,14 +420,14 @@ export default function Rules() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-white border border-gray-700 rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm text-secondary hover:text-primary border border-strong rounded-lg transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm font-medium rounded-lg transition-colors"
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? t('rules.saving')

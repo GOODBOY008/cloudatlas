@@ -29,11 +29,11 @@ interface CI {
 }
 
 const LIFECYCLE_COLORS: Record<string, string> = {
-  active: 'bg-green-900/40 text-green-300',
-  stopped: 'bg-yellow-900/40 text-yellow-300',
-  terminated: 'bg-red-900/40 text-red-300',
-  provisioning: 'bg-blue-900/40 text-blue-300',
-  maintenance: 'bg-purple-900/40 text-purple-300',
+  active: 'bg-success/10 text-success',
+  stopped: 'bg-warning/10 text-warning',
+  terminated: 'bg-danger/10 text-danger',
+  provisioning: 'bg-info/10 text-info',
+  maintenance: 'bg-violet/10 text-violet',
 }
 
 function TreeNode({
@@ -58,30 +58,30 @@ function TreeNode({
     <div className="ml-0">
       <div
         className={`flex items-center gap-2 py-1 group rounded-lg px-2 transition-colors ${
-          selectedId === node.id ? 'bg-indigo-600/20' : 'hover:bg-gray-800/50'
+          selectedId === node.id ? 'bg-accent/20' : 'hover:bg-subtle/50'
         }`}
       >
         {node.children.length > 0 ? (
           <button
             onClick={() => setExpanded((e) => !e)}
-            className="text-gray-500 hover:text-gray-300 text-xs w-4"
+            className="text-muted hover:text-secondary text-xs w-4"
             aria-label={expanded ? 'collapse' : 'expand'}
           >
             {expanded ? '▼' : '▶'}
           </button>
         ) : (
-          <span className="w-4 text-gray-700 text-xs">•</span>
+          <span className="w-4 text-secondary text-xs">•</span>
         )}
         <button onClick={() => onSelect(node.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
-          <span className="text-sm text-white truncate">{node.display_name || node.name}</span>
-          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${LIFECYCLE_COLORS[node.lifecycle_state] ?? 'bg-gray-700 text-gray-400'}`}>
+          <span className="text-sm text-primary truncate">{node.display_name || node.name}</span>
+          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${LIFECYCLE_COLORS[node.lifecycle_state] ?? 'bg-emphasis text-secondary'}`}>
             {t(`lifecycle.${node.lifecycle_state}`, { defaultValue: node.lifecycle_state })}
           </span>
-          {node.cloud_region && <span className="text-xs text-gray-600">{node.cloud_region}</span>}
+          {node.cloud_region && <span className="text-xs text-muted">{node.cloud_region}</span>}
         </button>
         <button
           onClick={() => setShowParentPicker((v) => !v)}
-          className="text-xs text-gray-500 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="text-xs text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity"
         >
           {t('ciTopology.setParent')}
         </button>
@@ -97,7 +97,7 @@ function TreeNode({
                 setShowParentPicker(false)
               }
             }}
-            className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-200 focus:outline-none"
+            className="bg-subtle border border-strong rounded px-2 py-1 text-xs text-primary focus:outline-none"
           >
             <option value="">{t('ciTopology.chooseParent')}</option>
             {candidates
@@ -111,7 +111,7 @@ function TreeNode({
               onSetParent(node.id, '')
               setShowParentPicker(false)
             }}
-            className="text-xs text-gray-500 hover:text-red-400"
+            className="text-xs text-muted hover:text-danger"
           >
             {t('ciTopology.clearParent')}
           </button>
@@ -119,7 +119,7 @@ function TreeNode({
       )}
 
       {expanded && node.children.length > 0 && (
-        <div className="ml-4 border-l border-gray-800 pl-2">
+        <div className="ml-4 border-l border-edge pl-2">
           {node.children.map((child) => (
             <TreeNode
               key={child.id}
@@ -196,13 +196,13 @@ export default function CITopology() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-white">{t('ciTopology.title')}</h2>
-          <p className="text-sm text-gray-400 mt-0.5">{t('ciTopology.subtitle')}</p>
+          <h2 className="page-title">{t('ciTopology.title')}</h2>
+          <p className="text-sm text-secondary mt-0.5">{t('ciTopology.subtitle')}</p>
         </div>
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm"
+          className="px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm"
           data-testid="ci-topology-type-select"
         >
           <option value="">{t('ciTopology.allTypes')}</option>
@@ -213,18 +213,18 @@ export default function CITopology() {
       </div>
 
       {actionError && (
-        <div className="p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">{actionError}</div>
+        <div className="p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">{actionError}</div>
       )}
 
       {isLoading ? (
-        <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+        <div className="text-muted text-sm">{t('common.loading')}</div>
       ) : !forest || forest.roots.length === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-8 text-center text-gray-500 text-sm">
+        <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
           {t('ciTopology.empty')}
         </div>
       ) : (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4" data-testid="ci-topology-tree">
-          <p className="text-xs text-gray-500 mb-3">
+        <div className="bg-surface border border-edge rounded-xl p-4" data-testid="ci-topology-tree">
+          <p className="text-xs text-muted mb-3">
             {t('ciTopology.nodeCount', { count: forest.total_nodes })}
           </p>
           {forest.roots.map((root) => (

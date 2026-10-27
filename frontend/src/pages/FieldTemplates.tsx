@@ -187,27 +187,27 @@ export default function FieldTemplates() {
   }
 
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-white">{t('fieldTemplates.title')}</h2>
-          <p className="text-sm text-gray-400 mt-0.5">{t('fieldTemplates.subtitle')}</p>
+          <h2 className="page-title">{t('fieldTemplates.title')}</h2>
+          <p className="text-sm text-secondary mt-0.5">{t('fieldTemplates.subtitle')}</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
         >
           {t('fieldTemplates.newTemplate')}
         </button>
       </div>
 
       {isLoading ? (
-        <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+        <div className="text-muted text-sm">{t('common.loading')}</div>
       ) : templates.length === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-8 text-center text-gray-500 text-sm">
+        <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
           {t('fieldTemplates.empty')}
         </div>
       ) : (
@@ -215,8 +215,8 @@ export default function FieldTemplates() {
           {templates.map((ft) => (
             <div
               key={ft.id}
-              className={`bg-gray-900 border rounded-xl p-4 cursor-pointer transition-colors ${
-                selectedId === ft.id ? 'border-indigo-500' : 'border-gray-800 hover:border-gray-700'
+              className={`bg-surface border rounded-xl p-4 cursor-pointer transition-colors ${
+                selectedId === ft.id ? 'border-accent' : 'border-edge hover:border-strong'
               }`}
               onClick={() => {
                 setSelectedId(ft.id)
@@ -227,8 +227,8 @@ export default function FieldTemplates() {
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-white">{ft.display_name || ft.name}</h3>
-                  <p className="text-xs text-gray-500 font-mono mt-0.5">{ft.name}</p>
+                  <h3 className="text-sm font-semibold text-primary">{ft.display_name || ft.name}</h3>
+                  <p className="text-xs text-muted font-mono mt-0.5">{ft.name}</p>
                 </div>
                 <button
                   onClick={(e) => {
@@ -237,20 +237,20 @@ export default function FieldTemplates() {
                       deleteMutation.mutate(ft.id)
                     }
                   }}
-                  className="text-red-400 hover:text-red-300 text-xs"
+                  className="text-danger hover:text-danger text-xs"
                 >
                   {t('common.delete')}
                 </button>
               </div>
               <div className="flex flex-wrap gap-1 mt-3">
                 {(ft.attributes ?? []).slice(0, 6).map((a) => (
-                  <span key={a.name} className="px-1.5 py-0.5 bg-gray-800 text-gray-300 text-xs rounded font-mono">
+                  <span key={a.name} className="px-1.5 py-0.5 bg-subtle text-secondary text-xs rounded font-mono">
                     {a.name}
-                    <span className="text-gray-500 ml-1">{a.attribute_type}</span>
+                    <span className="text-muted ml-1">{a.attribute_type}</span>
                   </span>
                 ))}
                 {ft.attributes.length > 6 && (
-                  <span className="text-xs text-gray-500">+{ft.attributes.length - 6}</span>
+                  <span className="text-xs text-muted">+{ft.attributes.length - 6}</span>
                 )}
               </div>
             </div>
@@ -260,27 +260,27 @@ export default function FieldTemplates() {
 
       {/* Binding panel */}
       {selected && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4" data-testid="field-template-binding">
-          <h3 className="text-sm font-semibold text-white">
+        <div className="bg-surface border border-edge rounded-xl p-5 space-y-4" data-testid="field-template-binding">
+          <h3 className="text-sm font-semibold text-primary">
             {t('fieldTemplates.bindingFor', { name: selected.display_name || selected.name })}
           </h3>
 
           {/* Bound types */}
           <div>
-            <p className="text-xs text-gray-500 mb-2">{t('fieldTemplates.boundTypes')}</p>
+            <p className="text-xs text-muted mb-2">{t('fieldTemplates.boundTypes')}</p>
             {boundTypes.length === 0 ? (
-              <p className="text-gray-600 text-sm">{t('fieldTemplates.noBoundTypes')}</p>
+              <p className="text-muted text-sm">{t('fieldTemplates.noBoundTypes')}</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {boundTypes.map((bt) => (
                   <span
                     key={bt.id}
-                    className="px-2 py-1 bg-gray-800 border border-gray-700 rounded-lg text-xs text-gray-200 flex items-center gap-2"
+                    className="px-2 py-1 bg-subtle border border-strong rounded-lg text-xs text-primary flex items-center gap-2"
                   >
                     {bt.display_name}
                     <button
                       onClick={() => bindMutation.mutate({ typeIds: [bt.id], unbind: true })}
-                      className="text-gray-500 hover:text-red-400"
+                      className="text-muted hover:text-danger"
                       aria-label={t('fieldTemplates.unbindAria')}
                     >
                       ×
@@ -294,7 +294,7 @@ export default function FieldTemplates() {
           {/* Bind new type */}
           <div className="flex items-end gap-3">
             <div className="flex-1">
-              <label className="block text-xs text-gray-400 mb-1">{t('fieldTemplates.bindType')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('fieldTemplates.bindType')}</label>
               <select value={bindTypeId} onChange={(e) => setBindTypeId(e.target.value)} className={inputCls}>
                 <option value="">{t('fieldTemplates.selectType')}</option>
                 {ciTypes
@@ -307,17 +307,17 @@ export default function FieldTemplates() {
             <button
               onClick={() => bindTypeId && bindMutation.mutate({ typeIds: [bindTypeId] })}
               disabled={!bindTypeId || bindMutation.isPending}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
+              className="px-4 py-2 bg-subtle hover:bg-emphasis disabled:opacity-50 text-primary text-sm rounded-lg transition-colors"
             >
               {t('fieldTemplates.bind')}
             </button>
           </div>
 
           {/* Diff + apply */}
-          <div className="border-t border-gray-800 pt-4 space-y-3">
+          <div className="border-t border-edge pt-4 space-y-3">
             <div className="flex items-end gap-3">
               <div className="flex-1">
-                <label className="block text-xs text-gray-400 mb-1">{t('fieldTemplates.diffType')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('fieldTemplates.diffType')}</label>
                 <select
                   value={diffTypeId}
                   onChange={(e) => {
@@ -336,7 +336,7 @@ export default function FieldTemplates() {
               <button
                 onClick={() => diffTypeId && refetchDiff()}
                 disabled={!diffTypeId || diffLoading}
-                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
+                className="px-4 py-2 bg-subtle hover:bg-emphasis disabled:opacity-50 text-primary text-sm rounded-lg transition-colors"
                 data-testid="field-template-diff-button"
               >
                 {diffLoading ? t('common.loading') : t('fieldTemplates.showDiff')}
@@ -344,24 +344,24 @@ export default function FieldTemplates() {
             </div>
 
             {diff && (
-              <div className="bg-gray-800/50 rounded-lg p-3 text-xs space-y-2" data-testid="field-template-diff-result">
+              <div className="bg-subtle/50 rounded-lg p-3 text-xs space-y-2" data-testid="field-template-diff-result">
                 <p>
-                  <span className="text-green-400">+{diff.added.length}</span>{' '}
-                  <span className="text-gray-400">{t('fieldTemplates.toAdd')}</span>
+                  <span className="text-success">+{diff.added.length}</span>{' '}
+                  <span className="text-secondary">{t('fieldTemplates.toAdd')}</span>
                   {' · '}
-                  <span className="text-yellow-400">~{diff.conflicts.length}</span>{' '}
-                  <span className="text-gray-400">{t('fieldTemplates.conflicts')}</span>
+                  <span className="text-warning">~{diff.conflicts.length}</span>{' '}
+                  <span className="text-secondary">{t('fieldTemplates.conflicts')}</span>
                   {' · '}
-                  <span className="text-gray-500">+{diff.extra.length}</span>{' '}
-                  <span className="text-gray-400">{t('fieldTemplates.typeOnly')}</span>
+                  <span className="text-muted">+{diff.extra.length}</span>{' '}
+                  <span className="text-secondary">{t('fieldTemplates.typeOnly')}</span>
                 </p>
                 {diff.added.length > 0 && (
-                  <p className="text-gray-300">
+                  <p className="text-secondary">
                     {t('fieldTemplates.toAdd')}: {diff.added.map((a) => a.name).join(', ')}
                   </p>
                 )}
                 {diff.conflicts.length > 0 && (
-                  <div className="text-yellow-300">
+                  <div className="text-warning">
                     {diff.conflicts.map((c) => (
                       <p key={String(c.attribute)}>{String(c.attribute)}: {c.changes.join('; ')}</p>
                     ))}
@@ -371,7 +371,7 @@ export default function FieldTemplates() {
                   <button
                     onClick={() => applyMutation.mutate(true)}
                     disabled={applyMutation.isPending || !diffTypeId}
-                    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white text-xs rounded-lg"
+                    className="px-3 py-1.5 bg-emphasis hover:bg-emphasis disabled:opacity-50 text-primary text-xs rounded-lg"
                     data-testid="field-template-dry-run"
                   >
                     {t('fieldTemplates.dryRun')}
@@ -381,7 +381,7 @@ export default function FieldTemplates() {
                       if (confirm(t('fieldTemplates.applyConfirm'))) applyMutation.mutate(false)
                     }}
                     disabled={applyMutation.isPending || !diffTypeId}
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs rounded-lg"
+                    className="px-3 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-xs rounded-lg"
                     data-testid="field-template-apply"
                   >
                     {t('fieldTemplates.apply')}
@@ -391,7 +391,7 @@ export default function FieldTemplates() {
             )}
 
             {actionMessage && (
-              <p className="text-xs text-blue-300" data-testid="field-template-action-message">{actionMessage}</p>
+              <p className="text-xs text-info" data-testid="field-template-action-message">{actionMessage}</p>
             )}
           </div>
         </div>
@@ -404,23 +404,23 @@ export default function FieldTemplates() {
           onClick={() => setShowModal(false)}
         >
           <div
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">{t('fieldTemplates.newTemplateTitle')}</h3>
+            <h3 className="text-lg font-semibold text-primary mb-4">{t('fieldTemplates.newTemplateTitle')}</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">{t('common.name')}</label>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
                   <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="standard-host-fields" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">{t('ciTypes.displayName')}</label>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.displayName')}</label>
                   <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputCls} placeholder="Standard Host Fields" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-2">
+                <label className="block text-xs font-medium text-secondary mb-2">
                   {t('fieldTemplates.attributesJson')} ({ATTRIBUTE_TYPES.length} {t('fieldTemplates.typesSupported')})
                 </label>
                 <textarea
@@ -431,20 +431,20 @@ export default function FieldTemplates() {
                 />
               </div>
               {formError && (
-                <div className="p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">{formError}</div>
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">{formError}</div>
               )}
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {t('fieldTemplates.create')}
                 </button>

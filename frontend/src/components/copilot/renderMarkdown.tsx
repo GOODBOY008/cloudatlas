@@ -12,7 +12,7 @@ function renderInline(line: string, keyPrefix: string): ReactNode[] {
       return (
         <code
           key={key}
-          className="px-1 py-0.5 rounded bg-gray-200/70 dark:bg-gray-700 text-[0.85em] font-mono"
+          className="px-1 py-0.5 rounded bg-emphasis/70 bg-emphasis text-[0.85em] font-mono"
         >
           {part.slice(1, -1)}
         </code>
@@ -47,7 +47,7 @@ export default function renderMarkdown(text: string): ReactNode {
       nodes.push(
         <pre
           key={key++}
-          className="my-1 overflow-x-auto rounded-lg bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-700 p-3 text-xs font-mono whitespace-pre"
+          className="my-1 overflow-x-auto rounded-lg bg-canvas border border-strong p-3 text-xs font-mono whitespace-pre"
         >
           {code.join('\n')}
         </pre>

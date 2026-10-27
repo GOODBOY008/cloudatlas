@@ -54,53 +54,52 @@ P3 可选项(XLSX、字段分组、列个性化、引用模型、拓扑图位置
 
 ---
 
-## Global Theme Design System (2026-05-26)
+## Global Theme Design System (2026-10-27)
 
-CloudAtlas supports **dark** (default) and **light** modes, persisted in localStorage via Zustand.
+CloudAtlas uses a slate and teal design system with **light** as the default and a coordinated **dark** theme. Existing preferences are persisted in Zustand under `cloudatlas-theme`.
 
 ### Architecture
 
 | Layer | Implementation |
 |---|---|
-| State | `frontend/src/store/themeStore.ts` — Zustand `persist` store with `{ theme: 'dark' \| 'light', toggleTheme() }` |
-| HTML class | `Layout.tsx` `useEffect` syncs `dark` class on `<html>` whenever `theme` changes |
-| Anti-flash | Inline script in `index.html` reads localStorage and sets `dark` class before React hydrates |
-| Tailwind | `darkMode: 'class'` configured in `index.html` CDN script block |
-| Toggle UI | Sun/moon icon button in the top-right of the header (`Layout.tsx`) |
+| Theme state | `frontend/src/store/themeStore.ts` — light/dark preference and `toggleTheme()` |
+| Theme synchronization | `App.tsx` sets the HTML `dark` class and browser theme color, including public auth pages |
+| Anti-flash | `index.html` restores the saved preference before CSS paints |
+| Tokens and components | `frontend/src/styles.css` — RGB CSS variables, shared shell, panels, controls, tables, and responsive rules |
+| Tailwind | `frontend/tailwind.config.cjs` + `postcss.config.cjs`; CSS is compiled locally by Vite, with no Tailwind CDN |
+| Typography | Locally bundled Inter Variable, with system and CJK fallbacks |
+| Navigation | `Layout.tsx` — collapsible sections, workspace selector, visible search, mobile drawer, and breadcrumbs |
+| Auth shell | `AuthShell.tsx` and `Brand.tsx` — shared sign-in/reset layout and identity |
 
-### Color Token Map
+### Semantic color tokens
 
-The sidebar and header in `Layout.tsx` use explicit `class / dark:class` pairs. All other pages use hardcoded dark Tailwind classes; these are remapped to light equivalents by the CSS override block in `index.html` using `html:not(.dark)` selectors.
+Use the same semantic class in both themes. Do not add `dark:` color duplicates or hardcoded gray classes.
 
-| Token role | Dark class (default) | Light override |
-|---|---|---|
-| Page background | `bg-gray-950` | gray-50 |
-| Card / panel background | `bg-gray-900` | white |
-| Input / secondary bg | `bg-gray-800` | gray-100 |
-| Subtle bg | `bg-gray-700` | gray-200 |
-| Border (strong) | `border-gray-800` | gray-200 |
-| Border (subtle) | `border-gray-700` | gray-300 |
-| Primary text | `text-white` | gray-900 |
-| Secondary text | `text-gray-300` | gray-600 |
-| Muted text | `text-gray-400/500` | unchanged |
-| Colored badge bg | `bg-red/green/yellow-900` | -100 equivalents |
-| Colored badge text | `text-red/green/yellow-300` | -700 equivalents |
-| Hover row/button | `hover:bg-gray-800` | gray-100 |
+| Role | Class |
+|---|---|
+| Page background | `bg-canvas` |
+| Card or panel | `bg-surface` |
+| Secondary surface | `bg-subtle` |
+| Stronger surface or track | `bg-emphasis` |
+| Default / stronger border | `border-edge` / `border-strong` |
+| Main text | `text-primary` |
+| Secondary text / captions | `text-secondary` / `text-muted` |
+| Accent / selection | `text-accent` / `bg-accent-soft` |
+| Primary action | `bg-accent text-on-accent hover:bg-accent-hover` |
+| Status | `success`, `warning`, `danger`, `info`, `violet` (e.g. `bg-danger/10 text-danger border-danger/25`) |
+| Solid status button | `bg-danger-solid text-white` (and equivalent status colors) |
 
-White text is **restored** on saturated button backgrounds (`bg-indigo-600/500`, `bg-red-500`, `bg-green-500`, `bg-blue-600`, `bg-yellow-500/600`) via exception rules in the CSS block.
+### Component conventions
 
-### Convention for New Pages / Components
-
-1. **Cards & panels** — use `bg-gray-900 border border-gray-800 rounded-xl`. The CSS override handles light mode automatically.
-2. **Page header** — use `<div className="flex items-center justify-between mb-6"><h2 className="text-xl font-semibold text-white">Title</h2></div>`. No extra padding (Layout provides `p-6`).
-3. **Root element** — plain `<div className="space-y-6">` or a flex/grid container. Do **not** add `p-6` (double padding) or `mx-auto` (inconsistent centering).
-4. **Text** — use `text-white` for values, `text-gray-400` for labels, `text-gray-500` for captions.
-5. **Inputs / selects** — `bg-gray-800 border border-gray-700 rounded-lg text-gray-100 focus:ring-2 focus:ring-indigo-500`.
-6. **Error / success inline messages** — wrap in `bg-red-900/40 border border-red-700 text-red-400` or `bg-green-900/40 border border-green-700 text-green-400` cards, **not** bare `text-red-600/green-600`.
-7. **Chart tooltip** — use the theme-aware `mapTheme.tooltip` pattern (see `CostMap.tsx`) for pages with recharts charts. For simple usage the CSS override covers the default `bg-gray-900` tooltip container.
-8. **SVG / canvas elements** (maps, custom drawings) — **must** consume `useThemeStore` directly since CSS overrides cannot affect inline styles. Follow the `mapTheme` object pattern in `CostMap.tsx`.
-9. **Dividers** — `divide-gray-800`, never `divide-gray-100` (light dividers are invisible in dark mode).
-10. **Buttons (primary)** — `bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg` with `transition-colors`.
+1. Layout supplies page padding. Page roots should use ordinary flex/grid/spacing containers without extra `p-6` or `mx-auto`.
+2. Use `page-header`, `page-title`, and `page-description` for page headings; `panel`, `panel-heading`, `panel-title`, and `panel-caption` for cards.
+3. Use `btn-primary`, `btn-secondary`, `icon-button`, and `text-link` for shared actions. Icon buttons need an accessible label.
+4. Place tables in `<div className="table-scroll" tabIndex={0}>` so wide columns remain accessible on small screens.
+5. Use `skeleton` for loading placeholders and `empty-state` / `empty-state-icon` for empty panels.
+6. Use semantic CSS variables in chart styles, such as `rgb(var(--border))` and `rgb(var(--text-muted))`. Maps and custom SVGs should consume `useThemeStore` (see `CostMap.tsx` and `ModelTopology.tsx`).
+7. New overlays should use `useDialogFocus` for Escape, focus containment, and restoration; the shared `Modal` already includes it.
+8. Keep new labels in both `i18n/locales/en.ts` and `zh.ts`. Shared design labels use the `design.*` prefix.
+9. Respect reduced motion and retain visible keyboard focus. Avoid overriding semantic tokens with page-specific light/dark hacks.
 
 ---
 

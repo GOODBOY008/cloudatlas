@@ -45,7 +45,7 @@ function ResizeHandle() {
         if (e.key === 'ArrowLeft') setWidth(width + 16) // wider
         if (e.key === 'ArrowRight') setWidth(width - 16) // narrower
       }}
-      className="absolute left-0 inset-y-0 w-1 z-10 cursor-col-resize hover:bg-indigo-500/40 active:bg-indigo-500/60"
+      className="absolute left-0 inset-y-0 w-1 z-10 cursor-col-resize hover:bg-accent-hover/40 active:bg-accent/60"
     />
   )
 }
@@ -55,7 +55,7 @@ function closeButton(onClose: () => void, label: string) {
     <button
       onClick={onClose}
       aria-label={label}
-      className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+      className="w-8 h-8 flex items-center justify-center rounded-lg text-secondary hover:bg-subtle hover:text-primary transition-colors"
     >
       <X size={18} />
     </button>
@@ -108,7 +108,7 @@ export default function CopilotPanel() {
         role="complementary"
         aria-label={t('copilot.title')}
         style={{ width }}
-        className="relative hidden lg:flex flex-col flex-shrink-0 h-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 transition-colors"
+        className="relative hidden lg:flex flex-col flex-shrink-0 h-full bg-surface border-l border-edge transition-colors"
       >
         <ResizeHandle />
         <CopilotChat rightSlot={closeButton(close, t('common.cancel'))} />
@@ -119,7 +119,7 @@ export default function CopilotPanel() {
   return (
     <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label={t('copilot.title')}>
       <div className="absolute inset-0 bg-black/40" onClick={close} />
-      <div className="absolute inset-x-0 bottom-0 h-[75dvh] bg-white dark:bg-gray-900 rounded-t-2xl border-t border-gray-200 dark:border-gray-800 flex flex-col shadow-2xl">
+      <div className="absolute inset-x-0 bottom-0 h-[75dvh] bg-surface rounded-t-2xl border-t border-edge flex flex-col shadow-2xl">
         <CopilotChat rightSlot={closeButton(close, t('common.cancel'))} />
       </div>
     </div>

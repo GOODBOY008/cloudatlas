@@ -78,35 +78,35 @@ export default function CostComparison() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">{t('costComparison.title')}</h1>
-        <p className="text-sm text-gray-400 mt-1">{t('costComparison.subtitle')}</p>
+        <h1 className="page-title">{t('costComparison.title')}</h1>
+        <p className="text-sm text-secondary mt-1">{t('costComparison.subtitle')}</p>
       </div>
 
       {/* Period pickers + dimension */}
-      <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
+      <div className="bg-surface rounded-xl border border-strong p-5">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
-            <label className="text-xs text-gray-400 mb-2 block">{t('costComparison.periodABaseline')}</label>
+            <label className="text-xs text-secondary mb-2 block">{t('costComparison.periodABaseline')}</label>
             <div className="flex gap-2">
               <input type="date" value={periodA.start} onChange={e => setPeriodA(p => ({ ...p, start: e.target.value }))}
-                className="flex-1 bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-indigo-500" />
+                className="flex-1 bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
               <input type="date" value={periodA.end} onChange={e => setPeriodA(p => ({ ...p, end: e.target.value }))}
-                className="flex-1 bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-indigo-500" />
+                className="flex-1 bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
             </div>
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-2 block">{t('costComparison.periodBComparison')}</label>
+            <label className="text-xs text-secondary mb-2 block">{t('costComparison.periodBComparison')}</label>
             <div className="flex gap-2">
               <input type="date" value={periodB.start} onChange={e => setPeriodB(p => ({ ...p, start: e.target.value }))}
-                className="flex-1 bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-indigo-500" />
+                className="flex-1 bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
               <input type="date" value={periodB.end} onChange={e => setPeriodB(p => ({ ...p, end: e.target.value }))}
-                className="flex-1 bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-indigo-500" />
+                className="flex-1 bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
             </div>
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-2 block">{t('costComparison.groupBy')}</label>
+            <label className="text-xs text-secondary mb-2 block">{t('costComparison.groupBy')}</label>
             <select value={dim.labelKey} onChange={e => setDim(DIM_OPTIONS.find(d => d.labelKey === e.target.value) ?? DIM_OPTIONS[0])}
-              className="w-full bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700">
+              className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong">
               {DIM_OPTIONS.map(d => <option key={d.labelKey} value={d.labelKey}>{t(d.labelKey)}</option>)}
             </select>
           </div>
@@ -114,23 +114,23 @@ export default function CostComparison() {
       </div>
 
       {/* Summary delta cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('costComparison.periodATotal')}</p>
-          <p className="text-2xl font-bold text-indigo-300 mt-1">{fmtShort(totalA)}</p>
-          <p className="text-xs text-gray-500 mt-1">{periodA.start} → {periodA.end}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('costComparison.periodATotal')}</p>
+          <p className="text-2xl font-bold text-accent mt-1">{fmtShort(totalA)}</p>
+          <p className="text-xs text-muted mt-1">{periodA.start} → {periodA.end}</p>
         </div>
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('costComparison.periodBTotal')}</p>
-          <p className="text-2xl font-bold text-white mt-1">{fmtShort(totalB)}</p>
-          <p className="text-xs text-gray-500 mt-1">{periodB.start} → {periodB.end}</p>
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('costComparison.periodBTotal')}</p>
+          <p className="text-2xl font-bold text-primary mt-1">{fmtShort(totalB)}</p>
+          <p className="text-xs text-muted mt-1">{periodB.start} → {periodB.end}</p>
         </div>
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('costComparison.change')}</p>
-          <p className={`text-2xl font-bold mt-1 ${totalDelta > 0 ? 'text-red-400' : 'text-green-400'}`}>
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('costComparison.change')}</p>
+          <p className={`text-2xl font-bold mt-1 ${totalDelta > 0 ? 'text-danger' : 'text-success'}`}>
             {totalDelta > 0 ? '+' : ''}{fmtShort(totalDelta)}
           </p>
-          <p className={`text-xs mt-1 ${totalDelta > 0 ? 'text-red-500' : 'text-green-500'}`}>
+          <p className={`text-xs mt-1 ${totalDelta > 0 ? 'text-danger' : 'text-success'}`}>
             {totalDelta > 0 ? '+' : ''}{t('costComparison.vsBaseline', { percent: totalDeltaPct.toFixed(1) })}
           </p>
         </div>
@@ -138,16 +138,16 @@ export default function CostComparison() {
 
       {/* Side-by-side bar chart */}
       {merged.length > 0 && (
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <h2 className="text-sm font-semibold text-white mb-4">{t('costComparison.chartTitle', { dim: t(dim.labelKey) })}</h2>
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <h2 className="text-sm font-semibold text-primary mb-4">{t('costComparison.chartTitle', { dim: t(dim.labelKey) })}</h2>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={merged.slice(0, 12)} barCategoryGap="20%">
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9CA3AF' }} />
-              <YAxis tickFormatter={v => fmtShort(v)} tick={{ fontSize: 10, fill: '#9CA3AF' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
+              <YAxis tickFormatter={v => fmtShort(v)} tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
               <Tooltip formatter={(v: number) => fmt(v)} />
               <Legend />
-              <Bar dataKey="period_a" name={t('costComparison.colPeriodA')} fill="#6366f1" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="period_a" name={t('costComparison.colPeriodA')} fill="#299d87" radius={[4, 4, 0, 0]} />
               <Bar dataKey="period_b" name={t('costComparison.colPeriodB')} fill="#10b981" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -155,39 +155,39 @@ export default function CostComparison() {
       )}
 
       {/* Diff table */}
-      <div className="bg-gray-900 rounded-xl border border-gray-700 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-700 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-white">{t('costComparison.detailedComparison')}</h2>
-          <span className="text-xs text-gray-400">{t('costComparison.itemsCount', { count: merged.length })}</span>
+      <div className="bg-surface rounded-xl border border-strong overflow-hidden">
+        <div className="px-5 py-4 border-b border-strong flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-primary">{t('costComparison.detailedComparison')}</h2>
+          <span className="text-xs text-secondary">{t('costComparison.itemsCount', { count: merged.length })}</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-gray-700">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+            <thead><tr className="border-b border-strong">
               {[t(dim.headerKey), t('costComparison.colPeriodA'), t('costComparison.colPeriodB'), t('costComparison.colDeltaUsd'), t('costComparison.colDeltaPct')].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">{h}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{h}</th>
               ))}
             </tr></thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-edge">
               {merged.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-500">{t('costComparison.noData')}</td></tr>
+                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">{t('costComparison.noData')}</td></tr>
               ) : merged.map((r, i) => (
-                <tr key={i} className="hover:bg-gray-800">
-                  <td className="px-4 py-3 font-medium text-white">{r.full_name ?? r.name}</td>
-                  <td className="px-4 py-3 text-indigo-300">{fmt(r.period_a)}</td>
-                  <td className="px-4 py-3 text-green-300">{fmt(r.period_b)}</td>
-                  <td className={`px-4 py-3 font-semibold ${r.delta > 0 ? 'text-red-400' : r.delta < 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                <tr key={i} className="hover:bg-subtle">
+                  <td className="px-4 py-3 font-medium text-primary">{r.full_name ?? r.name}</td>
+                  <td className="px-4 py-3 text-accent">{fmt(r.period_a)}</td>
+                  <td className="px-4 py-3 text-success">{fmt(r.period_b)}</td>
+                  <td className={`px-4 py-3 font-semibold ${r.delta > 0 ? 'text-danger' : r.delta < 0 ? 'text-success' : 'text-secondary'}`}>
                     {r.delta > 0 ? '+' : ''}{fmt(r.delta)}
                   </td>
-                  <td className={`px-4 py-3 font-semibold ${r.delta_pct > 0 ? 'text-red-400' : r.delta_pct < 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                  <td className={`px-4 py-3 font-semibold ${r.delta_pct > 0 ? 'text-danger' : r.delta_pct < 0 ? 'text-success' : 'text-secondary'}`}>
                     {r.delta_pct > 0 ? '+' : ''}{r.delta_pct.toFixed(1)}%
                     {Math.abs(r.delta_pct) > 50 && (
-                      <span className="ml-1 px-1 bg-red-900 text-red-300 rounded text-xs">!</span>
+                      <span className="ml-1 px-1 bg-danger/10 text-danger rounded text-xs">!</span>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
+import { useDialogFocus } from '../../lib/hooks/useDialogFocus'
 
 interface ModalProps {
   title: string
@@ -7,6 +8,8 @@ interface ModalProps {
 }
 
 export function Modal({ title, onClose, children }: ModalProps) {
+  const titleId = useId()
+  const dialogRef = useDialogFocus<HTMLDivElement>(true, onClose)
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} aria-hidden="true" />
@@ -15,16 +18,18 @@ export function Modal({ title, onClose, children }: ModalProps) {
         onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
       >
         <div
-          className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md p-6"
+          ref={dialogRef}
+          tabIndex={-1}
+          className="bg-surface border border-edge rounded-2xl shadow-popover w-full max-w-md max-h-[90dvh] overflow-y-auto p-6"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="modal-title"
+          aria-labelledby={titleId}
         >
           <div className="flex items-center justify-between mb-5">
-            <h2 id="modal-title" className="text-base font-semibold text-white">{title}</h2>
+            <h2 id={titleId} className="text-base font-semibold text-primary">{title}</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white text-xl leading-none transition-colors"
+              className="text-secondary hover:text-primary text-xl leading-none transition-colors"
               aria-label="Close"
             >
               ✕

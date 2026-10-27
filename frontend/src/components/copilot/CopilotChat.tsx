@@ -256,15 +256,15 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
   return (
     <div className="flex flex-col min-h-0 flex-1">
       {/* Header (close button supplied by the shell) */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
         <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-indigo-500 dark:text-indigo-400" />
-          <h3 className="font-semibold text-gray-900 dark:text-white">{t('copilot.title')}</h3>
+          <Sparkles size={18} className="text-accent" />
+          <h3 className="font-semibold text-primary">{t('copilot.title')}</h3>
           {view === 'chat' && (
             <button
               onClick={() => setView('history')}
               title={t('copilot.history')}
-              className="ml-1 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              className="ml-1 w-7 h-7 flex items-center justify-center rounded-lg text-secondary hover:bg-subtle hover:text-primary transition-colors"
             >
               <MessageSquare size={15} />
             </button>
@@ -273,7 +273,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
             <button
               onClick={startNewChat}
               title={t('copilot.newChat')}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-secondary hover:bg-subtle hover:text-primary transition-colors"
             >
               <Plus size={15} />
             </button>
@@ -284,30 +284,30 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
 
       {view === 'history' ? (
         <>
-          <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-edge">
             <button
               onClick={() => setView('chat')}
-              className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+              className="flex items-center gap-1 text-xs text-secondary hover:text-primary transition-colors"
             >
               <ArrowLeft size={14} /> {t('copilot.back')}
             </button>
-            <span className="text-xs text-gray-400 dark:text-gray-500">{t('copilot.history')}</span>
+            <span className="text-xs text-muted">{t('copilot.history')}</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             {conversations.length === 0 && (
-              <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">
+              <div className="text-sm text-secondary text-center py-10">
                 {t('copilot.emptyHistory')}
               </div>
             )}
             {conversations.map((c) => (
               <div
                 key={c.id}
-                className="group flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                className="group flex items-center gap-2 bg-subtle rounded-lg px-3 py-2 hover:bg-emphasis transition-colors cursor-pointer"
                 onClick={() => resumeConversation(c)}
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 dark:text-white truncate">{c.title ?? t('copilot.title')}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-primary truncate">{c.title ?? t('copilot.title')}</p>
+                  <p className="text-xs text-secondary">
                     {c.message_count} · {new Date(c.updated_at).toLocaleDateString()}
                   </p>
                 </div>
@@ -317,7 +317,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
                     deleteConversation(c.id)
                   }}
                   title={t('copilot.deleteConversation')}
-                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 text-secondary hover:text-danger transition-opacity"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -334,7 +334,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
             className="flex-1 overflow-y-auto p-4 space-y-4"
           >
             {messages.length === 0 && (
-              <div className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+              <div className="text-sm text-secondary leading-relaxed">
                 {t('copilot.greeting')}
               </div>
             )}
@@ -343,14 +343,14 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
                 <div
                   className={`max-w-[85%] rounded-xl px-4 py-2.5 text-sm ${
                     m.role === 'user'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                      ? 'bg-accent text-on-accent'
+                      : 'bg-subtle text-primary'
                   }`}
                 >
                   {m.role === 'user' ? m.text : renderMarkdown(m.text)}
                 </div>
                 {m.role === 'assistant' && m.stopped && (
-                  <span className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+                  <span className="mt-1 text-[11px] text-muted">
                     ⏹ {t('copilot.stopped')}
                   </span>
                 )}
@@ -359,7 +359,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
                     onClick={() => copyMessage(i, m.text)}
                     aria-label={t('copilot.copy')}
                     title={t('copilot.copy')}
-                    className="mt-1 opacity-0 group-hover:opacity-100 focus:opacity-100 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-opacity"
+                    className="mt-1 opacity-0 group-hover:opacity-100 focus:opacity-100 text-secondary hover:text-secondary transition-opacity"
                   >
                     {copiedIndex === i ? <Check size={13} /> : <Copy size={13} />}
                   </button>
@@ -371,12 +371,12 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
                 <div
                   role="status"
                   aria-label={t('copilot.thinking')}
-                  className="bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3 flex gap-1"
+                  className="bg-subtle rounded-xl px-4 py-3 flex gap-1"
                 >
                   {[0, 1, 2].map((d) => (
                     <span
                       key={d}
-                      className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse"
+                      className="w-1.5 h-1.5 rounded-full bg-emphasis animate-pulse"
                       style={{ animationDelay: `${d * 150}ms` }}
                     />
                   ))}
@@ -386,7 +386,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
           </div>
 
           {error && (
-            <div className="px-5 py-2 bg-red-50 dark:bg-red-900/40 border-t border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-xs">
+            <div className="px-5 py-2 bg-danger/10 border-t border-danger/25 text-danger text-xs">
               {error}
             </div>
           )}
@@ -398,7 +398,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
                 <button
                   key={key}
                   onClick={() => send(t(key))}
-                  className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs text-gray-700 dark:text-gray-300 rounded-full transition-colors"
+                  className="px-3 py-1.5 bg-subtle hover:bg-emphasis text-xs text-secondary rounded-full transition-colors"
                 >
                   {t(key)}
                 </button>
@@ -409,14 +409,14 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
           {/* Page-context pill */}
           {labelKey && contextAttached && (
             <div className="px-4 pb-2">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-900 text-[11px] text-indigo-600 dark:text-indigo-300">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent-soft bg-accent-soft/60 border border-accent text-[11px] text-accent">
                 <FileText size={11} />
                 <span aria-label={t('copilot.context')}>{t(labelKey)}</span>
                 <button
                   onClick={() => setContextAttached(false)}
                   aria-label={t('copilot.detachContext')}
                   title={t('copilot.detachContext')}
-                  className="hover:text-indigo-800 dark:hover:text-indigo-100"
+                  className="hover:text-accent"
                 >
                   <X size={11} />
                 </button>
@@ -425,13 +425,13 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
           )}
 
           {/* Input */}
-          <form onSubmit={handleSubmit} className="flex gap-2 p-4 border-t border-gray-200 dark:border-gray-800">
+          <form onSubmit={handleSubmit} className="flex gap-2 p-4 border-t border-edge">
             <input
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={t('copilot.placeholder')}
-              className="flex-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+              className="flex-1 bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-muted"
             />
             {busy ? (
               <button
@@ -439,7 +439,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
                 onClick={stopStreaming}
                 aria-label={t('copilot.stop')}
                 title={t('copilot.stop')}
-                className="w-10 h-10 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors"
+                className="w-10 h-10 flex items-center justify-center bg-emphasis hover:bg-emphasis text-primary rounded-lg transition-colors"
               >
                 <Square size={14} />
               </button>
@@ -448,7 +448,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
                 type="submit"
                 disabled={!input.trim()}
                 aria-label={t('copilot.send')}
-                className="w-10 h-10 flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors disabled:opacity-50"
+                className="w-10 h-10 flex items-center justify-center bg-accent hover:bg-accent-hover text-on-accent rounded-lg transition-colors disabled:opacity-50"
               >
                 <Send size={16} />
               </button>

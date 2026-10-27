@@ -56,12 +56,12 @@ function TypeBadge({ type }: { type: string }) {
   const { t } = useTranslation()
   const cls =
     type === 'expense_anomaly'
-      ? 'bg-yellow-900/40 text-yellow-300'
+      ? 'bg-warning/10 text-warning'
       : type === 'resource_count'
-        ? 'bg-blue-900/40 text-blue-300'
+        ? 'bg-info/10 text-info'
         : type === 'total_expense_limit'
-          ? 'bg-red-900/40 text-red-300'
-          : 'bg-purple-900/40 text-purple-300'
+          ? 'bg-danger/10 text-danger'
+          : 'bg-violet/10 text-violet'
   return (
     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>
       {t(`status.${type}`, { defaultValue: type })}
@@ -174,23 +174,23 @@ export default function Constraints() {
   }
 
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('constraints.title')}</h2>
+        <h2 className="page-title">{t('constraints.title')}</h2>
         <div className="flex items-center gap-3">
           <button
             onClick={() => evaluateMutation.mutate()}
             disabled={evaluateMutation.isPending}
-            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-subtle hover:bg-emphasis text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             {evaluateMutation.isPending ? t('constraints.evaluating') : t('constraints.evaluateNow')}
           </button>
           <button
             onClick={openCreate}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
           >
             {t('constraints.newConstraint')}
           </button>
@@ -201,8 +201,8 @@ export default function Constraints() {
         <div
           className={`mb-4 p-3 rounded-lg text-sm ${
             evalResult.violations.length > 0
-              ? 'bg-red-900/40 border border-red-700 text-red-400'
-              : 'bg-green-900/40 border border-green-700 text-green-400'
+              ? 'bg-danger/10 border border-danger/25 text-danger'
+              : 'bg-success/10 border border-success/25 text-success'
           }`}
         >
           {t('constraints.evalSummary', { count: evalResult.evaluated })} —{' '}
@@ -222,21 +222,21 @@ export default function Constraints() {
       )}
 
       {isError && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           {t('constraints.loadFailed')}
         </div>
       )}
 
       {isLoading ? (
-        <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+        <div className="text-muted text-sm">{t('common.loading')}</div>
       ) : constraints.length === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-8 text-center text-gray-500 text-sm">
+        <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
           {t('constraints.empty')}
         </div>
       ) : (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <table className="w-full text-left">
-            <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+        <div className="bg-surface border border-edge rounded-xl overflow-hidden">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+            <thead className="border-b border-edge text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">{t('common.name')}</th>
                 <th className="px-4 py-3 font-medium">{t('common.type')}</th>
@@ -248,12 +248,12 @@ export default function Constraints() {
             </thead>
             <tbody>
               {constraints.map((c) => (
-                <tr key={c.id} className="border-b border-gray-700 last:border-0 hover:bg-gray-800/40 transition-colors">
-                  <td className="px-4 py-3 text-sm text-white">{c.name}</td>
+                <tr key={c.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                  <td className="px-4 py-3 text-sm text-primary">{c.name}</td>
                   <td className="px-4 py-3">
                     <TypeBadge type={c.constraint_type} />
                   </td>
-                  <td className="px-4 py-3 text-sm font-mono text-gray-300">
+                  <td className="px-4 py-3 text-sm font-mono text-secondary">
                     {c.constraint_type === 'expense_anomaly'
                       ? t('constraints.limitMultiplier', { factor: c.filters?.threshold_factor ?? 2.0 })
                       : c.limit_value !== null
@@ -262,13 +262,13 @@ export default function Constraints() {
                           : `$${Number(c.limit_value).toLocaleString()}`
                         : '—'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-300">{c.is_active ? '✓' : '✗'}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
+                  <td className="px-4 py-3 text-sm text-secondary">{c.is_active ? '✓' : '✗'}</td>
+                  <td className="px-4 py-3 text-xs text-muted">
                     {c.last_triggered_at ? new Date(c.last_triggered_at).toLocaleString() : t('common.never')}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3 text-xs">
-                      <button onClick={() => openEdit(c)} className="text-indigo-400 hover:text-indigo-300">
+                      <button onClick={() => openEdit(c)} className="text-accent hover:text-accent">
                         {t('common.edit')}
                       </button>
                       <button
@@ -277,7 +277,7 @@ export default function Constraints() {
                             deleteMutation.mutate(c.id)
                           }
                         }}
-                        className="text-red-400 hover:text-red-300"
+                        className="text-danger hover:text-danger"
                       >
                         {t('common.delete')}
                       </button>
@@ -286,7 +286,7 @@ export default function Constraints() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
@@ -296,15 +296,15 @@ export default function Constraints() {
           onClick={closeModal}
         >
           <div
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">
+            <h3 className="text-lg font-semibold text-primary mb-4">
               {editingId ? t('constraints.editTitle') : t('constraints.newTitle')}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('common.name')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -313,7 +313,7 @@ export default function Constraints() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('common.type')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('common.type')}</label>
                 <select
                   value={form.constraint_type}
                   onChange={(e) => setForm({ ...form, constraint_type: e.target.value })}
@@ -325,11 +325,11 @@ export default function Constraints() {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-600 mt-1">{t(TYPE_HINTS[form.constraint_type])}</p>
+                <p className="text-xs text-muted mt-1">{t(TYPE_HINTS[form.constraint_type])}</p>
               </div>
               {form.constraint_type === 'expense_anomaly' ? (
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">
+                  <label className="block text-xs font-medium text-secondary mb-1">
                     {t('constraints.thresholdFactor')}
                   </label>
                   <input
@@ -343,7 +343,7 @@ export default function Constraints() {
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">
+                  <label className="block text-xs font-medium text-secondary mb-1">
                     {t('constraints.limitValue', { unit: form.constraint_type === 'resource_tag_coverage' ? '(%)' : '(USD)' })}
                   </label>
                   <input
@@ -356,7 +356,7 @@ export default function Constraints() {
                 </div>
               )}
               {formError && (
-                <div className="p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">
                   {formError}
                 </div>
               )}
@@ -364,14 +364,14 @@ export default function Constraints() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {editingId ? t('constraints.saveChanges') : t('constraints.createConstraint')}
                 </button>

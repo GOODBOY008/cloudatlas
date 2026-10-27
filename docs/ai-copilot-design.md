@@ -105,11 +105,13 @@ Deterministic → unit-testable.
 ## 7. Frontend
 
 - `CopilotPanel` — non-modal right-docked panel (resizable 320–560 px) on desktop,
-  bottom sheet from a bottom-right FAB on mobile; entry via the labeled header
-  button or Cmd/Ctrl+I. Conversation UI lives in `components/copilot/CopilotChat.tsx`
+  bottom sheet from a bottom-right FAB on mobile; entry via **Ask Copilot** in the
+  sidebar or Cmd/Ctrl+I. The focused desktop resize divider also supports Left/Right
+  arrow keys in 16 px steps. Conversation UI lives in `components/copilot/CopilotChat.tsx`
   (stop/copy/markdown-lite/scroll-pause/page-context pill).
 - Streaming via `fetch` + `ReadableStream` parsing of the SSE frames (axios can't stream).
-- Panel state is local to the Layout; conversation history kept in React state.
+- Open state and width live in the Zustand `copilotStore`; conversation history is kept in React state.
+- See the [system keyboard shortcuts](user-guide.md#system-keyboard-shortcuts) for search, focus navigation, sending messages, and dismissal.
 
 ## 8. Provider config (2026-08-14)
 

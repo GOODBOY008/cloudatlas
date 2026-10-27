@@ -1,6 +1,6 @@
 # CloudAtlas E2E Test Platform
 
-> Playwright-based end-to-end test suite covering all 34 routes, 11 test suites, and 100+ test cases.
+> Playwright-based end-to-end tests for CloudAtlas routes, workflows, navigation, and the shared design system.
 
 ## Quick start
 
@@ -46,6 +46,7 @@ e2e/
 │   ├── smoke.spec.ts           # @smoke — critical path, fast
 │   ├── auth.spec.ts            # AUTH-01 → AUTH-10
 │   ├── navigation.spec.ts      # NAV-01 → NAV-12
+│   ├── theme.spec.ts           # Theme persistence, focus, mobile layout, Chinese labels
 │   ├── pages.spec.ts           # PAGE-01 → PAGE-34 (all routes)
 │   ├── dashboard.spec.ts       # DASH + EXP tabs
 │   ├── pools.spec.ts           # POOL CRUD
@@ -60,6 +61,19 @@ e2e/
 |---|---|---|
 | `@smoke` | Critical path, runs every PR (~2 min) | `make e2e-smoke` |
 | `@regression` | Full suite, runs on main + nightly | `make e2e-regression` |
+
+## Design system regression checks
+
+With the frontend and API running, use this focused suite after changing the shared theme or application shell:
+
+```bash
+cd e2e
+npx playwright test tests/theme.spec.ts tests/navigation.spec.ts tests/dashboard.spec.ts tests/smoke.spec.ts --project=chromium
+```
+
+`theme.spec.ts` covers the default light theme and saved dark preference, global search keyboard focus and dismissal, mobile navigation and overflow, and Chinese dashboard labels. Navigation tests expand the relevant sidebar sections before following links. Dashboard tab tests scope tab selectors to the main content so sidebar section buttons cannot be mistaken for tabs.
+
+Also inspect representative charts, tables, forms, and dialogs in both themes and at a narrow viewport. Keep documented key bindings in sync with the [system keyboard shortcuts](../docs/user-guide.md#system-keyboard-shortcuts).
 
 ## Environment variables
 

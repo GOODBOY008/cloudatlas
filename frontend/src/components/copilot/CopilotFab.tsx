@@ -12,7 +12,7 @@ export default function CopilotFab() {
     <button
       onClick={() => setOpen(true)}
       aria-label={t('copilot.openCopilot')}
-      className="lg:hidden fixed bottom-5 right-5 z-40 w-12 h-12 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg flex items-center justify-center transition-colors"
+      className="lg:hidden fixed bottom-5 right-5 z-40 w-12 h-12 rounded-full bg-accent hover:bg-accent-hover text-on-accent shadow-lg flex items-center justify-center transition-colors"
     >
       <Sparkles size={20} />
     </button>

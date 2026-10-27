@@ -103,21 +103,21 @@ export default function CIImport() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-white">{t('ciImport.title')}</h1>
-        <p className="text-sm text-gray-400 mt-0.5">{t('ciImport.subtitleServer')}</p>
+        <h1 className="page-title">{t('ciImport.title')}</h1>
+        <p className="text-sm text-secondary mt-0.5">{t('ciImport.subtitleServer')}</p>
       </div>
 
       {/* Type + strategy + template */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-white">{t('ciImport.setup')}</h2>
+      <div className="bg-surface rounded-xl border border-edge p-4 space-y-3">
+        <h2 className="text-sm font-semibold text-primary">{t('ciImport.setup')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs text-gray-400 mb-1">{t('ciImport.defaultType')} *</label>
+            <label className="block text-xs text-secondary mb-1">{t('ciImport.defaultType')} *</label>
             <select
               value={selectedTypeId}
               onChange={(e) => setSelectedTypeId(e.target.value)}
               data-testid="ciimport-type-select"
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary"
             >
               <option value="">{t('ciImport.selectType')}</option>
               {ciTypes.map((t) => (
@@ -126,11 +126,11 @@ export default function CIImport() {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">{t('ciImport.conflictStrategy')}</label>
+            <label className="block text-xs text-secondary mb-1">{t('ciImport.conflictStrategy')}</label>
             <select
               value={conflictStrategy}
               onChange={(e) => setConflictStrategy(e.target.value as 'skip' | 'upsert')}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
+              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary"
             >
               <option value="skip">{t('ciImport.strategySkip')}</option>
               <option value="upsert">{t('ciImport.strategyUpsert')}</option>
@@ -142,11 +142,11 @@ export default function CIImport() {
             onClick={downloadTemplate}
             disabled={!selectedTypeId}
             data-testid="ciimport-download-template"
-            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white text-xs rounded-lg transition-colors"
+            className="px-3 py-1.5 bg-emphasis hover:bg-emphasis disabled:opacity-50 text-primary text-xs rounded-lg transition-colors"
           >
             {t('ciImport.downloadTemplate')}
           </button>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted">
             {selectedType
               ? t('ciImport.templateHint', { name: selectedType.display_name })
               : t('ciImport.templateHintNoType')}
@@ -155,14 +155,14 @@ export default function CIImport() {
       </div>
 
       {/* Upload */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 space-y-3">
+      <div className="bg-surface rounded-xl border border-edge p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-white">{t('ciImport.csvData')}</h2>
+          <h2 className="text-sm font-semibold text-primary">{t('ciImport.csvData')}</h2>
           <button
             onClick={() => fileRef.current?.click()}
             disabled={!selectedTypeId || importMutation.isPending}
             data-testid="ciimport-upload-button"
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm font-medium rounded-lg transition-colors"
           >
             {importMutation.isPending ? t('ciImport.importing') : t('ciImport.uploadAndImport')}
           </button>
@@ -177,41 +177,41 @@ export default function CIImport() {
             }}
           />
         </div>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted">
           {t('ciImport.serverImportHint')}
           {selectedFileName && (
-            <span className="ml-2 text-gray-300 font-mono" data-testid="ciimport-filename">{selectedFileName}</span>
+            <span className="ml-2 text-secondary font-mono" data-testid="ciimport-filename">{selectedFileName}</span>
           )}
         </p>
         {uploadError && (
-          <p className="text-red-400 text-xs" data-testid="ciimport-error">{uploadError}</p>
+          <p className="text-danger text-xs" data-testid="ciimport-error">{uploadError}</p>
         )}
       </div>
 
       {/* Result */}
       {result && (
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 space-y-3" data-testid="ciimport-result">
-          <h2 className="text-sm font-semibold text-white">{t('ciImport.resultTitle')}</h2>
+        <div className="bg-surface rounded-xl border border-edge p-4 space-y-3" data-testid="ciimport-result">
+          <h2 className="text-sm font-semibold text-primary">{t('ciImport.resultTitle')}</h2>
           <div className="flex gap-6 flex-wrap">
             {([
-              ['created', 'text-green-400'],
-              ['updated', 'text-blue-400'],
-              ['skipped', 'text-yellow-400'],
-              ['failed', 'text-red-400'],
+              ['created', 'text-success'],
+              ['updated', 'text-info'],
+              ['skipped', 'text-warning'],
+              ['failed', 'text-danger'],
             ] as const).map(([key, cls]) => (
               <div key={key} className="text-center">
                 <p className={`text-3xl font-bold ${cls}`}>{result[key]}</p>
-                <p className="text-xs text-gray-500 mt-1">{t(`ciImport.${key}`)}</p>
+                <p className="text-xs text-muted mt-1">{t(`ciImport.${key}`)}</p>
               </div>
             ))}
           </div>
           {result.results.some((r) => r.status === 'error' || r.status === 'skipped') && (
-            <div className="bg-red-950/30 border border-red-900/40 rounded-lg p-3 space-y-1 max-h-64 overflow-y-auto">
-              <p className="text-xs font-medium text-red-300">{t('ciImport.rowIssues')}</p>
+            <div className="bg-danger/10 border border-danger/25 rounded-lg p-3 space-y-1 max-h-64 overflow-y-auto">
+              <p className="text-xs font-medium text-danger">{t('ciImport.rowIssues')}</p>
               {result.results
                 .filter((r) => r.status === 'error' || r.status === 'skipped')
                 .map((r) => (
-                  <p key={`${r.row}-${r.name ?? ''}`} className="text-xs text-red-400">
+                  <p key={`${r.row}-${r.name ?? ''}`} className="text-xs text-danger">
                     {t('ciImport.rowError', { n: r.row, message: r.error ?? r.reason ?? '' })}
                     {r.errors?.map((e) => ` [${e.attribute}] ${e.message}`).join('; ')}
                   </p>

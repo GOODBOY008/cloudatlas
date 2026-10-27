@@ -18,8 +18,8 @@ function KindBadge({ kind }: { kind: string }) {
     <span
       className={`px-2 py-0.5 rounded-full text-xs font-medium ${
         kind === 'alert'
-          ? 'bg-red-900/40 text-red-300'
-          : 'bg-blue-900/40 text-blue-300'
+          ? 'bg-danger/10 text-danger'
+          : 'bg-info/10 text-info'
       }`}
     >
       {t(`events.kind.${kind}`, { defaultValue: kind })}
@@ -74,7 +74,7 @@ export default function Events() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('events.title')}</h2>
+        <h2 className="page-title">{t('events.title')}</h2>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -85,8 +85,8 @@ export default function Events() {
               onClick={() => setKindFilter(k)}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                 kindFilter === k
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:text-gray-200'
+                  ? 'bg-accent text-on-accent'
+                  : 'bg-subtle text-secondary hover:text-primary'
               }`}
             >
               {k === 'all' ? t('events.filterAll') : k === 'alert' ? t('events.filterAlerts') : t('events.filterWebhooks')}
@@ -97,20 +97,20 @@ export default function Events() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('events.searchPlaceholder')}
-          className="flex-1 min-w-[200px] bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex-1 min-w-[200px] bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         />
       </div>
 
       {isError && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           {t('events.loadFailed')}
         </div>
       )}
 
       {isLoading ? (
-        <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+        <div className="text-muted text-sm">{t('common.loading')}</div>
       ) : grouped.length === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-8 text-center text-gray-500 text-sm">
+        <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
           {events.length === 0
             ? t('events.empty')
             : t('events.noMatchFilter')}
@@ -118,26 +118,26 @@ export default function Events() {
       ) : (
         <div className="space-y-4">
           {grouped.map(([day, list]) => (
-            <div key={day} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <div key={day} className="bg-surface border border-edge rounded-xl overflow-hidden">
               <button
                 onClick={() => setExpandedDay(expandedDay === day ? null : day)}
-                className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-800/40 transition-colors"
+                className="w-full flex items-center justify-between px-5 py-3 hover:bg-subtle/40 transition-colors"
               >
-                <span className="text-sm font-semibold text-white">{day}</span>
-                <span className="text-xs text-gray-500">{t('events.count', { count: list.length })}</span>
+                <span className="text-sm font-semibold text-primary">{day}</span>
+                <span className="text-xs text-muted">{t('events.count', { count: list.length })}</span>
               </button>
               {(expandedDay === day || grouped.length <= 3) && (
-                <div className="border-t border-gray-800 divide-y divide-gray-800/60">
+                <div className="border-t border-edge divide-y divide-edge/60">
                   {list.map((e) => (
                     <div key={e.id} className="px-5 py-3 flex items-start gap-3">
                       <KindBadge kind={e.kind} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white truncate">{e.title}</p>
-                        <p className="text-xs text-gray-500 font-mono truncate mt-0.5">
+                        <p className="text-sm text-primary truncate">{e.title}</p>
+                        <p className="text-xs text-muted font-mono truncate mt-0.5">
                           {JSON.stringify(e.details)}
                         </p>
                       </div>
-                      <span className="text-xs text-gray-500 whitespace-nowrap">
+                      <span className="text-xs text-muted whitespace-nowrap">
                         {new Date(e.created_at).toLocaleTimeString()}
                       </span>
                     </div>

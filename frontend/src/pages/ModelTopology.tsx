@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../lib/api'
 import { useOrgStore } from '../store/orgStore'
+import { useThemeStore } from '../store/themeStore'
 import { useTranslation } from 'react-i18next'
 
 interface TopoNode {
@@ -31,12 +32,12 @@ interface Topology {
 }
 
 const CLASSIFICATION_COLORS: Record<string, string> = {
-  hardware: '#6366f1',
+  hardware: '#299d87',
   network: '#22c55e',
   software: '#f59e0b',
   cloud: '#06b6d4',
   security: '#ef4444',
-  storage: '#8b5cf6',
+  storage: '#7b87c2',
   default: '#64748b',
 }
 
@@ -65,6 +66,13 @@ const SVG_H = 600
 const NODE_R = 36
 
 export default function ModelTopology() {
+  const dark = useThemeStore((state) => state.theme === 'dark')
+  const graphTheme = {
+    edge: dark ? '#52677e' : '#b5c5d1',
+    accent: dark ? '#5bd1b2' : '#107362',
+    label: dark ? '#e8eef5' : '#1b2636',
+    surface: dark ? '#161f2b' : '#ffffff',
+  }
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id
   const { t } = useTranslation()
@@ -115,29 +123,29 @@ export default function ModelTopology() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold text-white">{t('modelTopology.title')}</h1>
-        <p className="text-sm text-gray-400 mt-0.5">
+        <h1 className="page-title">{t('modelTopology.title')}</h1>
+        <p className="text-sm text-secondary mt-0.5">
           {t('modelTopology.subtitle')}
         </p>
       </div>
 
       {isLoading && (
         <div className="flex items-center justify-center h-64">
-          <p className="text-gray-500 text-sm">{t('modelTopology.loading')}</p>
+          <p className="text-muted text-sm">{t('modelTopology.loading')}</p>
         </div>
       )}
       {isError && (
         <div className="flex items-center justify-center h-64">
-          <p className="text-red-400 text-sm">{t('modelTopology.loadFailed')}</p>
+          <p className="text-danger text-sm">{t('modelTopology.loadFailed')}</p>
         </div>
       )}
 
       {!isLoading && !isError && (
-        <div className="flex gap-4">
+        <div className="flex flex-col gap-4 xl:flex-row">
           {/* SVG Canvas */}
-          <div className="flex-1 bg-gray-900 rounded-xl border border-gray-800 overflow-hidden relative">
+          <div className="flex-1 bg-surface rounded-xl border border-edge overflow-hidden relative">
             {nodes.length === 0 ? (
-              <div className="flex items-center justify-center h-96 text-gray-600">
+              <div className="flex items-center justify-center h-96 text-muted">
                 <div className="text-center">
                   <p className="text-4xl mb-3">🗺</p>
                   <p className="text-sm">{t('modelTopology.noCiTypes')}</p>
@@ -153,11 +161,11 @@ export default function ModelTopology() {
                 <defs>
                   <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
                     markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#4b5563" />
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill={graphTheme.edge} />
                   </marker>
                   <marker id="arrow-hot" viewBox="0 0 10 10" refX="9" refY="5"
                     markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#818cf8" />
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill={graphTheme.accent} />
                   </marker>
                 </defs>
 
@@ -179,7 +187,7 @@ export default function ModelTopology() {
                       <path
                         d={path}
                         fill="none"
-                        stroke={isHot ? '#818cf8' : '#374151'}
+                        stroke={isHot ? graphTheme.accent : graphTheme.edge}
                         strokeWidth={isHot ? 2 : 1.2}
                         markerEnd={e.is_directional ? (isHot ? 'url(#arrow-hot)' : 'url(#arrow)') : undefined}
                         strokeDasharray={isHot ? undefined : '4 3'}
@@ -190,7 +198,7 @@ export default function ModelTopology() {
                         const mx = (src.x + dst.x) / 2
                         const my = (src.y + dst.y) / 2
                         return (
-                          <text x={mx} y={my} textAnchor="middle" fill="#a5b4fc"
+                          <text x={mx} y={my} textAnchor="middle" fill={graphTheme.accent}
                             fontSize={10} dy={-6}>
                             {e.kind_display}
                           </text>
@@ -221,21 +229,20 @@ export default function ModelTopology() {
                     >
                       <circle
                         r={NODE_R + (isHot ? 4 : 0)}
-                        fill={color}
-                        fillOpacity={isSelected ? 0.9 : 0.55}
-                        stroke={isSelected ? '#fff' : color}
+                        fill={graphTheme.surface}
+                        stroke={isSelected ? graphTheme.accent : color}
                         strokeWidth={isSelected ? 2 : 1}
                         style={{ transition: 'all 0.15s' }}
                       />
-                      <text textAnchor="middle" fill="white" fontSize={11} fontWeight={600} dy={-4}>
+                      <text textAnchor="middle" fill={graphTheme.label} fontSize={11} fontWeight={600} dy={-4}>
                         {n.icon ?? '📦'}
                       </text>
-                      <text textAnchor="middle" fill="white" fontSize={10} dy={10} fontWeight={500}>
+                      <text textAnchor="middle" fill={graphTheme.label} fontSize={10} dy={10} fontWeight={500}>
                         {n.display_name.length > 12
                           ? n.display_name.slice(0, 11) + '…'
                           : n.display_name}
                       </text>
-                      <text textAnchor="middle" fill="#d1d5db" fontSize={9} dy={22}>
+                      <text textAnchor="middle" fill={graphTheme.label} fontSize={9} dy={22}>
                         {t('modelTopology.ciCount', { count: n.ci_count })}
                       </text>
                     </g>
@@ -247,28 +254,28 @@ export default function ModelTopology() {
 
           {/* Side Panel */}
           {selected && (
-            <div className="w-64 bg-gray-900 rounded-xl border border-gray-800 p-4 space-y-4 self-start">
+            <div className="w-full xl:w-64 bg-surface rounded-xl border border-edge p-4 space-y-4 self-start">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-white">{selected.display_name}</h2>
-                <button onClick={() => setSelected(null)} className="text-gray-600 hover:text-gray-400 text-xs">✕</button>
+                <h2 className="text-sm font-semibold text-primary">{selected.display_name}</h2>
+                <button onClick={() => setSelected(null)} className="text-muted hover:text-secondary text-xs">✕</button>
               </div>
               <div className="space-y-1">
-                <p className="text-xs text-gray-500">{t('common.name')}</p>
-                <p className="text-xs text-white font-mono">{selected.name}</p>
+                <p className="text-xs text-muted">{t('common.name')}</p>
+                <p className="text-xs text-primary font-mono">{selected.name}</p>
               </div>
               {selected.classification_display && (
                 <div className="space-y-1">
-                  <p className="text-xs text-gray-500">{t('modelTopology.classification')}</p>
-                  <p className="text-xs text-white">{selected.classification_display}</p>
+                  <p className="text-xs text-muted">{t('modelTopology.classification')}</p>
+                  <p className="text-xs text-primary">{selected.classification_display}</p>
                 </div>
               )}
               <div className="space-y-1">
-                <p className="text-xs text-gray-500">{t('modelTopology.ciCountLabel')}</p>
-                <p className="text-2xl font-bold text-indigo-400">{selected.ci_count}</p>
+                <p className="text-xs text-muted">{t('modelTopology.ciCountLabel')}</p>
+                <p className="text-2xl font-bold text-accent">{selected.ci_count}</p>
               </div>
               {selectedEdges.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-2">{t('modelTopology.connections', { count: selectedEdges.length })}</p>
+                  <p className="text-xs text-muted mb-2">{t('modelTopology.connections', { count: selectedEdges.length })}</p>
                   <div className="space-y-2">
                     {selectedEdges.map(e => {
                       const other = e.src_ci_type_id === selected.id
@@ -277,9 +284,9 @@ export default function ModelTopology() {
                       const arrow = e.src_ci_type_id === selected.id ? '→' : '←'
                       return (
                         <div key={e.id} className="flex items-center gap-2 text-xs">
-                          <span className="text-gray-400">{arrow}</span>
-                          <span className="text-white truncate">{other?.display_name}</span>
-                          <span className="text-gray-600 ml-auto shrink-0">{e.kind_display}</span>
+                          <span className="text-secondary">{arrow}</span>
+                          <span className="text-primary truncate">{other?.display_name}</span>
+                          <span className="text-muted ml-auto shrink-0">{e.kind_display}</span>
                         </div>
                       )
                     })}
@@ -297,14 +304,14 @@ export default function ModelTopology() {
           {Object.entries(CLASSIFICATION_COLORS)
             .filter(([k]) => k !== 'default')
             .map(([cls, color]) => (
-              <div key={cls} className="flex items-center gap-1.5 text-xs text-gray-500">
+              <div key={cls} className="flex items-center gap-1.5 text-xs text-muted">
                 <span className="w-3 h-3 rounded-full inline-block" style={{ background: color }} />
                 {t(`modelTopology.classification.${cls}`, { defaultValue: cls.charAt(0).toUpperCase() + cls.slice(1) })}
               </div>
             ))
           }
-          <div className="flex items-center gap-1.5 text-xs text-gray-500">
-            <span className="w-3 h-3 rounded-full inline-block bg-gray-500" />
+          <div className="flex items-center gap-1.5 text-xs text-muted">
+            <span className="w-3 h-3 rounded-full inline-block bg-emphasis" />
             {t('modelTopology.other')}
           </div>
         </div>

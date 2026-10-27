@@ -120,36 +120,36 @@ export default function TaggingPolicies() {
   }
 
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('taggingPolicies.title')}</h2>
+        <h2 className="page-title">{t('taggingPolicies.title')}</h2>
         <button
           onClick={openCreate}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
         >
           {t('taggingPolicies.newPolicy')}
         </button>
       </div>
 
       {isError && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           {t('taggingPolicies.loadFailed')}
         </div>
       )}
 
       {isLoading ? (
-        <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+        <div className="text-muted text-sm">{t('common.loading')}</div>
       ) : policies.length === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-8 text-center text-gray-500 text-sm">
+        <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
           {t('taggingPolicies.empty')}
         </div>
       ) : (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <table className="w-full text-left">
-            <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+        <div className="bg-surface border border-edge rounded-xl overflow-hidden">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+            <thead className="border-b border-edge text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">{t('common.name')}</th>
                 <th className="px-4 py-3 font-medium">{t('taggingPolicies.colRequiredTags')}</th>
@@ -160,11 +160,11 @@ export default function TaggingPolicies() {
             </thead>
             <tbody>
               {policies.map((p) => (
-                <tr key={p.id} className="border-b border-gray-700 last:border-0 hover:bg-gray-800/40 transition-colors">
+                <tr key={p.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
                   <td className="px-4 py-3">
-                    <span className="text-sm text-white">{p.name}</span>
+                    <span className="text-sm text-primary">{p.name}</span>
                     {p.description && (
-                      <span className="block text-xs text-gray-500">{p.description}</span>
+                      <span className="block text-xs text-muted">{p.description}</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -172,22 +172,22 @@ export default function TaggingPolicies() {
                       {p.required_tags.map((tag) => {
                         const label = typeof tag === 'string' ? tag : (tag as { key: string }).key
                         return (
-                          <span key={label} className="px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-900/40 text-indigo-300">
+                          <span key={label} className="px-2 py-0.5 rounded-full text-xs font-medium bg-accent-soft/40 text-accent">
                             {label}
                           </span>
                         )
                       })}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-400">
+                  <td className="px-4 py-3 text-xs text-secondary">
                     {Array.isArray(p.apply_to) && p.apply_to.length > 0
                       ? p.apply_to.join(', ')
                       : t('taggingPolicies.allResources')}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-300">{p.is_active ? '✓' : '✗'}</td>
+                  <td className="px-4 py-3 text-sm text-secondary">{p.is_active ? '✓' : '✗'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3 text-xs">
-                      <button onClick={() => openEdit(p)} className="text-indigo-400 hover:text-indigo-300">
+                      <button onClick={() => openEdit(p)} className="text-accent hover:text-accent">
                         {t('common.edit')}
                       </button>
                       <button
@@ -196,7 +196,7 @@ export default function TaggingPolicies() {
                             deleteMutation.mutate(p.id)
                           }
                         }}
-                        className="text-red-400 hover:text-red-300"
+                        className="text-danger hover:text-danger"
                       >
                         {t('common.delete')}
                       </button>
@@ -205,7 +205,7 @@ export default function TaggingPolicies() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
@@ -215,15 +215,15 @@ export default function TaggingPolicies() {
           onClick={closeModal}
         >
           <div
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">
+            <h3 className="text-lg font-semibold text-primary mb-4">
               {editingId ? t('taggingPolicies.editTitle') : t('taggingPolicies.newTitle')}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('common.name')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -232,7 +232,7 @@ export default function TaggingPolicies() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('common.description')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('common.description')}</label>
                 <input
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -241,7 +241,7 @@ export default function TaggingPolicies() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">
+                <label className="block text-xs font-medium text-secondary mb-1">
                   {t('taggingPolicies.requiredTagsLabel')}
                 </label>
                 <input
@@ -252,7 +252,7 @@ export default function TaggingPolicies() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">
+                <label className="block text-xs font-medium text-secondary mb-1">
                   {t('taggingPolicies.applyToLabel')}
                 </label>
                 <input
@@ -263,7 +263,7 @@ export default function TaggingPolicies() {
                 />
               </div>
               {formError && (
-                <div className="p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">
                   {formError}
                 </div>
               )}
@@ -271,14 +271,14 @@ export default function TaggingPolicies() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {editingId ? t('taggingPolicies.saveChanges') : t('taggingPolicies.createPolicy')}
                 </button>

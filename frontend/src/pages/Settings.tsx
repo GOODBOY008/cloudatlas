@@ -131,7 +131,7 @@ export default function Settings() {
 
   if (!orgId) {
     return (
-      <div className="p-8 text-center text-gray-500">
+      <div className="p-8 text-center text-muted">
         {t('settings.noOrgSelected')}
       </div>
     )
@@ -141,12 +141,12 @@ export default function Settings() {
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-xl font-semibold text-white">{t('settings.title')}</h2>
+        <h2 className="page-title">{t('settings.title')}</h2>
       </div>
 
       {/* Organization Info */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
-        <h3 className="text-base font-semibold text-gray-100 mb-4">{t('settings.organization')}</h3>
+      <div className="bg-surface rounded-xl border border-edge p-6">
+        <h3 className="text-base font-semibold text-primary mb-4">{t('settings.organization')}</h3>
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -156,11 +156,11 @@ export default function Settings() {
         >
           <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-500 block mb-1">{t('settings.currency')}</span>
+                <span className="text-muted block mb-1">{t('settings.currency')}</span>
                 <select
                   value={orgForm.currency ?? 'USD'}
                   onChange={(e) => setOrgForm({ ...orgForm, currency: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                 >
                   {['USD', 'EUR', 'GBP', 'CNY', 'JPY', 'AUD', 'CAD'].map((c) => (
                     <option key={c} value={c}>{c}</option>
@@ -168,37 +168,37 @@ export default function Settings() {
                 </select>
               </div>
             <div>
-              <span className="text-gray-500 block mb-1">{t('settings.name')}</span>
+              <span className="text-muted block mb-1">{t('settings.name')}</span>
               <input
                 value={orgForm.name}
                 onChange={(e) => setOrgForm((s) => ({ ...s, name: e.target.value }))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
             <div>
-              <span className="text-gray-500 block mb-1">{t('settings.slug')}</span>
-              <span className="font-medium font-mono text-gray-300">{currentOrg?.slug}</span>
+              <span className="text-muted block mb-1">{t('settings.slug')}</span>
+              <span className="font-medium font-mono text-secondary">{currentOrg?.slug}</span>
             </div>
           </div>
           <div>
-            <span className="text-gray-500 block mb-1">{t('settings.description')}</span>
+            <span className="text-muted block mb-1">{t('settings.description')}</span>
             <textarea
               value={orgForm.description}
               onChange={(e) => setOrgForm((s) => ({ ...s, description: e.target.value }))}
               rows={2}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>
           <div>
-            <span className="text-gray-500 block mb-1">{t('settings.id')}</span>
-            <span className="font-medium font-mono text-xs text-gray-500">{currentOrg?.id}</span>
+            <span className="text-muted block mb-1">{t('settings.id')}</span>
+            <span className="font-medium font-mono text-xs text-muted">{currentOrg?.id}</span>
           </div>
           <div className="flex items-center justify-end gap-3 pt-1">
-            {orgSaveMsg && <span className="text-xs text-gray-400">{orgSaveMsg}</span>}
+            {orgSaveMsg && <span className="text-xs text-secondary">{orgSaveMsg}</span>}
             <button
               type="submit"
               disabled={updateOrgMutation.isPending || !orgForm.name.trim()}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+              className="bg-accent text-on-accent px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
             >
               {updateOrgMutation.isPending ? t('common.loading') : t('settings.save')}
             </button>
@@ -210,23 +210,23 @@ export default function Settings() {
       <FxRatesSection />
 
       {/* Members */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
-        <h3 className="text-base font-semibold text-gray-100 mb-4">{t('settings.members')}</h3>
+      <div className="bg-surface rounded-xl border border-edge p-6">
+        <h3 className="text-base font-semibold text-primary mb-4">{t('settings.members')}</h3>
 
         {/* Invite Form */}
-        <form onSubmit={handleInvite} className="flex gap-3 mb-5">
+        <form onSubmit={handleInvite} className="flex flex-wrap gap-3 mb-5">
           <input
             type="email"
             placeholder={t('settings.emailPlaceholder')}
             value={inviteForm.email}
             onChange={(e) => setInviteForm((f) => ({ ...f, email: e.target.value }))}
-            className="flex-1 border border-gray-700 bg-gray-800 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="min-w-0 basis-full sm:basis-auto flex-1 border border-strong bg-subtle text-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
             required
           />
           <select
             value={inviteForm.role}
             onChange={(e) => setInviteForm((f) => ({ ...f, role: e.target.value }))}
-            className="border border-gray-700 bg-gray-800 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="border border-strong bg-subtle text-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           >
             <option value="viewer">{t('settings.role.viewer')}</option>
             <option value="finops">{t('settings.role.finops')}</option>
@@ -236,39 +236,39 @@ export default function Settings() {
           <button
             type="submit"
             disabled={inviteMutation.isPending}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+            className="bg-accent text-on-accent px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
           >
             {inviteMutation.isPending ? t('settings.inviting') : t('settings.invite')}
           </button>
         </form>
 
         {inviteError && (
-          <div className="mb-4 p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">
+          <div className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">
             {inviteError}
           </div>
         )}
         {inviteSuccess && (
-          <div className="mb-4 p-3 rounded-lg bg-green-900/40 border border-green-700 text-green-400 text-sm">
+          <div className="mb-4 p-3 rounded-lg bg-success/10 border border-success/25 text-success text-sm">
             {t('settings.inviteSuccess')}
           </div>
         )}
 
         {/* Member list */}
         {isLoading ? (
-          <p className="text-gray-500 text-sm">{t('settings.loadingMembers')}</p>
+          <p className="text-muted text-sm">{t('settings.loadingMembers')}</p>
         ) : (
-          <div className="divide-y divide-gray-800">
+          <div className="divide-y divide-edge">
             {(members ?? []).map((m) => (
               <div key={m.user_id} className="flex items-center justify-between py-3">
                 <div>
-                  <p className="text-sm font-medium text-gray-100">{m.display_name || m.email}</p>
-                  <p className="text-xs text-gray-500">{m.email}</p>
+                  <p className="text-sm font-medium text-primary">{m.display_name || m.email}</p>
+                  <p className="text-xs text-muted">{m.email}</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <select
                     value={(m.roles?.[0] ?? t('settings.role.member')).toLowerCase()}
                     onChange={(e) => roleMutation.mutate({ userId: m.user_id, roleName: e.target.value })}
-                    className="text-xs border border-gray-700 rounded-lg px-2 py-1 bg-gray-800 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="text-xs border border-strong rounded-lg px-2 py-1 bg-subtle text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                   >
                     <option value="owner">{t('settings.role.owner')}</option>
                     <option value="admin">{t('settings.role.admin')}</option>
@@ -278,7 +278,7 @@ export default function Settings() {
                   <button
                     onClick={() => removeMutation.mutate(m.user_id)}
                     disabled={removeMutation.isPending}
-                    className="text-xs text-red-400 hover:text-red-300 hover:underline disabled:opacity-50 transition-colors"
+                    className="text-xs text-danger hover:text-danger hover:underline disabled:opacity-50 transition-colors"
                   >
                     {t('settings.removeMember')}
                   </button>
@@ -286,7 +286,7 @@ export default function Settings() {
               </div>
             ))}
             {(members ?? []).length === 0 && (
-              <p className="text-sm text-gray-500 py-3">{t('settings.noMembers')}</p>
+              <p className="text-sm text-muted py-3">{t('settings.noMembers')}</p>
             )}
           </div>
         )}
@@ -296,7 +296,7 @@ export default function Settings() {
 
   return (
     <div>
-      <div className="flex gap-1 border-b border-gray-800 mb-6">
+      <div className="flex gap-1 overflow-x-auto border-b border-edge mb-6">
         {([
           ['org', t('settings.organization')],
           ['keys', t('settings.apiKeys')],
@@ -308,8 +308,8 @@ export default function Settings() {
             onClick={() => setActiveTab(key)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === key
-                ? 'border-indigo-500 text-white'
-                : 'border-transparent text-gray-500 hover:text-gray-300'
+                ? 'border-accent text-primary'
+                : 'border-transparent text-muted hover:text-secondary'
             }`}
           >
             {label}
@@ -377,21 +377,21 @@ function FxRatesSection() {
   }
 
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-2 py-1 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent'
 
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
-      <h3 className="text-base font-semibold text-gray-100 mb-1">{t('settings.fxRates')}</h3>
-      <p className="text-xs text-gray-500 mb-1">{t('settings.fxOrgCurrency', { currency: orgCurrency })}</p>
-      <p className="text-xs text-gray-500 mb-4">{t('settings.fxHint')}</p>
-      {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
-      {message && <p className="text-xs text-green-400 mb-3">{message}</p>}
+    <div className="bg-surface rounded-xl border border-edge p-6">
+      <h3 className="text-base font-semibold text-primary mb-1">{t('settings.fxRates')}</h3>
+      <p className="text-xs text-muted mb-1">{t('settings.fxOrgCurrency', { currency: orgCurrency })}</p>
+      <p className="text-xs text-muted mb-4">{t('settings.fxHint')}</p>
+      {error && <p className="text-xs text-danger mb-3">{error}</p>}
+      {message && <p className="text-xs text-success mb-3">{message}</p>}
       {loaded && rates.length === 0 ? (
-        <p className="text-sm text-gray-500">{t('settings.fxNoRates')}</p>
+        <p className="text-sm text-muted">{t('settings.fxNoRates')}</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+            <thead className="border-b border-edge text-xs uppercase text-muted">
               <tr>
                 <th className="px-3 py-2 font-medium">{t('settings.fxFrom')}</th>
                 <th className="px-3 py-2 font-medium">{t('settings.fxTo')}</th>
@@ -401,9 +401,9 @@ function FxRatesSection() {
             </thead>
             <tbody>
               {rates.map((r, idx) => (
-                <tr key={`${r.from_currency}-${r.to_currency}`} className="border-b border-gray-800 last:border-0">
-                  <td className="px-3 py-2 text-sm font-mono text-gray-200">{r.from_currency}</td>
-                  <td className="px-3 py-2 text-sm font-mono text-gray-200">{r.to_currency}</td>
+                <tr key={`${r.from_currency}-${r.to_currency}`} className="border-b border-edge last:border-0">
+                  <td className="px-3 py-2 text-sm font-mono text-primary">{r.from_currency}</td>
+                  <td className="px-3 py-2 text-sm font-mono text-primary">{r.to_currency}</td>
                   <td className="px-3 py-2">
                     <input
                       type="number"
@@ -414,13 +414,13 @@ function FxRatesSection() {
                       className={`${inputCls} w-32 font-mono`}
                     />
                   </td>
-                  <td className="px-3 py-2 text-xs text-gray-500">
+                  <td className="px-3 py-2 text-xs text-muted">
                     {r.updated_at ? new Date(r.updated_at).toLocaleString() : '—'}
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
       {rates.length > 0 && (
@@ -428,7 +428,7 @@ function FxRatesSection() {
           <button
             onClick={save}
             disabled={saving}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm font-medium rounded-lg transition-colors"
           >
             {saving ? t('common.loading') : t('settings.fxSave')}
           </button>
@@ -483,12 +483,12 @@ function ApiKeysSection() {
   }
 
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent'
 
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
-      <h3 className="text-base font-semibold text-gray-100 mb-4">{t('settings.apiKeys')}</h3>
-      <div className="flex gap-2 mb-4">
+    <div className="bg-surface rounded-xl border border-edge p-6">
+      <h3 className="text-base font-semibold text-primary mb-4">{t('settings.apiKeys')}</h3>
+      <div className="flex flex-wrap gap-2 mb-4">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -497,23 +497,23 @@ function ApiKeysSection() {
         />
         <button
           onClick={createKey}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors"
+          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-sm font-medium transition-colors"
         >
           {t('settings.createKey')}
         </button>
       </div>
-      {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
+      {error && <p className="text-xs text-danger mb-3">{error}</p>}
       {revealed && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-200 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           <p className="font-medium mb-1">{t('settings.keyCreated')}</p>
           <code className="text-xs break-all">{revealed.key}</code>
         </div>
       )}
       {keys.length === 0 ? (
-        <p className="text-sm text-gray-500">{t('settings.noKeys')}</p>
+        <p className="text-sm text-muted">{t('settings.noKeys')}</p>
       ) : (
-        <table className="w-full text-left">
-          <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+        <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+          <thead className="border-b border-edge text-xs uppercase text-muted">
             <tr>
               <th className="px-3 py-2 font-medium">{t('settings.name')}</th>
               <th className="px-3 py-2 font-medium">{t('settings.keyPrefix')}</th>
@@ -523,21 +523,21 @@ function ApiKeysSection() {
           </thead>
           <tbody>
             {keys.map((k) => (
-              <tr key={k.id} className="border-b border-gray-800 last:border-0">
-                <td className="px-3 py-2 text-sm text-white">{k.name}</td>
-                <td className="px-3 py-2 text-xs font-mono text-gray-400">{k.key_prefix}…</td>
-                <td className="px-3 py-2 text-xs text-gray-500">
+              <tr key={k.id} className="border-b border-edge last:border-0">
+                <td className="px-3 py-2 text-sm text-primary">{k.name}</td>
+                <td className="px-3 py-2 text-xs font-mono text-secondary">{k.key_prefix}…</td>
+                <td className="px-3 py-2 text-xs text-muted">
                   {k.last_used_at ? new Date(k.last_used_at).toLocaleString() : t('common.never')}
                 </td>
                 <td className="px-3 py-2">
-                  <button onClick={() => revokeKey(k.id)} className="text-xs text-red-400 hover:text-red-300">
+                  <button onClick={() => revokeKey(k.id)} className="text-xs text-danger hover:text-danger">
                     {t('settings.revokeKey')}
                   </button>
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   )
@@ -592,13 +592,13 @@ function SecuritySection() {
   }
 
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent'
 
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 max-w-lg">
-      <h3 className="text-base font-semibold text-gray-100 mb-4">{t('settings.twoFactor')}</h3>
-      {message && <p className="text-xs text-green-400 mb-3">{message}</p>}
-      {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
+    <div className="bg-surface rounded-xl border border-edge p-6 max-w-lg">
+      <h3 className="text-base font-semibold text-primary mb-4">{t('settings.twoFactor')}</h3>
+      {message && <p className="text-xs text-success mb-3">{message}</p>}
+      {error && <p className="text-xs text-danger mb-3">{error}</p>}
       {!secret && !otpauth && (
         <div className="space-y-3">
           <input
@@ -610,7 +610,7 @@ function SecuritySection() {
           />
           <button
             onClick={enroll}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-sm font-medium transition-colors"
           >
             {t('settings.enable2fa')}
           </button>
@@ -618,8 +618,8 @@ function SecuritySection() {
       )}
       {otpauth && (
         <div className="space-y-3">
-          <p className="text-xs text-gray-400">{t('settings.scanQr')}</p>
-          <code className="block text-xs text-gray-300 break-all bg-gray-800 rounded-lg p-2">{otpauth}</code>
+          <p className="text-xs text-secondary">{t('settings.scanQr')}</p>
+          <code className="block text-xs text-secondary break-all bg-subtle rounded-lg p-2">{otpauth}</code>
           <input
             value={code}
             onChange={(e) => setCode(e.target.value)}
@@ -629,14 +629,14 @@ function SecuritySection() {
           />
           <button
             onClick={verify}
-            className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-medium transition-colors"
+            className="px-4 py-2 bg-success-solid hover:bg-success-solid/90 text-white rounded-lg text-sm font-medium transition-colors"
           >
             {t('settings.verifyAndEnable')}
           </button>
         </div>
       )}
       {!otpauth && (
-        <button onClick={disable} className="mt-4 text-xs text-red-400 hover:text-red-300">
+        <button onClick={disable} className="mt-4 text-xs text-danger hover:text-danger">
           {t('settings.disable2fa')}
         </button>
       )}

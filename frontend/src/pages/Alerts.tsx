@@ -32,11 +32,11 @@ function AlertCard({
 }) {
   const { t } = useTranslation()
   return (
-    <div className="flex items-center justify-between py-3 border-b border-gray-800 last:border-0">
+    <div className="flex items-center justify-between py-3 border-b border-edge last:border-0">
       <div className="flex items-center gap-3">
-        <span className="text-yellow-400 text-lg">⚡</span>
+        <span className="text-warning text-lg">⚡</span>
         <div>
-          <p className="text-sm text-white">
+          <p className="text-sm text-primary">
             {t('alerts.alertAt', {
               value:
                 alert.alert_type === 'ABSOLUTE'
@@ -45,20 +45,20 @@ function AlertCard({
             })}
           </p>
           {alert.description && (
-            <p className="text-xs text-gray-500 mt-0.5">{alert.description}</p>
+            <p className="text-xs text-muted mt-0.5">{alert.description}</p>
           )}
         </div>
         <span
           className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
             alert.alert_type === 'ABSOLUTE'
-              ? 'bg-blue-900/40 text-blue-300'
-              : 'bg-purple-900/40 text-purple-300'
+              ? 'bg-info/10 text-info'
+              : 'bg-violet/10 text-violet'
           }`}
         >
           {t(`status.${alert.alert_type}`, { defaultValue: alert.alert_type })}
         </span>
         {!alert.is_active && (
-          <span className="px-2 py-0.5 rounded-full text-xs bg-gray-700 text-gray-400">
+          <span className="px-2 py-0.5 rounded-full text-xs bg-emphasis text-secondary">
             {t('common.inactive')}
           </span>
         )}
@@ -66,7 +66,7 @@ function AlertCard({
       <button
         onClick={onDelete}
         disabled={isDeleting}
-        className="text-red-400 hover:text-red-300 text-xs disabled:opacity-50"
+        className="text-danger hover:text-danger text-xs disabled:opacity-50"
       >
         {t('common.delete')}
       </button>
@@ -151,23 +151,23 @@ export default function Alerts() {
   }
 
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('alerts.title')}</h2>
+        <h2 className="page-title">{t('alerts.title')}</h2>
         <div className="flex items-center gap-3">
           <button
             onClick={() => evaluateMutation.mutate()}
             disabled={evaluateMutation.isPending}
-            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-60 text-gray-200 text-sm font-medium rounded-lg border border-gray-700 transition-colors"
+            className="px-4 py-2 bg-subtle hover:bg-emphasis disabled:opacity-60 text-primary text-sm font-medium rounded-lg border border-strong transition-colors"
           >
             {evaluateMutation.isPending ? t('alerts.evaluating') : t('alerts.evaluateNow')}
           </button>
           <button
             onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
           >
             {t('alerts.newAlert')}
           </button>
@@ -175,18 +175,18 @@ export default function Alerts() {
       </div>
 
       {evaluationSummary && (
-        <div className="mb-5 bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="mb-5 bg-surface border border-edge rounded-xl p-4">
           <div className="flex flex-wrap items-center gap-4 justify-between">
             <div>
-              <p className="text-sm font-medium text-white">{t('alerts.latestEvaluation')}</p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-sm font-medium text-primary">{t('alerts.latestEvaluation')}</p>
+              <p className="text-xs text-muted mt-0.5">
                 {t('alerts.evaluationResult', {
                   evaluated: evaluationSummary.evaluated,
                   triggered: evaluationSummary.triggered,
                 })}
               </p>
             </div>
-            <span className="px-2 py-0.5 rounded-full text-xs bg-indigo-900/40 text-indigo-300">
+            <span className="px-2 py-0.5 rounded-full text-xs bg-accent-soft/40 text-accent">
               {t('alerts.newEvents', { count: evaluationSummary.triggered })}
             </span>
           </div>
@@ -194,18 +194,18 @@ export default function Alerts() {
           {evaluationSummary.events.length > 0 ? (
             <div className="mt-4 space-y-2">
               {evaluationSummary.events.slice(0, 3).map((event) => (
-                <div key={event.event_id} className="rounded-lg bg-gray-950/60 border border-gray-800 px-3 py-2">
+                <div key={event.event_id} className="rounded-lg bg-canvas/60 border border-edge px-3 py-2">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-sm text-white">{event.message}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-sm text-primary">{event.message}</p>
+                      <p className="text-xs text-muted mt-0.5">
                         {t('alerts.thresholdActual', {
                           threshold: event.threshold.toFixed(2),
                           actual: event.actual.toFixed(2),
                         })}
                       </p>
                     </div>
-                    <span className="text-xs text-gray-400 flex-shrink-0 uppercase">
+                    <span className="text-xs text-secondary flex-shrink-0 uppercase">
                       {t(`status.${event.alert_type}`, { defaultValue: event.alert_type })}
                     </span>
                   </div>
@@ -213,7 +213,7 @@ export default function Alerts() {
               ))}
             </div>
           ) : (
-            <p className="mt-3 text-sm text-gray-500">
+            <p className="mt-3 text-sm text-muted">
               {t('alerts.noBreaches')}
             </p>
           )}
@@ -221,15 +221,15 @@ export default function Alerts() {
       )}
 
       {alertsError && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           {t('alerts.loadFailed')}
         </div>
       )}
 
       {alertsLoading ? (
-        <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+        <div className="text-muted text-sm">{t('common.loading')}</div>
       ) : alerts.length === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-8 text-center text-gray-500 text-sm">
+        <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
           {t('alerts.empty')}
         </div>
       ) : (
@@ -238,13 +238,13 @@ export default function Alerts() {
           {Array.from(alertsByPool.entries()).map(([poolId, poolAlerts]) => {
             const pool = pools.find((p) => p.id === poolId)
             return (
-              <div key={poolId} className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4">
+              <div key={poolId} className="bg-surface border border-edge rounded-xl px-5 py-4">
                 <div className="flex items-center gap-3 mb-1">
-                  <h3 className="text-sm font-semibold text-white">
+                  <h3 className="text-sm font-semibold text-primary">
                     🗂 {pool?.name ?? t('alerts.poolFallback', { id: poolId.slice(0, 8) })}
                   </h3>
                   {pool?.monthly_budget && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted">
                       {t('alerts.budgetPerMonth', { amount: pool.monthly_budget.toLocaleString() })}
                     </span>
                   )}
@@ -265,8 +265,8 @@ export default function Alerts() {
 
           {/* Org-level alerts (no pool) */}
           {noPoolAlerts.length > 0 && (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4">
-              <h3 className="text-sm font-semibold text-white mb-1">🏢 {t('alerts.orgLevel')}</h3>
+            <div className="bg-surface border border-edge rounded-xl px-5 py-4">
+              <h3 className="text-sm font-semibold text-primary mb-1">🏢 {t('alerts.orgLevel')}</h3>
               <div>
                 {noPoolAlerts.map((alert) => (
                   <AlertCard
@@ -294,18 +294,18 @@ export default function Alerts() {
       {/* Create Alert Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-xl p-6 w-full max-w-lg border border-gray-800 shadow-xl">
-            <h3 className="text-base font-semibold text-white mb-4">{t('alerts.newBudgetAlert')}</h3>
+          <div className="bg-surface rounded-xl p-6 w-full max-w-lg border border-edge shadow-xl">
+            <h3 className="text-base font-semibold text-primary mb-4">{t('alerts.newBudgetAlert')}</h3>
             {formError && (
-              <div className="mb-3 p-2 rounded bg-red-900/40 border border-red-700 text-red-300 text-sm">
+              <div className="mb-3 p-2 rounded bg-danger/10 border border-danger/25 text-danger text-sm">
                 {formError}
               </div>
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs text-gray-400 mb-1">
+                <label className="block text-xs text-secondary mb-1">
                   {t('alerts.poolLabel')}{' '}
-                  <span className="text-gray-600">{t('alerts.poolOptionalHint')}</span>
+                  <span className="text-muted">{t('alerts.poolOptionalHint')}</span>
                 </label>
                 <select
                   value={form.pool_id}
@@ -322,7 +322,7 @@ export default function Alerts() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('alerts.alertType')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('alerts.alertType')}</label>
                 <div className="flex gap-4">
                   {(['PERCENTAGE', 'ABSOLUTE'] as const).map((type) => (
                     <label key={type} className="flex items-center gap-2 cursor-pointer">
@@ -334,7 +334,7 @@ export default function Alerts() {
                         onChange={() => setForm({ ...form, alert_type: type })}
                         className="accent-indigo-600"
                       />
-                      <span className="text-sm text-gray-300">
+                      <span className="text-sm text-secondary">
                         {type === 'PERCENTAGE' ? t('alerts.typePercentage') : t('alerts.typeAbsolute')}
                       </span>
                     </label>
@@ -342,7 +342,7 @@ export default function Alerts() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">
+                <label className="block text-xs text-secondary mb-1">
                   {t('alerts.threshold')}{' '}
                   {form.alert_type === 'PERCENTAGE' ? t('alerts.thresholdPct') : t('alerts.thresholdAmount')}
                 </label>
@@ -359,16 +359,16 @@ export default function Alerts() {
                   className={inputCls}
                   placeholder={form.alert_type === 'PERCENTAGE' ? '80' : '5000'}
                 />
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-muted mt-1">
                   {form.alert_type === 'PERCENTAGE'
                     ? t('alerts.helpPercentage')
                     : t('alerts.helpAbsolute')}
                 </p>
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">
+                <label className="block text-xs text-secondary mb-1">
                   {t('common.description')}{' '}
-                  <span className="text-gray-600">{t('alerts.optional')}</span>
+                  <span className="text-muted">{t('alerts.optional')}</span>
                 </label>
                 <input
                   value={form.description}
@@ -381,14 +381,14 @@ export default function Alerts() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-white border border-gray-700 rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm text-secondary hover:text-primary border border-strong rounded-lg transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm font-medium rounded-lg transition-colors"
                 >
                   {createMutation.isPending ? t('alerts.creating') : t('alerts.createAlert')}
                 </button>
