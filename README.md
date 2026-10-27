@@ -26,7 +26,7 @@ CloudAtlas is an open-source platform that unifies **FinOps cost optimization** 
 
 Built with a **Rust (Axum) backend** and a **React + TypeScript frontend**, backed exclusively by **PostgreSQL** — no Redis, Kafka, or Elasticsearch required.
 
-The UI is fully bilingual — **English / 中文** — switchable at any time from the header (language, dark/light theme), including on the pre-auth screens.
+The UI is fully bilingual — **English / 中文** — with a slate-and-teal design, responsive navigation, and coordinated light and dark themes. Light mode is the default; saved preferences are preserved. Language and theme controls are available on both workspace and sign-in screens. See the [system keyboard shortcuts](docs/user-guide.md#system-keyboard-shortcuts) for search, Copilot, and keyboard navigation.
 
 ### Why CloudAtlas?
 
@@ -46,7 +46,7 @@ The UI is fully bilingual — **English / 中文** — switchable at any time fr
 | ![Recommendations](docs/screenshots/recommendations-en.png) | ![AI Center](docs/screenshots/ai-center-en.png) |
 | ![Dashboard — 中文](docs/screenshots/dashboard-zh.png) | ![Login](docs/screenshots/login-en.png) |
 
-*Dashboard, Cost Explorer, Cost Map, CMDB, Recommendations, AI Center (EN) and Dashboard (中文) — dark mode, seeded demo data.*
+*Updated frontend with local demo data: English screens in light mode and the Chinese dashboard in dark mode.*
 
 ---
 
@@ -105,7 +105,8 @@ The UI is fully bilingual — **English / 中文** — switchable at any time fr
 | 🔔 **Webhooks & Integrations** | Event-driven notifications with configurable retry; Slack etc. integration cards with test delivery |
 | 📖 **OpenAPI** | Auto-generated Swagger UI at `/swagger-ui/` |
 | 🐳 **Docker-first** | `docker compose up` and you're running |
-| 🌙 **Dark / Light Mode** | Persistent theme toggle with Tailwind CSS |
+| 🌙 **Dark / Light Mode** | Persistent slate-and-teal themes, shared semantic colors, locally bundled styles and fonts |
+| ⌨️ **Keyboard Navigation** | ⌘/Ctrl+K search, ⌘/Ctrl+I Copilot, focus-managed dialogs, and a skip-to-content link |
 | 🌐 **Bilingual UI** | Full English / 中文 interface — every page, both themes, pre-auth screens included |
 
 ---
@@ -364,6 +365,8 @@ See [`.env.example`](.env.example) for the complete reference with defaults.
 |----------|---------------|
 | [Quickstart](docs/quickstart.md) | From clone to running platform — Docker or dev setup, verification, first tour |
 | [User Guide](docs/user-guide.md) | Page-by-page walkthrough of all 50+ pages — the best place to start |
+| [System Keyboard Shortcuts](docs/user-guide.md#system-keyboard-shortcuts) | Search, Copilot, Escape, focus navigation, and panel resizing on macOS, Windows, and Linux |
+| [Frontend Design System](CONTRIBUTING.md#frontend-design-system) | Theme tokens, shared components, responsive tables, accessibility, and validation |
 | [Architecture Design](docs/design.md) | Full technical design: data model, modules, scheduler |
 | [ADR Index](docs/adr/) | Architecture Decision Records (modular monolith, PostgreSQL-only, Rust/Axum, ...) |
 | [API Examples](docs/api-examples.md) | Copy-paste `curl` recipes for common workflows |

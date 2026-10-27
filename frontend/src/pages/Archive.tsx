@@ -41,71 +41,71 @@ export default function Archive() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">{t('archive.title')}</h1>
-        <p className="text-sm text-gray-400 mt-1">{t('archive.subtitle')}</p>
+        <h1 className="page-title">{t('archive.title')}</h1>
+        <p className="text-sm text-secondary mt-1">{t('archive.subtitle')}</p>
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('archive.archivedRecommendations')}</p>
-          <p className="text-2xl font-bold text-gray-300 mt-1">{recs.length}</p>
-          <p className="text-xs text-gray-500 mt-1">{t('archive.deferredSavings', { amount: fmt(totalArchivedSavings) })}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('archive.archivedRecommendations')}</p>
+          <p className="text-2xl font-bold text-secondary mt-1">{recs.length}</p>
+          <p className="text-xs text-muted mt-1">{t('archive.deferredSavings', { amount: fmt(totalArchivedSavings) })}</p>
         </div>
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('archive.alertEvents')}</p>
-          <p className="text-2xl font-bold text-gray-300 mt-1">{events.length}</p>
-          <p className="text-xs text-gray-500 mt-1">{t('archive.historicalTriggers')}</p>
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('archive.alertEvents')}</p>
+          <p className="text-2xl font-bold text-secondary mt-1">{events.length}</p>
+          <p className="text-xs text-muted mt-1">{t('archive.historicalTriggers')}</p>
         </div>
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('archive.reactivatable')}</p>
-          <p className="text-2xl font-bold text-indigo-300 mt-1">{recs.filter(r => r.status === 'archived').length}</p>
-          <p className="text-xs text-gray-500 mt-1">{t('archive.recommendations')}</p>
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('archive.reactivatable')}</p>
+          <p className="text-2xl font-bold text-accent mt-1">{recs.filter(r => r.status === 'archived').length}</p>
+          <p className="text-xs text-muted mt-1">{t('archive.recommendations')}</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-700">
+      <div className="flex gap-2 border-b border-strong">
         {([
           { key: 'recommendations', label: t('archive.tabRecommendations', { count: recs.length }) },
           { key: 'alerts', label: t('archive.tabAlertHistory', { count: events.length }) },
         ] as const).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === tab.key ? 'border-indigo-500 text-white' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === tab.key ? 'border-accent text-primary' : 'border-transparent text-secondary hover:text-primary'}`}>
             {tab.label}
           </button>
         ))}
       </div>
 
       {activeTab === 'recommendations' && (
-        <div className="bg-gray-900 rounded-xl border border-gray-700 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-gray-700">
+        <div className="bg-surface rounded-xl border border-strong overflow-hidden">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+            <thead><tr className="border-b border-strong">
               {['common.type', 'archive.colResource', 'archive.colSavingPerMonth', 'common.status', 'archive.colArchived', 'common.actions'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">{t(h)}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
               ))}
             </tr></thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-edge">
               {recLoading ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-500">{t('common.loading')}</td></tr>
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
               ) : recs.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-500">{t('archive.noArchivedRecs')}</td></tr>
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">{t('archive.noArchivedRecs')}</td></tr>
               ) : recs.map(r => (
-                <tr key={r.id} className="hover:bg-gray-800">
+                <tr key={r.id} className="hover:bg-subtle">
                   <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 bg-gray-700 text-gray-300 rounded text-xs">{t(`archive.recType.${r.rec_type}`, { defaultValue: r.rec_type })}</span>
+                    <span className="px-2 py-0.5 bg-emphasis text-secondary rounded text-xs">{t(`archive.recType.${r.rec_type}`, { defaultValue: r.rec_type })}</span>
                   </td>
-                  <td className="px-4 py-3 text-gray-300 font-mono text-xs">{r.resource_id?.slice(0, 24)}…</td>
-                  <td className="px-4 py-3 text-green-400 font-semibold">{fmt(r.saving ?? 0)}</td>
+                  <td className="px-4 py-3 text-secondary font-mono text-xs">{r.resource_id?.slice(0, 24)}…</td>
+                  <td className="px-4 py-3 text-success font-semibold">{fmt(r.saving ?? 0)}</td>
                   <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 bg-gray-700 text-gray-400 rounded-full text-xs">{t(`status.${r.status}`, { defaultValue: r.status })}</span>
+                    <span className="px-2 py-0.5 bg-emphasis text-secondary rounded-full text-xs">{t(`status.${r.status}`, { defaultValue: r.status })}</span>
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{r.created_at?.slice(0, 10)}</td>
+                  <td className="px-4 py-3 text-secondary text-xs">{r.created_at?.slice(0, 10)}</td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => reactivate.mutate(r.id)}
                       disabled={reactivate.isPending}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 disabled:opacity-50"
+                      className="text-xs text-accent hover:text-accent disabled:opacity-50"
                     >
                       {t('archive.restore')}
                     </button>
@@ -113,33 +113,33 @@ export default function Archive() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
       {activeTab === 'alerts' && (
-        <div className="bg-gray-900 rounded-xl border border-gray-700 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-gray-700">
+        <div className="bg-surface rounded-xl border border-strong overflow-hidden">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+            <thead><tr className="border-b border-strong">
               {['archive.colAlert', 'archive.colTriggeredAt', 'archive.colCostAtTrigger', 'archive.colMessage'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">{t(h)}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
               ))}
             </tr></thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-edge">
               {evLoading ? (
-                <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-500">{t('common.loading')}</td></tr>
+                <tr><td colSpan={4} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
               ) : events.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-500">{t('archive.noAlertEvents')}</td></tr>
+                <tr><td colSpan={4} className="px-4 py-10 text-center text-muted">{t('archive.noAlertEvents')}</td></tr>
               ) : events.map(e => (
-                <tr key={e.id} className="hover:bg-gray-800">
-                  <td className="px-4 py-3 font-medium text-white">{e.alert_name ?? t('archive.alert')}</td>
-                  <td className="px-4 py-3 text-gray-400">{e.triggered_at?.slice(0, 16)}</td>
-                  <td className="px-4 py-3 text-red-300 font-semibold">{fmt(e.cost ?? 0)}</td>
-                  <td className="px-4 py-3 text-gray-300 text-xs">{e.message ?? '—'}</td>
+                <tr key={e.id} className="hover:bg-subtle">
+                  <td className="px-4 py-3 font-medium text-primary">{e.alert_name ?? t('archive.alert')}</td>
+                  <td className="px-4 py-3 text-secondary">{e.triggered_at?.slice(0, 16)}</td>
+                  <td className="px-4 py-3 text-danger font-semibold">{fmt(e.cost ?? 0)}</td>
+                  <td className="px-4 py-3 text-secondary text-xs">{e.message ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
     </div>

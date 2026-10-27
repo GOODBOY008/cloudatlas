@@ -87,17 +87,17 @@ function apiErrorMessage(err: unknown, fallback: string): string {
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
-  critical: 'bg-red-900/40 text-red-300',
-  high: 'bg-orange-900/40 text-orange-300',
-  medium: 'bg-yellow-900/40 text-yellow-300',
-  low: 'bg-gray-700 text-gray-400',
-  info: 'bg-blue-900/40 text-blue-300',
+  critical: 'bg-danger/10 text-danger',
+  high: 'bg-warning/10 text-warning',
+  medium: 'bg-warning/10 text-warning',
+  low: 'bg-emphasis text-secondary',
+  info: 'bg-info/10 text-info',
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  compliant: 'text-green-300',
-  non_compliant: 'text-red-400',
-  unknown: 'text-gray-500',
+  compliant: 'text-success',
+  non_compliant: 'text-danger',
+  unknown: 'text-muted',
 }
 
 const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info']
@@ -309,7 +309,7 @@ export default function Compliance() {
   }
 
   const inputCls =
-    'w-full bg-gray-700 text-gray-200 text-sm rounded px-3 py-2 border border-gray-600 focus:outline-none focus:border-indigo-500'
+    'w-full bg-emphasis text-primary text-sm rounded px-3 py-2 border border-strong focus:outline-none focus:border-accent'
 
   // T12: latest compliance run (manual or scheduled).
   const { data: lastRun } = useQuery<{ status?: string; started_at?: string; result?: { trigger?: string } } | null>({
@@ -328,11 +328,11 @@ export default function Compliance() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">{t('compliance.title')}</h1>
-          <p className="text-sm text-gray-400 mt-1">{t('compliance.subtitle')}</p>
+          <h1 className="page-title">{t('compliance.title')}</h1>
+          <p className="text-sm text-secondary mt-1">{t('compliance.subtitle')}</p>
           {lastRun?.started_at && (
-            <p className="text-xs text-gray-500 mt-1 flex items-center gap-2" data-testid="compliance-last-run">
-              <span className="px-1.5 py-0.5 bg-purple-900/40 text-purple-300 rounded text-xs">
+            <p className="text-xs text-muted mt-1 flex items-center gap-2" data-testid="compliance-last-run">
+              <span className="px-1.5 py-0.5 bg-violet/10 text-violet rounded text-xs">
                 {t('compliance.scheduledBadge')}
               </span>
               {t('compliance.lastRun', {
@@ -346,13 +346,13 @@ export default function Compliance() {
           <button
             onClick={() => runCheckMutation.mutate()}
             disabled={runCheckMutation.isPending}
-            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
+            className="px-4 py-2 bg-success-solid hover:bg-success-solid/90 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
           >
             {runCheckMutation.isPending ? t('compliance.checking') : t('compliance.runCheck')}
           </button>
           <button
             onClick={showForm ? closeForm : openCreate}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg transition-colors"
           >
             {showForm ? t('common.cancel') : t('compliance.newPolicy')}
           </button>
@@ -363,19 +363,19 @@ export default function Compliance() {
       {checkResult && (
         <div className={`rounded-xl p-4 mb-5 flex items-center gap-4 ${
           checkResult.status === 'compliant'
-            ? 'bg-green-900/30 border border-green-800'
-            : 'bg-red-900/30 border border-red-800'
+            ? 'bg-success/10 border border-success/25'
+            : 'bg-danger/10 border border-danger/25'
         }`}>
           <span className="text-2xl">{checkResult.status === 'compliant' ? '✅' : '⚠️'}</span>
           <div>
-            <p className="text-white font-medium">
+            <p className="text-primary font-medium">
               {t(`status.${checkResult.status}`)}
             </p>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-secondary">
               {checkResult.message ?? t('compliance.checkSummary', { checked: checkResult.checked, compliant: checkResult.compliant, nonCompliant: checkResult.non_compliant })}
             </p>
           </div>
-          <button onClick={() => setCheckResult(null)} className="ml-auto text-gray-500 hover:text-gray-300 text-sm">
+          <button onClick={() => setCheckResult(null)} className="ml-auto text-muted hover:text-secondary text-sm">
             {t('compliance.dismiss')}
           </button>
         </div>
@@ -383,13 +383,13 @@ export default function Compliance() {
 
       {/* Create / edit policy form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-gray-800 rounded-xl p-5 mb-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-200">
+        <form onSubmit={handleSubmit} className="bg-subtle rounded-xl p-5 mb-6 space-y-4">
+          <h2 className="text-sm font-semibold text-primary">
             {editingId ? t('compliance.editPolicyTitle') : t('compliance.createPolicyTitle')}
           </h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('compliance.nameField')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('compliance.nameField')}</label>
               <input
                 type="text"
                 value={policyName}
@@ -399,7 +399,7 @@ export default function Compliance() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('compliance.severity')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('compliance.severity')}</label>
               <select
                 value={severity}
                 onChange={e => setSeverity(e.target.value)}
@@ -410,7 +410,7 @@ export default function Compliance() {
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">{t('common.description')}</label>
+            <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
             <input
               type="text"
               value={policyDesc}
@@ -423,7 +423,7 @@ export default function Compliance() {
           {/* Target scope (T16) */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('compliance.targetScope')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('compliance.targetScope')}</label>
               <select
                 value={targetType}
                 onChange={(e) => setTargetType(e.target.value as 'all' | 'ci_type' | 'dynamic_group')}
@@ -437,7 +437,7 @@ export default function Compliance() {
             </div>
             {targetType === 'ci_type' && (
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('compliance.targetTypeOption')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('compliance.targetTypeOption')}</label>
                 <select value={targetTypeId} onChange={(e) => setTargetTypeId(e.target.value)} className={inputCls}>
                   <option value="">{t('compliance.selectType')}</option>
                   {ciTypes.map((ct) => (
@@ -448,7 +448,7 @@ export default function Compliance() {
             )}
             {targetType === 'dynamic_group' && (
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('compliance.targetGroup')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('compliance.targetGroup')}</label>
                 <select value={targetGroupId} onChange={(e) => setTargetGroupId(e.target.value)} className={inputCls}>
                   <option value="">{t('compliance.selectGroup')}</option>
                   {dynGroups.map((g) => (
@@ -462,8 +462,8 @@ export default function Compliance() {
           {/* Rules editor */}
           <div>
             <div className="flex items-baseline justify-between mb-2">
-              <label className="block text-xs text-gray-400">{t('compliance.rules')} *</label>
-              <span className="text-xs text-gray-600">{t('compliance.rulesHint')}</span>
+              <label className="block text-xs text-secondary">{t('compliance.rules')} *</label>
+              <span className="text-xs text-muted">{t('compliance.rulesHint')}</span>
             </div>
             <div className="space-y-2">
               {rules.map((r, i) => (
@@ -505,7 +505,7 @@ export default function Compliance() {
                     onClick={() => setRules(rs => rs.filter((_, idx) => idx !== i))}
                     disabled={rules.length === 1}
                     aria-label={t('compliance.removeRuleAria', { index: i + 1 })}
-                    className="col-span-1 text-red-500/60 hover:text-red-400 disabled:opacity-30 text-sm transition-colors"
+                    className="col-span-1 text-danger/60 hover:text-danger disabled:opacity-30 text-sm transition-colors"
                   >
                     ✕
                   </button>
@@ -515,19 +515,19 @@ export default function Compliance() {
             <button
               type="button"
               onClick={() => setRules(rs => [...rs, { ...DEFAULT_RULE }])}
-              className="mt-2 text-xs text-indigo-400 hover:text-indigo-300"
+              className="mt-2 text-xs text-accent hover:text-accent"
             >
               {t('compliance.addRule')}
             </button>
           </div>
 
-          {formError && <p className="text-sm text-red-400">{formError}</p>}
+          {formError && <p className="text-sm text-danger">{formError}</p>}
           <div className="flex justify-end gap-3">
-            <button type="button" onClick={closeForm} className="px-4 py-2 text-sm text-gray-400 hover:text-white">{t('common.cancel')}</button>
+            <button type="button" onClick={closeForm} className="px-4 py-2 text-sm text-secondary hover:text-primary">{t('common.cancel')}</button>
             <button
               type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm rounded-lg"
+              className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm rounded-lg"
             >
               {editingId
                 ? (updateMutation.isPending ? t('compliance.saving') : t('compliance.save'))
@@ -538,13 +538,13 @@ export default function Compliance() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 bg-gray-800/50 rounded-lg p-1 w-fit">
+      <div className="flex gap-1 mb-5 bg-subtle/50 rounded-lg p-1 w-fit">
         {(['policies', 'results'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-1.5 rounded text-sm transition-colors ${
-              activeTab === tab ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+              activeTab === tab ? 'bg-emphasis text-primary' : 'text-secondary hover:text-primary'
             }`}
           >
             {tab === 'policies' ? t('compliance.tabPolicies') : t('compliance.tabResults')}
@@ -555,18 +555,18 @@ export default function Compliance() {
       {/* Policies tab */}
       {activeTab === 'policies' && (
         loadingPolicies ? (
-          <div className="text-center py-20 text-gray-500">{t('compliance.loadingPolicies')}</div>
+          <div className="text-center py-20 text-muted">{t('compliance.loadingPolicies')}</div>
         ) : policies.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-4xl mb-3">📋</p>
-            <p className="text-gray-400 text-lg font-medium">{t('compliance.noPolicies')}</p>
-            <p className="text-gray-600 text-sm mt-1">{t('compliance.noPoliciesHint')}</p>
+            <p className="text-secondary text-lg font-medium">{t('compliance.noPolicies')}</p>
+            <p className="text-muted text-sm mt-1">{t('compliance.noPoliciesHint')}</p>
           </div>
         ) : (
-          <div className="bg-gray-800 rounded-xl overflow-hidden">
-            <table className="w-full">
+          <div className="bg-subtle rounded-xl overflow-hidden">
+            <div className="table-scroll" tabIndex={0}><table className="w-full">
               <thead>
-                <tr className="text-gray-400 text-xs font-medium uppercase tracking-wider border-b border-gray-700">
+                <tr className="text-secondary text-xs font-medium uppercase tracking-wider border-b border-strong">
                   <th className="px-4 py-3 text-left">{t('compliance.policy')}</th>
                   <th className="px-4 py-3 text-left">{t('compliance.rules')}</th>
                   <th className="px-4 py-3 text-left">{t('compliance.severity')}</th>
@@ -576,48 +576,48 @@ export default function Compliance() {
               </thead>
               <tbody>
                 {policies.map(p => (
-                  <tr key={p.id} className="border-b border-gray-700/50 last:border-0">
+                  <tr key={p.id} className="border-b border-strong/50 last:border-0">
                     <td className="px-4 py-3">
-                      <p className="text-white font-medium">{p.name}</p>
-                      {p.description && <p className="text-gray-500 text-xs mt-0.5">{p.description}</p>}
+                      <p className="text-primary font-medium">{p.name}</p>
+                      {p.description && <p className="text-muted text-xs mt-0.5">{p.description}</p>}
                     </td>
                     <td className="px-4 py-3">
                       {Array.isArray(p.rules) && p.rules.length > 0 ? (
-                        <span className="text-gray-300 text-sm">
+                        <span className="text-secondary text-sm">
                           {t('compliance.rulesCount', { count: p.rules.length })}
                         </span>
                       ) : (
-                        <span className="text-gray-600 text-sm">{t('compliance.noRules')}</span>
+                        <span className="text-muted text-sm">{t('compliance.noRules')}</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       {p.severity ? (
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${SEVERITY_COLORS[p.severity] ?? 'bg-gray-700 text-gray-400'}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${SEVERITY_COLORS[p.severity] ?? 'bg-emphasis text-secondary'}`}>
                           {t(`status.${p.severity}`, { defaultValue: p.severity })}
                         </span>
-                      ) : <span className="text-gray-600">—</span>}
+                      ) : <span className="text-muted">—</span>}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-sm ${p.is_active ? 'text-green-400' : 'text-gray-500'}`}>
+                      <span className={`text-sm ${p.is_active ? 'text-success' : 'text-muted'}`}>
                         {p.is_active ? t('common.active') : t('common.inactive')}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <button
                         onClick={() => openEdit(p)}
-                        className="text-indigo-400/80 hover:text-indigo-300 text-xs mr-3 transition-colors"
+                        className="text-accent/80 hover:text-accent text-xs mr-3 transition-colors"
                       >
                         {t('common.edit')}
                       </button>
                       <button
                         onClick={() => toggleMutation.mutate(p)}
-                        className="text-gray-400 hover:text-gray-200 text-xs mr-3 transition-colors"
+                        className="text-secondary hover:text-primary text-xs mr-3 transition-colors"
                       >
                         {p.is_active ? t('compliance.deactivate') : t('compliance.activate')}
                       </button>
                       <button
                         onClick={() => deleteMutation.mutate(p.id)}
-                        className="text-red-500/60 hover:text-red-400 text-xs transition-colors"
+                        className="text-danger/60 hover:text-danger text-xs transition-colors"
                       >
                         {t('common.delete')}
                       </button>
@@ -625,7 +625,7 @@ export default function Compliance() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         )
       )}
@@ -633,18 +633,18 @@ export default function Compliance() {
       {/* Results tab */}
       {activeTab === 'results' && (
         loadingResults ? (
-          <div className="text-center py-20 text-gray-500">{t('compliance.loadingResults')}</div>
+          <div className="text-center py-20 text-muted">{t('compliance.loadingResults')}</div>
         ) : results.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-4xl mb-3">🔍</p>
-            <p className="text-gray-400 text-lg font-medium">{t('compliance.noResults')}</p>
-            <p className="text-gray-600 text-sm mt-1">{t('compliance.noResultsHint')}</p>
+            <p className="text-secondary text-lg font-medium">{t('compliance.noResults')}</p>
+            <p className="text-muted text-sm mt-1">{t('compliance.noResultsHint')}</p>
           </div>
         ) : (
-          <div className="bg-gray-800 rounded-xl overflow-hidden">
-            <table className="w-full">
+          <div className="bg-subtle rounded-xl overflow-hidden">
+            <div className="table-scroll" tabIndex={0}><table className="w-full">
               <thead>
-                <tr className="text-gray-400 text-xs font-medium uppercase tracking-wider border-b border-gray-700">
+                <tr className="text-secondary text-xs font-medium uppercase tracking-wider border-b border-strong">
                   <th className="px-4 py-3 text-left">{t('compliance.ci')}</th>
                   <th className="px-4 py-3 text-left">{t('compliance.policy')}</th>
                   <th className="px-4 py-3 text-left">{t('common.status')}</th>
@@ -654,11 +654,11 @@ export default function Compliance() {
               </thead>
               <tbody>
                 {results.map(r => (
-                  <tr key={r.id} className="border-b border-gray-700/50 last:border-0 align-top">
-                    <td className="px-4 py-3 text-gray-200 font-medium">{r.ci_name}</td>
-                    <td className="px-4 py-3 text-gray-400 text-sm">{r.policy_name}</td>
+                  <tr key={r.id} className="border-b border-strong/50 last:border-0 align-top">
+                    <td className="px-4 py-3 text-primary font-medium">{r.ci_name}</td>
+                    <td className="px-4 py-3 text-secondary text-sm">{r.policy_name}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-sm font-medium ${STATUS_COLORS[r.status ?? 'unknown'] ?? 'text-gray-400'}`}>
+                      <span className={`text-sm font-medium ${STATUS_COLORS[r.status ?? 'unknown'] ?? 'text-secondary'}`}>
                         {t(`status.${r.status ?? 'unknown'}`, { defaultValue: r.status ?? 'unknown' })}
                       </span>
                     </td>
@@ -668,23 +668,23 @@ export default function Compliance() {
                           {r.details.map((v, i) => (
                             <span
                               key={i}
-                              className="px-2 py-0.5 rounded-full bg-red-900/30 border border-red-800/60 text-red-300 text-xs"
+                              className="px-2 py-0.5 rounded-full bg-danger/10 border border-danger/25 text-danger text-xs"
                             >
                               {violationText(v)}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-gray-600 text-xs">—</span>
+                        <span className="text-muted text-xs">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
+                    <td className="px-4 py-3 text-muted text-xs">
                       {new Date(r.checked_at).toLocaleString()}
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         )
       )}

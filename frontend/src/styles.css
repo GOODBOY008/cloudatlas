@@ -1,0 +1,377 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --canvas: 246 248 250;
+    --surface: 255 255 255;
+    --subtle: 242 245 248;
+    --emphasis: 229 234 240;
+    --text-primary: 27 38 54;
+    --text-secondary: 86 100 119;
+    --text-muted: 99 112 130;
+    --border: 227 233 239;
+    --border-strong: 206 215 225;
+    --accent: 16 115 98;
+    --accent-hover: 12 91 78;
+    --accent-soft: 232 245 240;
+    --on-accent: 255 255 255;
+    --success: 22 128 83;
+    --warning: 161 98 7;
+    --danger: 196 53 67;
+    --info: 45 100 182;
+    --violet: 119 82 181;
+  }
+
+  :root.dark {
+    color-scheme: dark;
+    --canvas: 15 22 32;
+    --surface: 22 31 43;
+    --subtle: 29 40 54;
+    --emphasis: 40 54 71;
+    --text-primary: 232 238 245;
+    --text-secondary: 169 184 203;
+    --text-muted: 137 155 177;
+    --border: 39 53 71;
+    --border-strong: 58 75 95;
+    --accent: 91 209 178;
+    --accent-hover: 125 224 197;
+    --accent-soft: 27 54 51;
+    --on-accent: 12 42 35;
+    --success: 95 211 160;
+    --warning: 238 188 94;
+    --danger: 247 133 143;
+    --info: 131 178 241;
+    --violet: 182 159 237;
+  }
+
+  html {
+    @apply bg-canvas text-primary antialiased;
+  }
+  body {
+    margin: 0;
+    min-width: 320px;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--border-strong)) transparent;
+  }
+  ::selection {
+    background: rgb(var(--accent) / 0.18);
+  }
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 3px;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    transition:
+      color 140ms,
+      background-color 140ms,
+      border-color 140ms,
+      box-shadow 140ms;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not(
+      [type='color']
+    ),
+  select,
+  textarea {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(var(--text-muted));
+    opacity: 0.85;
+  }
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: rgb(var(--accent));
+  }
+  input[type='date'] {
+    min-width: 0;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply flex h-dvh overflow-hidden bg-canvas;
+  }
+  .app-sidebar {
+    @apply hidden w-[248px] shrink-0 flex-col border-r border-edge bg-surface lg:flex;
+  }
+  .brand {
+    @apply flex items-center gap-2.5 text-primary;
+  }
+  .brand-mark {
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-on-accent;
+  }
+  .brand-name {
+    @apply text-[19px] font-semibold tracking-[-0.7px];
+  }
+  .brand-caption {
+    @apply mt-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted;
+  }
+  .workspace-switch {
+    @apply mx-4 flex min-h-14 items-center gap-3 rounded-xl border border-edge bg-canvas px-3 py-2.5 text-left;
+  }
+  .workspace-avatar {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-edge bg-surface text-xs font-semibold text-accent;
+  }
+  .nav-heading {
+    @apply flex w-full items-center justify-between px-3 pb-2 pt-5 text-[10px] font-semibold uppercase tracking-[0.13em] text-muted;
+  }
+  .nav-link {
+    @apply relative flex min-h-9 items-center gap-2.5 rounded-lg px-3 py-2 text-[12px] font-medium text-secondary;
+  }
+  .nav-link:hover {
+    @apply bg-subtle text-primary;
+  }
+  .nav-link.active {
+    @apply bg-accent-soft font-semibold text-accent;
+  }
+  .nav-link.active::before {
+    content: '';
+    @apply absolute left-0 h-4 w-[3px] rounded-r bg-accent;
+  }
+  .nav-link svg {
+    @apply shrink-0;
+    stroke-width: 1.65;
+  }
+  .app-header {
+    @apply flex h-[72px] shrink-0 items-center justify-between gap-3 border-b border-edge bg-surface px-5 lg:px-8;
+  }
+  .icon-button {
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-secondary hover:bg-subtle hover:text-primary;
+  }
+  .search-trigger {
+    @apply flex h-9 items-center gap-2 rounded-lg border border-edge bg-canvas px-3 text-xs text-muted hover:border-strong;
+  }
+  .app-main {
+    @apply min-w-0 flex-1 overflow-auto px-5 py-7 lg:px-8 lg:py-8;
+    scrollbar-gutter: stable;
+  }
+  .page-content {
+    @apply w-full;
+  }
+  .page-header {
+    @apply mb-7 flex flex-wrap items-center justify-between gap-4;
+  }
+  .page-eyebrow {
+    @apply mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-accent;
+  }
+  .page-title {
+    @apply text-[27px] font-semibold leading-tight tracking-[-0.9px] text-primary;
+  }
+  .page-description {
+    @apply mt-2 max-w-2xl text-[13px] leading-relaxed text-secondary;
+  }
+  .panel {
+    @apply rounded-xl border border-edge bg-surface shadow-panel;
+  }
+  .panel-heading {
+    @apply flex flex-wrap items-start justify-between gap-3 px-6 pb-5 pt-6;
+  }
+  .panel-title {
+    @apply text-sm font-semibold tracking-[-0.2px] text-primary;
+  }
+  .panel-caption {
+    @apply mt-1 text-xs leading-relaxed text-muted;
+  }
+  .btn-primary {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-xs font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-edge bg-surface px-4 py-2.5 text-xs font-medium text-secondary hover:border-strong hover:bg-subtle disabled:opacity-50;
+  }
+  .text-link {
+    @apply inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:underline;
+    text-underline-offset: 3px;
+  }
+  .metric-card {
+    @apply panel relative flex min-h-[158px] flex-col p-5 text-left transition-shadow hover:shadow-md;
+  }
+  .metric-value {
+    @apply mt-5 text-[30px] font-semibold leading-none tracking-[-1px] text-primary;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric-icon {
+    @apply flex h-9 w-9 items-center justify-center rounded-lg bg-subtle text-secondary;
+  }
+  .empty-state {
+    @apply flex min-h-40 flex-col items-center justify-center gap-3 px-6 py-8 text-center text-xs leading-relaxed text-muted;
+  }
+  .empty-state-icon {
+    @apply flex h-11 w-11 items-center justify-center rounded-full border border-edge bg-canvas text-secondary;
+  }
+  .skeleton {
+    @apply animate-pulse rounded-lg bg-emphasis/60;
+  }
+  .table-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    border-radius: inherit;
+  }
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-3 focus:text-on-accent;
+  }
+  .mobile-nav {
+    @apply fixed inset-y-0 left-0 z-50 flex w-[min(300px,85vw)] flex-col border-r border-edge bg-surface shadow-popover;
+  }
+
+  /* A shared visual rhythm for the existing data, settings, and editor pages. */
+  .page-content > div > h2,
+  .page-content > div > div:first-child h2 {
+    @apply text-[26px] font-semibold tracking-[-0.8px];
+  }
+  .page-content
+    :where(.bg-surface.border.rounded-xl, .bg-surface.border.rounded-2xl) {
+    @apply shadow-panel;
+  }
+  .page-content :where(table) {
+    @apply w-full text-[13px];
+    border-collapse: collapse;
+  }
+  .page-content :where(thead) {
+    @apply bg-canvas/70;
+  }
+  .page-content :where(th) {
+    @apply whitespace-nowrap py-3.5 text-[10px] font-semibold uppercase tracking-[0.07em] text-muted;
+  }
+  .page-content :where(td) {
+    @apply py-3.5;
+  }
+  .page-content :where(tbody tr) {
+    transition: background-color 120ms;
+  }
+  .page-content :where(tbody tr:hover) {
+    @apply bg-subtle/50;
+  }
+  .page-content
+    :where(
+      input:not([type='checkbox']):not([type='radio']):not([type='range']):not(
+          [type='file']
+        ),
+      select,
+      textarea
+    ) {
+    @apply rounded-lg border-edge bg-surface;
+  }
+  .page-content
+    :where(
+      input:not([type='checkbox']):not([type='radio']):not([type='range']):not(
+          [type='file']
+        ),
+      select
+    ) {
+    min-height: 38px;
+  }
+  .page-content :where(input:focus, select:focus, textarea:focus) {
+    @apply border-accent;
+  }
+  .page-content :where(.flex > input, .flex > select) {
+    min-width: 0;
+  }
+  .page-content :where(.font-mono) {
+    font-variant-numeric: tabular-nums;
+  }
+  .recharts-default-tooltip {
+    border-radius: 12px !important;
+    background: rgb(var(--surface)) !important;
+    border: 1px solid rgb(var(--border)) !important;
+    color: rgb(var(--text-primary)) !important;
+    box-shadow: 0 8px 32px rgb(15 23 42 / 0.12);
+    font-size: 12px;
+  }
+  .recharts-tooltip-label {
+    color: rgb(var(--text-secondary)) !important;
+  }
+  .recharts-cartesian-axis-tick-value {
+    fill: rgb(var(--text-muted));
+  }
+  .recharts-cartesian-grid line {
+    stroke: rgb(var(--border));
+  }
+  .recharts-tooltip-cursor {
+    stroke: rgb(var(--border-strong));
+  }
+
+  .auth-layout {
+    @apply grid min-h-dvh bg-surface lg:grid-cols-[1.05fr_1fr];
+  }
+  .auth-story {
+    @apply relative hidden min-h-dvh flex-col justify-between overflow-hidden bg-[#102d2c] p-12 text-white lg:flex xl:p-16;
+  }
+  .auth-story-grid {
+    background-image:
+      linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+  .auth-form-area {
+    @apply relative flex min-h-dvh items-center justify-center px-6 py-24;
+  }
+  .auth-input {
+    @apply w-full rounded-lg border border-strong bg-surface px-3.5 py-3 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/15;
+  }
+  .auth-label {
+    @apply mb-2 block text-xs font-medium text-secondary;
+  }
+}
+
+@media (max-width: 639px) {
+  .app-header {
+    height: 60px;
+    padding-inline: 16px;
+    gap: 8px;
+  }
+  .app-main {
+    padding: 22px 16px;
+  }
+  .page-content > div > div:first-child:has(h2) {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .page-content :where(.fixed.inset-0 > .w-full) {
+    max-height: 90dvh;
+    overflow-y: auto;
+    margin-inline: 12px;
+  }
+  .page-content :where(.fixed.right-0) {
+    max-width: 100vw;
+  }
+  .metric-card {
+    min-height: 140px;
+    padding: 16px;
+  }
+  .metric-value {
+    font-size: 26px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -10,10 +10,10 @@ import { CLOUD_PROVIDERS, providerLabel } from '../lib/providers'
 import type { CI } from '../types'
 
 const LIFECYCLE_COLORS: Record<string, string> = {
-  active: 'bg-green-900/40 text-green-300',
-  stopped: 'bg-yellow-900/40 text-yellow-300',
-  terminated: 'bg-red-900/40 text-red-300',
-  unknown: 'bg-gray-700 text-gray-400',
+  active: 'bg-success/10 text-success',
+  stopped: 'bg-warning/10 text-warning',
+  terminated: 'bg-danger/10 text-danger',
+  unknown: 'bg-emphasis text-secondary',
 }
 
 const LIFECYCLE_STATES = ['active', 'stopped', 'terminated', 'unknown']
@@ -317,16 +317,16 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
         aria-hidden="true"
       />
       {/* Drawer */}
-      <div className="fixed right-0 top-0 h-full w-[480px] bg-gray-900 border-l border-gray-800 z-50 overflow-y-auto">
+      <div className="fixed right-0 top-0 h-full w-[480px] bg-surface border-l border-edge z-50 overflow-y-auto">
         {/* Header */}
-        <div className="flex items-start justify-between p-5 border-b border-gray-800 sticky top-0 bg-gray-900">
+        <div className="flex items-start justify-between p-5 border-b border-edge sticky top-0 bg-surface">
           <div>
-            <h2 className="text-lg font-semibold text-white">{ci.display_name || ci.name}</h2>
-            <p className="text-xs text-gray-500 mt-0.5">{ci.name}</p>
+            <h2 className="text-lg font-semibold text-primary">{ci.display_name || ci.name}</h2>
+            <p className="text-xs text-muted mt-0.5">{ci.name}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors text-xl leading-none mt-0.5"
+            className="text-secondary hover:text-primary transition-colors text-xl leading-none mt-0.5"
             aria-label={t('cmdb.closeDrawer')}
           >
             ✕
@@ -346,12 +346,12 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                 {t(`lifecycle.${ci.lifecycle_state}`, { defaultValue: ci.lifecycle_state })}
               </span>
             </div>
-            <div className="flex gap-6 text-sm text-gray-400">
+            <div className="flex gap-6 text-sm text-secondary">
               {ci.cloud_region && (
-                <span>📍 <span className="text-gray-200">{ci.cloud_region}</span></span>
+                <span>📍 <span className="text-primary">{ci.cloud_region}</span></span>
               )}
               {ci.cloud_provider && (
-                <span>☁️ <span className="text-gray-200">{providerLabel(ci.cloud_provider)}</span></span>
+                <span>☁️ <span className="text-primary">{providerLabel(ci.cloud_provider)}</span></span>
               )}
             </div>
           </div>
@@ -359,14 +359,14 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
           {/* Parent (T11) */}
           <section>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('cmdb.parentCi')}</h3>
+              <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider">{t('cmdb.parentCi')}</h3>
               {!editingParent && (
                 <button
                   onClick={() => {
                     setParentDraft(ci.parent_ci_id ?? '')
                     setEditingParent(true)
                   }}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                  className="text-xs text-accent hover:text-accent transition-colors"
                 >
                   {t('common.edit')}
                 </button>
@@ -377,7 +377,7 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                 <select
                   value={parentDraft}
                   onChange={(e) => setParentDraft(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-white"
+                  className="w-full bg-subtle border border-strong rounded px-2 py-1.5 text-xs text-primary"
                 >
                   <option value="">{t('cmdb.noParent')}</option>
                   {candidates.map((c) => (
@@ -388,25 +388,25 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                   <button
                     onClick={() => setParentMutation.mutate(parentDraft)}
                     disabled={setParentMutation.isPending}
-                    className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs rounded transition-colors"
+                    className="flex-1 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent text-xs rounded transition-colors"
                   >
                     {t('common.save')}
                   </button>
                   <button
                     onClick={() => setEditingParent(false)}
-                    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs rounded transition-colors"
+                    className="px-3 py-1.5 bg-emphasis hover:bg-emphasis text-primary text-xs rounded transition-colors"
                   >
                     {t('common.cancel')}
                   </button>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-secondary">
                 {ci.parent_ci_id
                   ? candidates.find((c) => c.id === ci.parent_ci_id)
                     ? (candidates.find((c) => c.id === ci.parent_ci_id) as CI).display_name || (candidates.find((c) => c.id === ci.parent_ci_id) as CI).name
                     : ci.parent_ci_id
-                  : <span className="text-gray-600">{t('cmdb.noParent')}</span>}
+                  : <span className="text-muted">{t('cmdb.noParent')}</span>}
               </p>
             )}
           </section>
@@ -414,20 +414,20 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
           {/* Metadata */}
           {metaEntries.length > 0 && (
             <section>
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t('cmdb.metadata')}</h3>
-              <div className="bg-gray-800/50 rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
+              <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">{t('cmdb.metadata')}</h3>
+              <div className="bg-subtle/50 rounded-lg overflow-hidden">
+                <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                   <tbody>
                     {metaEntries.map(([k, v]) => (
-                      <tr key={k} className="border-b border-gray-700/50 last:border-0">
-                        <td className="px-3 py-2 text-gray-400 font-medium w-1/3">{k}</td>
-                        <td className="px-3 py-2 text-gray-200 break-all">
+                      <tr key={k} className="border-b border-strong/50 last:border-0">
+                        <td className="px-3 py-2 text-secondary font-medium w-1/3">{k}</td>
+                        <td className="px-3 py-2 text-primary break-all">
                           {typeof v === 'object' ? JSON.stringify(v) : String(v)}
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </div>
             </section>
           )}
@@ -435,14 +435,14 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
           {/* Tags */}
           <section>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {t('cmdb.tags')} {tagEntries.length > 0 && <span className="text-gray-600">({tagEntries.length})</span>}
+              <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider">
+                {t('cmdb.tags')} {tagEntries.length > 0 && <span className="text-muted">({tagEntries.length})</span>}
               </h3>
               {!editingTags && (
                 <button
                   onClick={startTagEdit}
                   data-testid="ci-tags-edit"
-                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                  className="text-xs text-accent hover:text-accent transition-colors"
                 >
                   {t('common.edit')}
                 </button>
@@ -459,23 +459,23 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                         onChange={(e) => updateTagRow(idx, 'key', e.target.value)}
                         placeholder="key"
                         aria-label={t('cmdb.tagKeyAria', { n: idx + 1 })}
-                        className="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="flex-1 min-w-0 bg-subtle border border-strong rounded px-2 py-1 text-xs text-primary font-mono focus:outline-none focus:ring-1 focus:ring-accent"
                       />
-                      <span className="text-gray-600 text-xs">=</span>
+                      <span className="text-muted text-xs">=</span>
                       <input
                         type="text"
                         value={row.value}
                         onChange={(e) => updateTagRow(idx, 'value', e.target.value)}
                         placeholder="value"
                         aria-label={t('cmdb.tagValueAria', { n: idx + 1 })}
-                        className="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="flex-1 min-w-0 bg-subtle border border-strong rounded px-2 py-1 text-xs text-primary font-mono focus:outline-none focus:ring-1 focus:ring-accent"
                       />
                       <button
                         type="button"
                         onClick={() => removeTagRow(idx)}
                         disabled={patchTags.isPending}
                         aria-label={t('cmdb.tagRemoveAria', { n: idx + 1 })}
-                        className="text-gray-500 hover:text-red-400 disabled:opacity-30 transition-colors text-base leading-none px-1"
+                        className="text-muted hover:text-danger disabled:opacity-30 transition-colors text-base leading-none px-1"
                       >
                         ×
                       </button>
@@ -486,37 +486,37 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                   type="button"
                   onClick={addTagRow}
                   disabled={patchTags.isPending}
-                  className="w-full py-1 text-xs text-indigo-400 hover:text-indigo-300 disabled:opacity-40 border border-dashed border-gray-700 rounded transition-colors"
+                  className="w-full py-1 text-xs text-accent hover:text-accent disabled:opacity-40 border border-dashed border-strong rounded transition-colors"
                 >
                   {t('cmdb.addTag')}
                 </button>
                 {tagError && (
-                  <p className="text-xs text-red-400" data-testid="ci-tags-error">{tagError}</p>
+                  <p className="text-xs text-danger" data-testid="ci-tags-error">{tagError}</p>
                 )}
                 <div className="flex gap-2">
                   <button
                     onClick={handleSaveTags}
                     disabled={patchTags.isPending}
                     data-testid="ci-tags-save"
-                    className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs rounded transition-colors"
+                    className="flex-1 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent text-xs rounded transition-colors"
                   >
                     {patchTags.isPending ? t('cmdb.savingTags') : t('common.save')}
                   </button>
                   <button
                     onClick={cancelTagEdit}
                     disabled={patchTags.isPending}
-                    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-gray-200 text-xs rounded transition-colors"
+                    className="px-3 py-1.5 bg-emphasis hover:bg-emphasis disabled:opacity-40 text-primary text-xs rounded transition-colors"
                   >
                     {t('common.cancel')}
                   </button>
                 </div>
               </div>
             ) : tagEntries.length === 0 ? (
-              <p className="text-gray-600 text-sm">{t('cmdb.noTags')}</p>
+              <p className="text-muted text-sm">{t('cmdb.noTags')}</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {tagEntries.map(([k, v]) => (
-                  <span key={k} className="px-2 py-0.5 bg-gray-700 text-gray-300 text-xs rounded">
+                  <span key={k} className="px-2 py-0.5 bg-emphasis text-secondary text-xs rounded">
                     {k}={v}
                   </span>
                 ))}
@@ -527,12 +527,12 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
           {/* Associations */}
           <section>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {t('cmdb.associations')} {associations.length > 0 && <span className="text-gray-600">({associations.length})</span>}
+              <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider">
+                {t('cmdb.associations')} {associations.length > 0 && <span className="text-muted">({associations.length})</span>}
               </h3>
               <button
                 onClick={() => { setShowAddAssoc(v => !v); setAssocError('') }}
-                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                className="text-xs text-accent hover:text-accent transition-colors"
               >
                 {showAddAssoc ? `✕ ${t('common.cancel')}` : t('cmdb.linkCi')}
               </button>
@@ -540,11 +540,11 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
 
             {/* Add association form */}
             {showAddAssoc && (
-              <div className="bg-gray-800/70 rounded-lg p-3 mb-3 space-y-2">
+              <div className="bg-subtle/70 rounded-lg p-3 mb-3 space-y-2">
                 <select
                   value={assocKindId}
                   onChange={e => setAssocKindId(e.target.value)}
-                  className="w-full bg-gray-700 text-gray-200 text-xs rounded px-2 py-1.5 border border-gray-600 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-emphasis text-primary text-xs rounded px-2 py-1.5 border border-strong focus:outline-none focus:border-accent"
                 >
                   <option value="">{t('cmdb.selectAssocType')}</option>
                   {objAssocs.map(a => (
@@ -556,18 +556,18 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                 <select
                   value={assocDstId}
                   onChange={e => setAssocDstId(e.target.value)}
-                  className="w-full bg-gray-700 text-gray-200 text-xs rounded px-2 py-1.5 border border-gray-600 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-emphasis text-primary text-xs rounded px-2 py-1.5 border border-strong focus:outline-none focus:border-accent"
                 >
                   <option value="">{t('cmdb.selectTargetCi')}</option>
                   {dstCIs.map(c => (
                     <option key={c.id} value={c.id}>{c.display_name || c.name}</option>
                   ))}
                 </select>
-                {assocError && <p className="text-xs text-red-400">{assocError}</p>}
+                {assocError && <p className="text-xs text-danger">{assocError}</p>}
                 <button
                   onClick={() => linkMutation.mutate()}
                   disabled={!assocKindId || !assocDstId || linkMutation.isPending}
-                  className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs rounded transition-colors"
+                  className="w-full py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent text-xs rounded transition-colors"
                 >
                   {linkMutation.isPending ? t('cmdb.linking') : t('cmdb.link')}
                 </button>
@@ -575,12 +575,12 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
             )}
 
             {associations.length === 0 ? (
-              <p className="text-gray-600 text-sm">{t('cmdb.noAssociations')}</p>
+              <p className="text-muted text-sm">{t('cmdb.noAssociations')}</p>
             ) : (
-              <div className="bg-gray-800/50 rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="bg-subtle/50 rounded-lg overflow-hidden">
+                <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                   <thead>
-                    <tr className="text-gray-500 text-xs border-b border-gray-700">
+                    <tr className="text-muted text-xs border-b border-strong">
                       <th className="px-3 py-2 text-left">{t('cmdb.colCi')}</th>
                       <th className="px-3 py-2 text-left">{t('cmdb.colType')}</th>
                       <th className="px-3 py-2 text-left">{t('cmdb.colDir')}</th>
@@ -588,47 +588,47 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                   </thead>
                   <tbody>
                     {associations.map((a) => (
-                      <tr key={a.id} className="border-b border-gray-700/50 last:border-0">
-                        <td className="px-3 py-2 text-gray-200 font-medium">{a.name}</td>
-                        <td className="px-3 py-2 text-gray-400">{a.ci_type ?? '—'}</td>
+                      <tr key={a.id} className="border-b border-strong/50 last:border-0">
+                        <td className="px-3 py-2 text-primary font-medium">{a.name}</td>
+                        <td className="px-3 py-2 text-secondary">{a.ci_type ?? '—'}</td>
                         <td className="px-3 py-2">
-                          <span className={`text-xs ${a.direction === 'outgoing' ? 'text-blue-400' : 'text-purple-400'}`}>
+                          <span className={`text-xs ${a.direction === 'outgoing' ? 'text-info' : 'text-violet'}`}>
                             {a.direction}
                           </span>
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </div>
             )}
           </section>
 
           {/* History */}
           <section>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t('cmdb.recentHistory')}</h3>
+            <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">{t('cmdb.recentHistory')}</h3>
             {history.length === 0 ? (
-              <p className="text-gray-600 text-sm">{t('cmdb.noHistory')}</p>
+              <p className="text-muted text-sm">{t('cmdb.noHistory')}</p>
             ) : (
               <div className="space-y-2">
                 {history.map((entry) => {
                   const changedFields = entry.update_fields ?? []
                   return (
-                    <div key={entry.id} className="bg-gray-800/50 rounded-lg px-3 py-2.5">
+                    <div key={entry.id} className="bg-subtle/50 rounded-lg px-3 py-2.5">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-gray-300 capitalize">{entry.action}</span>
-                        <span className="text-xs text-gray-600">{formatRelativeTime(entry.created_at, t)}</span>
+                        <span className="text-xs font-medium text-secondary capitalize">{entry.action}</span>
+                        <span className="text-xs text-muted">{formatRelativeTime(entry.created_at, t)}</span>
                       </div>
                       {changedFields.length > 0 && (
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-muted">
                           {t('cmdb.fields')} {changedFields.map((f) => {
                             const oldVal = entry.pre_data?.[f]
                             const newVal = entry.cur_data?.[f]
                             return (
                               <span key={f} className="mr-2">
-                                <span className="text-gray-400">{f}</span>
+                                <span className="text-secondary">{f}</span>
                                 {oldVal != null && newVal != null && (
-                                  <span> <span className="text-red-400/70">{String(oldVal)}</span>→<span className="text-green-400/70">{String(newVal)}</span></span>
+                                  <span> <span className="text-danger/70">{String(oldVal)}</span>→<span className="text-success/70">{String(newVal)}</span></span>
                                 )}
                               </span>
                             )
@@ -636,7 +636,7 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                         </div>
                       )}
                       {entry.operate_from && (
-                        <span className="text-xs text-gray-600">{t('cmdb.via', { source: entry.operate_from })}</span>
+                        <span className="text-xs text-muted">{t('cmdb.via', { source: entry.operate_from })}</span>
                       )}
                     </div>
                   )
@@ -648,7 +648,7 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
           <button
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
-            className="w-full py-2 mt-2 bg-red-900/40 hover:bg-red-800/50 disabled:opacity-40 text-red-300 text-xs font-medium rounded transition-colors"
+            className="w-full py-2 mt-2 bg-danger/10 hover:bg-danger/10 disabled:opacity-40 text-danger text-xs font-medium rounded transition-colors"
           >
             {deleteMutation.isPending ? t('cmdb.deleting') : t('cmdb.deleteCi')}
           </button>
@@ -855,26 +855,26 @@ export default function CMDB() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('cmdb.title')}</h2>
+        <h2 className="page-title">{t('cmdb.title')}</h2>
         <div className="flex items-center gap-3">
           <button
             onClick={() => discoveryMutation.mutate()}
             disabled={discoveryMutation.isPending}
             data-testid="cmdb-trigger-discovery"
-            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-200 text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-subtle hover:bg-emphasis disabled:opacity-50 text-primary text-sm font-medium rounded-lg transition-colors"
           >
             {discoveryMutation.isPending ? t('cmdb.discoveryTriggering') : t('cmdb.triggerDiscovery')}
           </button>
           <button
             onClick={exportCsv}
             data-testid="cmdb-export-csv"
-            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-subtle hover:bg-emphasis text-primary text-sm font-medium rounded-lg transition-colors"
           >
             {t('cmdb.exportCsv')}
           </button>
           <button
             onClick={() => setShowForm((v) => !v)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
           >
             {showForm ? t('common.cancel') : t('cmdb.newCi')}
           </button>
@@ -882,44 +882,44 @@ export default function CMDB() {
       </div>
 
       {discoveryMessage && (
-        <div className="mb-4 p-3 rounded-lg bg-green-900/40 border border-green-700 text-green-300 text-sm" data-testid="cmdb-discovery-message">
+        <div className="mb-4 p-3 rounded-lg bg-success/10 border border-success/25 text-success text-sm" data-testid="cmdb-discovery-message">
           {discoveryMessage}
         </div>
       )}
 
       {/* Create CI form */}
       {showForm && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
-          <h3 className="text-sm font-semibold text-gray-200 mb-4">{t('cmdb.newCiTitle')}</h3>
+        <div className="bg-surface border border-edge rounded-xl p-5 mb-6">
+          <h3 className="text-sm font-semibold text-primary mb-4">{t('cmdb.newCiTitle')}</h3>
           {formError && (
-            <div className="mb-3 p-2 rounded bg-red-900/40 border border-red-700 text-red-300 text-sm">{formError}</div>
+            <div className="mb-3 p-2 rounded bg-danger/10 border border-danger/25 text-danger text-sm">{formError}</div>
           )}
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('common.name')} *</label>
+              <label className="block text-xs text-secondary mb-1">{t('common.name')} *</label>
               <input
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="i-1234567890"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('cmdb.displayName')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('cmdb.displayName')}</label>
               <input
                 value={form.display_name}
                 onChange={(e) => setForm({ ...form, display_name: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="Web Server"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('cmdb.ciType')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('cmdb.ciType')}</label>
               <select
                 value={form.ci_type_id}
                 onChange={(e) => setForm({ ...form, ci_type_id: e.target.value, meta: {} })}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
               >
                 <option value="">{t('cmdb.selectType')}</option>
                 {ciTypes.map((t) => (
@@ -928,11 +928,11 @@ export default function CMDB() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('cmdb.provider')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('cmdb.provider')}</label>
               <select
                 value={form.cloud_provider}
                 onChange={(e) => setForm({ ...form, cloud_provider: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
               >
                 {CLOUD_PROVIDERS.map((p) => (
                   <option key={p} value={p}>{providerLabel(p)}</option>
@@ -940,24 +940,24 @@ export default function CMDB() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('cmdb.region')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('cmdb.region')}</label>
               <input
                 value={form.cloud_region}
                 onChange={(e) => setForm({ ...form, cloud_region: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="us-east-1"
               />
             </div>
             {typeAttrs.map((attr) => (
               <div key={attr.id}>
-                <label className="block text-xs text-gray-400 mb-1">
+                <label className="block text-xs text-secondary mb-1">
                   {attr.display_name || attr.name}
                   {attr.is_required ? ' *' : ''}
                 </label>
                 <input
                   value={form.meta[attr.name] ?? ''}
                   onChange={(e) => setForm({ ...form, meta: { ...form.meta, [attr.name]: e.target.value } })}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder={attr.name}
                 />
               </div>
@@ -966,7 +966,7 @@ export default function CMDB() {
               <button
                 type="submit"
                 disabled={createMutation.isPending}
-                className="w-full px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+                className="w-full px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm font-medium rounded-lg transition-colors"
               >
                 {createMutation.isPending ? t('cmdb.creating') : t('cmdb.createCi')}
               </button>
@@ -976,13 +976,13 @@ export default function CMDB() {
       )}
 
       {isError && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           {t('cmdb.loadFailed')}
         </div>
       )}
 
       {actionError && (
-        <div className="mb-4 p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">
           {actionError}
         </div>
       )}
@@ -994,12 +994,12 @@ export default function CMDB() {
           placeholder={t('cmdb.searchPlaceholderFull')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-[160px] max-w-xs px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex-1 min-w-[160px] max-w-xs px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent"
         />
         <select
           value={providerFilter}
           onChange={(e) => setProviderFilter(e.target.value)}
-          className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         >
           <option value="">{t('cmdb.allProviders')}</option>
           {CLOUD_PROVIDERS.map((p) => (
@@ -1009,7 +1009,7 @@ export default function CMDB() {
         <select
           value={lifecycleFilter}
           onChange={(e) => setLifecycleFilter(e.target.value)}
-          className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         >
           <option value="">{t('cmdb.allStates')}</option>
           {LIFECYCLE_STATES.map((s) => (
@@ -1020,12 +1020,12 @@ export default function CMDB() {
 
       {/* 变更动态 (T6) */}
       {recentEvents.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-5">
+        <div className="bg-surface border border-edge rounded-xl p-4 mb-5">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider">
               {t('cmdb.recentChanges')}
             </h3>
-            <span className="text-xs text-gray-600">{t('cmdb.recentChangesHint')}</span>
+            <span className="text-xs text-muted">{t('cmdb.recentChangesHint')}</span>
           </div>
           <div className="space-y-1" data-testid="cmdb-events-card">
             {recentEvents.slice(0, 6).map((ev) => (
@@ -1033,18 +1033,18 @@ export default function CMDB() {
                 <span
                   className={`px-1.5 py-0.5 rounded font-medium whitespace-nowrap ${
                     ev.event_type === 'ci.created'
-                      ? 'bg-green-900/40 text-green-300'
+                      ? 'bg-success/10 text-success'
                       : ev.event_type === 'ci.deleted'
-                        ? 'bg-red-900/40 text-red-300'
+                        ? 'bg-danger/10 text-danger'
                         : ev.event_type === 'ci.lifecycle_changed'
-                          ? 'bg-purple-900/40 text-purple-300'
-                          : 'bg-blue-900/40 text-blue-300'
+                          ? 'bg-violet/10 text-violet'
+                          : 'bg-info/10 text-info'
                   }`}
                 >
                   {t(`cmdb.eventType.${ev.event_type}`, { defaultValue: ev.event_type })}
                 </span>
-                <span className="text-gray-200 truncate">{ev.ci_name ?? ev.ci_id}</span>
-                <span className="text-gray-600 ml-auto whitespace-nowrap">{formatRelativeTime(ev.created_at, t)}</span>
+                <span className="text-primary truncate">{ev.ci_name ?? ev.ci_id}</span>
+                <span className="text-muted ml-auto whitespace-nowrap">{formatRelativeTime(ev.created_at, t)}</span>
               </div>
             ))}
           </div>
@@ -1053,11 +1053,11 @@ export default function CMDB() {
 
       {/* Batch toolbar (T9) */}
       {selectedIds.size > 0 && (
-        <div className="mb-4 p-3 rounded-lg bg-indigo-950/40 border border-indigo-800 flex flex-wrap items-center gap-3" data-testid="cmdb-batch-bar">
-          <span className="text-sm text-indigo-200">{t('cmdb.selectedCount', { count: selectedIds.size })}</span>
+        <div className="mb-4 p-3 rounded-lg bg-accent-soft/40 border border-accent flex flex-wrap items-center gap-3" data-testid="cmdb-batch-bar">
+          <span className="text-sm text-accent">{t('cmdb.selectedCount', { count: selectedIds.size })}</span>
           <button
             onClick={() => setShowBulkModal(true)}
-            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs rounded-lg transition-colors"
+            className="px-3 py-1.5 bg-subtle hover:bg-emphasis text-primary text-xs rounded-lg transition-colors"
           >
             {t('cmdb.editTags', { count: selectedIds.size })}
           </button>
@@ -1069,7 +1069,7 @@ export default function CMDB() {
                 setBatchLifecycle('')
               }
             }}
-            className="px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-gray-300 text-xs focus:outline-none"
+            className="px-2 py-1.5 bg-subtle border border-strong rounded text-secondary text-xs focus:outline-none"
           >
             <option value="">{t('cmdb.batchLifecycle')}</option>
             {LIFECYCLE_STATES.filter((st) => st !== 'unknown').map((st) => (
@@ -1082,13 +1082,13 @@ export default function CMDB() {
                 batchDeleteMutation.mutate()
               }
             }}
-            className="px-3 py-1.5 bg-red-900/40 hover:bg-red-800/50 text-red-300 text-xs rounded-lg transition-colors"
+            className="px-3 py-1.5 bg-danger/10 hover:bg-danger/10 text-danger text-xs rounded-lg transition-colors"
           >
             {t('cmdb.batchDelete')}
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
-            className="text-xs text-gray-400 hover:text-gray-200 ml-auto"
+            className="text-xs text-secondary hover:text-primary ml-auto"
           >
             {t('cmdb.clearSelection')}
           </button>
@@ -1096,20 +1096,20 @@ export default function CMDB() {
       )}
 
       {batchMessage && (
-        <div className="mb-4 p-3 rounded-lg bg-blue-900/40 border border-blue-700 text-blue-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-info/10 border border-info/25 text-info text-sm">
           {batchMessage}
         </div>
       )}
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-surface border border-edge rounded-xl overflow-hidden">
+        <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-800 text-gray-400 text-left">
+            <tr className="border-b border-edge text-secondary text-left">
               <th className="px-2 py-3 w-8">
                 {selectedIds.size > 0 && (
                   <button
                     onClick={() => setShowBulkModal(true)}
-                    className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded transition-colors"
+                    className="px-2 py-1 bg-accent hover:bg-accent-hover text-on-accent text-xs rounded transition-colors"
                   >
                     {t('cmdb.editTags', { count: selectedIds.size })}
                   </button>
@@ -1126,18 +1126,18 @@ export default function CMDB() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">{t('common.loading')}</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-muted">{t('common.loading')}</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">{t('cmdb.noCis')}</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-muted">{t('cmdb.noCis')}</td>
               </tr>
             ) : (
               filtered.map((ci) => (
                 <tr
                   key={ci.id}
-                  className={`border-b border-gray-800 hover:bg-gray-800/50 transition-colors cursor-pointer ${
-                    selectedIds.has(ci.id) ? 'bg-indigo-900/20' : ''
+                  className={`border-b border-edge hover:bg-subtle/50 transition-colors cursor-pointer ${
+                    selectedIds.has(ci.id) ? 'bg-accent-soft/20' : ''
                   }`}
                   onClick={() => setSelectedCi(ci)}
                 >
@@ -1153,15 +1153,15 @@ export default function CMDB() {
                           return next
                         })
                       }
-                      className="rounded border-gray-600 bg-gray-800 text-indigo-500"
+                      className="rounded border-strong bg-subtle text-accent"
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-white">{ci.display_name || ci.name}</p>
-                    <p className="text-xs text-gray-500">{ci.name}</p>
+                    <p className="font-medium text-primary">{ci.display_name || ci.name}</p>
+                    <p className="text-xs text-muted">{ci.name}</p>
                   </td>
-                  <td className="px-4 py-3 text-gray-300 text-xs font-medium">{providerLabel(ci.cloud_provider)}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{ci.cloud_region}</td>
+                  <td className="px-4 py-3 text-secondary text-xs font-medium">{providerLabel(ci.cloud_provider)}</td>
+                  <td className="px-4 py-3 text-secondary text-xs">{ci.cloud_region}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${LIFECYCLE_COLORS[ci.lifecycle_state] ?? LIFECYCLE_COLORS.unknown}`}>
                       {t(`lifecycle.${ci.lifecycle_state}`, { defaultValue: ci.lifecycle_state })}
@@ -1170,12 +1170,12 @@ export default function CMDB() {
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {Object.entries(ci.tags ?? {}).slice(0, 3).map(([k, v]) => (
-                        <span key={k} className="px-1.5 py-0.5 bg-gray-700 text-gray-300 text-xs rounded">
+                        <span key={k} className="px-1.5 py-0.5 bg-emphasis text-secondary text-xs rounded">
                           {k}={v}
                         </span>
                       ))}
                       {Object.keys(ci.tags ?? {}).length > 3 && (
-                        <span className="text-xs text-gray-500">+{Object.keys(ci.tags).length - 3}</span>
+                        <span className="text-xs text-muted">+{Object.keys(ci.tags).length - 3}</span>
                       )}
                     </div>
                   </td>
@@ -1190,7 +1190,7 @@ export default function CMDB() {
                             e.target.value = ''
                           }
                         }}
-                        className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-gray-300 text-xs focus:outline-none"
+                        className="px-2 py-1 bg-subtle border border-strong rounded text-secondary text-xs focus:outline-none"
                       >
                         <option value="" disabled>{t('cmdb.transition')}</option>
                         {legalSuccessors(ci.lifecycle_state).map((s) => (
@@ -1198,14 +1198,14 @@ export default function CMDB() {
                         ))}
                       </select>
                     ) : (
-                      <span className="text-xs text-gray-600">{t('cmdb.terminalState')}</span>
+                      <span className="text-xs text-muted">{t('cmdb.terminalState')}</span>
                     )}
                   </td>
                 </tr>
               ))
             )}
           </tbody>
-        </table>
+        </table></div>
         {total > 0 && (
           <PaginationBar
             page={page}
@@ -1221,19 +1221,19 @@ export default function CMDB() {
       {/* CI Detail Drawer */}
       {showBulkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowBulkModal(false)}>
-          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-white mb-2">{t('cmdb.editTagsTitle', { count: selectedIds.size })}</h3>
+          <div className="bg-surface border border-strong rounded-xl p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-primary mb-2">{t('cmdb.editTagsTitle', { count: selectedIds.size })}</h3>
             <textarea
               value={bulkTagsText}
               onChange={(e) => setBulkTagsText(e.target.value)}
               rows={6}
               placeholder={'{"env": "prod", "team": "platform"}'}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent"
             />
-            {bulkMessage && <p className="text-xs text-yellow-300 mt-2">{bulkMessage}</p>}
+            {bulkMessage && <p className="text-xs text-warning mt-2">{bulkMessage}</p>}
             <div className="flex justify-end gap-3 mt-4">
-              <button onClick={() => setShowBulkModal(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200">{t('common.cancel')}</button>
-              <button onClick={applyBulkTags} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg">{t('cmdb.applyToAll')}</button>
+              <button onClick={() => setShowBulkModal(false)} className="px-4 py-2 text-sm text-secondary hover:text-primary">{t('common.cancel')}</button>
+              <button onClick={applyBulkTags} className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg">{t('cmdb.applyToAll')}</button>
             </div>
           </div>
         </div>

@@ -54,26 +54,26 @@ const CHANNEL_OPTIONS = [
 function ChannelBadge({ channel }: { channel: string }) {
   const color =
     channel === 'slack'
-      ? 'bg-green-900/40 text-green-300'
+      ? 'bg-success/10 text-success'
       : channel === 'teams'
-        ? 'bg-purple-900/40 text-purple-300'
+        ? 'bg-violet/10 text-violet'
         : channel === 'pagerduty'
-          ? 'bg-orange-900/40 text-orange-300'
+          ? 'bg-warning/10 text-warning'
           : channel === 'email'
-            ? 'bg-blue-900/40 text-blue-300'
-            : 'bg-gray-800 text-gray-400'
+            ? 'bg-info/10 text-info'
+            : 'bg-subtle text-secondary'
   return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>{channel}</span>
 }
 
 function EventBadge({ event }: { event: string }) {
   const color =
     event === 'budget.exceeded'
-      ? 'bg-red-900/40 text-red-300'
+      ? 'bg-danger/10 text-danger'
       : event === 'anomaly.detected'
-        ? 'bg-yellow-900/40 text-yellow-300'
+        ? 'bg-warning/10 text-warning'
         : event === 'recommendation.created'
-          ? 'bg-green-900/40 text-green-300'
-          : 'bg-blue-900/40 text-blue-300'
+          ? 'bg-success/10 text-success'
+          : 'bg-info/10 text-info'
   return (
     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
       {event}
@@ -85,12 +85,12 @@ function StatusBadge({ status }: { status: string }) {
   const { t } = useTranslation()
   const cls =
     status === 'delivered'
-      ? 'bg-green-900/40 text-green-300'
+      ? 'bg-success/10 text-success'
       : status === 'failed'
-        ? 'bg-red-900/40 text-red-300'
+        ? 'bg-danger/10 text-danger'
         : status === 'pending'
-          ? 'bg-yellow-900/40 text-yellow-300'
-          : 'bg-gray-800 text-gray-400'
+          ? 'bg-warning/10 text-warning'
+          : 'bg-subtle text-secondary'
   return (
     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>
       {t(`status.${status}`, { defaultValue: status })}
@@ -226,29 +226,29 @@ export default function Webhooks() {
   }
 
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('webhooks.title')}</h2>
+        <h2 className="page-title">{t('webhooks.title')}</h2>
         <button
           onClick={openCreate}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
         >
           {t('webhooks.newWebhook')}
         </button>
       </div>
 
-      <div className="flex gap-1 mb-4 border-b border-gray-800">
+      <div className="flex gap-1 mb-4 border-b border-edge">
         {(['webhooks', 'events'] as const).map((tabKey) => (
           <button
             key={tabKey}
             onClick={() => setTab(tabKey)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               tab === tabKey
-                ? 'border-indigo-500 text-white'
-                : 'border-transparent text-gray-500 hover:text-gray-300'
+                ? 'border-accent text-primary'
+                : 'border-transparent text-muted hover:text-secondary'
             }`}
           >
             {tabKey === 'webhooks' ? t('webhooks.tabEndpoints') : t('webhooks.tabDeliveryLog')}
@@ -259,21 +259,21 @@ export default function Webhooks() {
       {tab === 'webhooks' ? (
         <>
           {isError && (
-            <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+            <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
               {t('webhooks.loadFailed')}
             </div>
           )}
 
           {isLoading ? (
-            <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+            <div className="text-muted text-sm">{t('common.loading')}</div>
           ) : webhooks.length === 0 ? (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-8 text-center text-gray-500 text-sm">
+            <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
               {t('webhooks.empty')}
             </div>
           ) : (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+            <div className="bg-surface border border-edge rounded-xl overflow-hidden">
+              <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+                <thead className="border-b border-edge text-xs uppercase text-muted">
                   <tr>
                     <th className="px-4 py-3 font-medium">{t('common.name')}</th>
                     <th className="px-4 py-3 font-medium">{t('webhooks.colUrl')}</th>
@@ -286,9 +286,9 @@ export default function Webhooks() {
                 </thead>
                 <tbody>
                   {webhooks.map((hook) => (
-                    <tr key={hook.id} className="border-b border-gray-700 last:border-0 hover:bg-gray-800/40 transition-colors">
-                      <td className="px-4 py-3 text-sm text-white">{hook.name}</td>
-                      <td className="px-4 py-3 text-sm font-mono text-gray-400 max-w-[240px] truncate">{hook.url}</td>
+                    <tr key={hook.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                      <td className="px-4 py-3 text-sm text-primary">{hook.name}</td>
+                      <td className="px-4 py-3 text-sm font-mono text-secondary max-w-[240px] truncate">{hook.url}</td>
                       <td className="px-4 py-3">
                         <ChannelBadge channel={hook.channel ?? 'generic'} />
                       </td>
@@ -305,23 +305,23 @@ export default function Webhooks() {
                             toggleMutation.mutate({ id: hook.id, is_active: !hook.is_active })
                           }
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                            hook.is_active ? 'bg-green-600' : 'bg-gray-700'
+                            hook.is_active ? 'bg-success-solid' : 'bg-emphasis'
                           }`}
                           title={hook.is_active ? t('webhooks.toggleDeactivate') : t('webhooks.toggleActivate')}
                         >
                           <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-surface transition-transform ${
                               hook.is_active ? 'translate-x-[18px]' : 'translate-x-[3px]'
                             }`}
                           />
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">
+                      <td className="px-4 py-3 text-xs text-muted">
                         {hook.last_triggered_at ? (
                           <>
                             <div>{new Date(hook.last_triggered_at).toLocaleString()}</div>
                             {hook.last_status !== null && (
-                              <div className="mt-0.5 font-mono text-gray-400">HTTP {hook.last_status}</div>
+                              <div className="mt-0.5 font-mono text-secondary">HTTP {hook.last_status}</div>
                             )}
                           </>
                         ) : (
@@ -332,7 +332,7 @@ export default function Webhooks() {
                         <div className="flex items-center gap-3 text-xs">
                           <button
                             onClick={() => openEdit(hook)}
-                            className="text-indigo-400 hover:text-indigo-300"
+                            className="text-accent hover:text-accent"
                           >
                             {t('common.edit')}
                           </button>
@@ -342,7 +342,7 @@ export default function Webhooks() {
                                 deleteMutation.mutate(hook.id)
                               }
                             }}
-                            className="text-red-400 hover:text-red-300"
+                            className="text-danger hover:text-danger"
                           >
                             {t('common.delete')}
                           </button>
@@ -351,7 +351,7 @@ export default function Webhooks() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
               <PaginationBar
                 page={page}
                 totalPages={totalPages}
@@ -366,15 +366,15 @@ export default function Webhooks() {
       ) : (
         <>
           {eventsLoading ? (
-            <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+            <div className="text-muted text-sm">{t('common.loading')}</div>
           ) : events.length === 0 ? (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-8 text-center text-gray-500 text-sm">
+            <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
               {t('webhooks.noEvents')}
             </div>
           ) : (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+            <div className="bg-surface border border-edge rounded-xl overflow-hidden">
+              <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+                <thead className="border-b border-edge text-xs uppercase text-muted">
                   <tr>
                     <th className="px-4 py-3 font-medium">{t('webhooks.colWebhook')}</th>
                     <th className="px-4 py-3 font-medium">{t('webhooks.colEvent')}</th>
@@ -387,28 +387,28 @@ export default function Webhooks() {
                 </thead>
                 <tbody>
                   {events.map((ev) => (
-                    <tr key={ev.id} className="border-b border-gray-700 last:border-0 hover:bg-gray-800/40 transition-colors">
-                      <td className="px-4 py-3 text-sm text-white">{ev.webhook_name}</td>
+                    <tr key={ev.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                      <td className="px-4 py-3 text-sm text-primary">{ev.webhook_name}</td>
                       <td className="px-4 py-3">
                         <EventBadge event={ev.event_type} />
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge status={ev.status} />
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-400">{ev.attempts}</td>
-                      <td className="px-4 py-3 text-sm font-mono text-gray-400">
+                      <td className="px-4 py-3 text-sm text-secondary">{ev.attempts}</td>
+                      <td className="px-4 py-3 text-sm font-mono text-secondary">
                         {ev.response_status ?? '—'}
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">
+                      <td className="px-4 py-3 text-xs text-muted">
                         {new Date(ev.created_at).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">
+                      <td className="px-4 py-3 text-xs text-muted">
                         {ev.delivered_at ? new Date(ev.delivered_at).toLocaleString() : '—'}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
               <PaginationBar
                 page={eventsPage}
                 totalPages={eventsTotalPages}
@@ -425,15 +425,15 @@ export default function Webhooks() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={closeModal}>
           <div
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">
+            <h3 className="text-lg font-semibold text-primary mb-4">
               {editingId ? t('webhooks.editTitle') : t('webhooks.newTitle')}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('common.name')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -442,7 +442,7 @@ export default function Webhooks() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('webhooks.endpointUrl')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('webhooks.endpointUrl')}</label>
                 <input
                   value={form.url}
                   onChange={(e) => setForm({ ...form, url: e.target.value })}
@@ -454,11 +454,11 @@ export default function Webhooks() {
                   }
                 />
                 {form.channel === 'email' && (
-                  <p className="text-xs text-gray-600 mt-1">{t('webhooks.emailHint')}</p>
+                  <p className="text-xs text-muted mt-1">{t('webhooks.emailHint')}</p>
                 )}
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('webhooks.colChannel')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('webhooks.colChannel')}</label>
                 <select
                   value={form.channel}
                   onChange={(e) => setForm({ ...form, channel: e.target.value })}
@@ -472,15 +472,15 @@ export default function Webhooks() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-2">{t('webhooks.colEvents')}</label>
+                <label className="block text-xs font-medium text-secondary mb-2">{t('webhooks.colEvents')}</label>
                 <div className="space-y-2">
                   {EVENT_OPTIONS.map((ev) => (
-                    <label key={ev} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                    <label key={ev} className="flex items-center gap-2 text-sm text-secondary cursor-pointer">
                       <input
                         type="checkbox"
                         checked={form.events.includes(ev)}
                         onChange={() => toggleEvent(ev)}
-                        className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                        className="rounded border-strong bg-subtle text-accent focus:ring-accent"
                       />
                       {ev}
                     </label>
@@ -488,8 +488,8 @@ export default function Webhooks() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">
-                  {t('webhooks.secret')} {editingId && <span className="text-gray-600">{t('webhooks.secretKeepCurrent')}</span>}
+                <label className="block text-xs font-medium text-secondary mb-1">
+                  {t('webhooks.secret')} {editingId && <span className="text-muted">{t('webhooks.secretKeepCurrent')}</span>}
                 </label>
                 <input
                   type="password"
@@ -500,7 +500,7 @@ export default function Webhooks() {
                 />
               </div>
               {formError && (
-                <div className="p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">
                   {formError}
                 </div>
               )}
@@ -508,14 +508,14 @@ export default function Webhooks() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {editingId ? t('webhooks.saveChanges') : t('webhooks.createWebhook')}
                 </button>

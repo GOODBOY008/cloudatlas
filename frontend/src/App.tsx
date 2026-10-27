@@ -1,8 +1,9 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { auth } from './lib/auth'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
+import { useThemeStore } from './store/themeStore'
 import Login from './pages/Login'
 
 // Pages are lazy-loaded so each route ships in its own chunk.
@@ -66,10 +67,16 @@ function RedirectIfAuth({ children }: { children: React.ReactNode }) {
 }
 
 function PageFallback() {
-  return <div className="p-6 text-gray-500 text-sm">Loading…</div>
+  return <div className="space-y-5 p-6" role="status" aria-label="Loading"><div className="skeleton h-8 w-48" /><div className="grid grid-cols-2 gap-4"><div className="skeleton h-32" /><div className="skeleton h-32" /></div><div className="skeleton h-64" /></div>
 }
 
 export default function App() {
+  const theme = useThemeStore((state) => state.theme)
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0f1620' : '#f6f8fa')
+  }, [theme])
+
   return (
     <Suspense fallback={<PageFallback />}>
       <Routes>

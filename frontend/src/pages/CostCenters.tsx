@@ -70,50 +70,50 @@ function CostCenterRow({
   return (
     <>
       <div
-        className="flex items-center justify-between py-3 border-b border-gray-800 last:border-0 hover:bg-gray-800/30 transition-colors"
+        className="flex items-center justify-between py-3 border-b border-edge last:border-0 hover:bg-subtle/30 transition-colors"
         style={{ paddingLeft: `${1.25 + depth * 1.5}rem` }}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <span className="text-gray-500 flex-shrink-0">
+          <span className="text-muted flex-shrink-0">
             {depth === 0 ? '🏢' : '📁'}
           </span>
           <div className="min-w-0">
-            <span className="font-medium text-white text-sm">{node.name}</span>
+            <span className="font-medium text-primary text-sm">{node.name}</span>
             {node.code && (
-              <span className="ml-2 text-xs text-gray-500 font-mono">[{node.code}]</span>
+              <span className="ml-2 text-xs text-muted font-mono">[{node.code}]</span>
             )}
             {node.owner && (
-              <span className="ml-2 text-xs text-gray-600">· {node.owner}</span>
+              <span className="ml-2 text-xs text-muted">· {node.owner}</span>
             )}
             {node.description && (
-              <p className="text-xs text-gray-600 mt-0.5 truncate">{node.description}</p>
+              <p className="text-xs text-muted mt-0.5 truncate">{node.description}</p>
             )}
           </div>
         </div>
         <div className="flex items-center gap-4 flex-shrink-0 ml-4">
           {node.current_cost !== undefined && (
-            <span className="text-sm font-semibold text-indigo-300">
+            <span className="text-sm font-semibold text-accent">
               ${node.current_cost.toLocaleString(undefined, { maximumFractionDigits: 0 })} MTD
             </span>
           )}
           <div className="flex items-center gap-2">
             <button
               onClick={() => onAddChild(node.id)}
-              className="text-xs text-gray-500 hover:text-indigo-400 transition-colors"
+              className="text-xs text-muted hover:text-accent transition-colors"
               title={t('costCenters.addChildTitle')}
             >
               {t('costCenters.addChild')}
             </button>
             <button
               onClick={() => onEdit(node)}
-              className="text-xs text-indigo-400 hover:text-indigo-300"
+              className="text-xs text-accent hover:text-accent"
             >
               {t('common.edit')}
             </button>
             <button
               onClick={() => onDelete(node.id)}
               disabled={isDeleting}
-              className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+              className="text-xs text-danger hover:text-danger disabled:opacity-50"
             >
               {t('common.delete')}
             </button>
@@ -256,7 +256,7 @@ export default function CostCenters() {
   const tree = buildTree(costCenters)
 
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
 
   const totalCost = costCenters
     .filter((cc) => !cc.parent_id)
@@ -266,35 +266,35 @@ export default function CostCenters() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-white">{t('costCenters.title')}</h2>
+          <h2 className="page-title">{t('costCenters.title')}</h2>
           {totalCost > 0 && (
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-muted mt-0.5">
               {t('costCenters.totalMtd', { amount: totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 }) })}
             </p>
           )}
         </div>
         <button
           onClick={() => openCreate()}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
         >
           {t('costCenters.newCostCenter')}
         </button>
       </div>
 
       {isError && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           {t('costCenters.loadFailed')}
         </div>
       )}
 
       {isLoading ? (
-        <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+        <div className="text-muted text-sm">{t('common.loading')}</div>
       ) : costCenters.length === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-8 text-center text-gray-500 text-sm">
+        <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
           {t('costCenters.empty')}
         </div>
       ) : (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        <div className="bg-surface border border-edge rounded-xl overflow-hidden">
           {tree.map((node) => (
             <CostCenterRow
               key={node.id}
@@ -312,18 +312,18 @@ export default function CostCenters() {
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-xl p-6 w-full max-w-lg border border-gray-800 shadow-xl">
-            <h3 className="text-base font-semibold text-white mb-4">
+          <div className="bg-surface rounded-xl p-6 w-full max-w-lg border border-edge shadow-xl">
+            <h3 className="text-base font-semibold text-primary mb-4">
               {editingId ? t('costCenters.editTitle') : t('costCenters.newTitle')}
             </h3>
             {formError && (
-              <div className="mb-3 p-2 rounded bg-red-900/40 border border-red-700 text-red-300 text-sm">
+              <div className="mb-3 p-2 rounded bg-danger/10 border border-danger/25 text-danger text-sm">
                 {formError}
               </div>
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('common.name')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('common.name')}</label>
                 <input
                   required
                   value={form.name}
@@ -333,7 +333,7 @@ export default function CostCenters() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('costCenters.code')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('costCenters.code')}</label>
                 <input
                   value={form.code}
                   onChange={(e) =>
@@ -344,8 +344,8 @@ export default function CostCenters() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">
-                  {t('costCenters.parentCostCenter')} <span className="text-gray-600">{t('costCenters.optional')}</span>
+                <label className="block text-xs text-secondary mb-1">
+                  {t('costCenters.parentCostCenter')} <span className="text-muted">{t('costCenters.optional')}</span>
                 </label>
                 <select
                   value={form.parent_id}
@@ -363,7 +363,7 @@ export default function CostCenters() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('costCenters.owner')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('costCenters.owner')}</label>
                 <input
                   value={form.owner}
                   onChange={(e) => setForm({ ...form, owner: e.target.value })}
@@ -372,8 +372,8 @@ export default function CostCenters() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">
-                  {t('common.description')} <span className="text-gray-600">{t('costCenters.optional')}</span>
+                <label className="block text-xs text-secondary mb-1">
+                  {t('common.description')} <span className="text-muted">{t('costCenters.optional')}</span>
                 </label>
                 <textarea
                   rows={2}
@@ -387,14 +387,14 @@ export default function CostCenters() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-white border border-gray-700 rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm text-secondary hover:text-primary border border-strong rounded-lg transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm font-medium rounded-lg transition-colors"
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? t('costCenters.saving')
@@ -409,11 +409,11 @@ export default function CostCenters() {
       )}
 
       {/* Business capabilities (T17) */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mt-6">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+      <div className="bg-surface border border-edge rounded-xl overflow-hidden mt-6">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
           <div>
-            <h3 className="text-sm font-semibold text-white">{t('costCenters.capabilities')}</h3>
-            <p className="text-xs text-gray-500 mt-0.5">{t('costCenters.capabilitiesHint')}</p>
+            <h3 className="text-sm font-semibold text-primary">{t('costCenters.capabilities')}</h3>
+            <p className="text-xs text-muted mt-0.5">{t('costCenters.capabilitiesHint')}</p>
           </div>
           <button
             onClick={() => {
@@ -421,17 +421,17 @@ export default function CostCenters() {
               setCapError('')
               setShowCapModal(true)
             }}
-            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors"
+            className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-xs font-medium rounded-lg transition-colors"
             data-testid="add-capability"
           >
             {t('costCenters.addCapability')}
           </button>
         </div>
         {capabilities.length === 0 ? (
-          <div className="px-5 py-6 text-center text-gray-500 text-sm">{t('costCenters.noCapabilities')}</div>
+          <div className="px-5 py-6 text-center text-muted text-sm">{t('costCenters.noCapabilities')}</div>
         ) : (
-          <table className="w-full text-left">
-            <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+            <thead className="border-b border-edge text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">{t('common.name')}</th>
                 <th className="px-4 py-3 font-medium">{t('costCenters.costCenter')}</th>
@@ -440,12 +440,12 @@ export default function CostCenters() {
             </thead>
             <tbody>
               {capabilities.map((cap) => (
-                <tr key={cap.id} className="border-b border-gray-700 last:border-0 hover:bg-gray-800/40 transition-colors">
+                <tr key={cap.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
                   <td className="px-4 py-3">
-                    <p className="text-sm text-white">{cap.name}</p>
-                    {cap.description && <p className="text-xs text-gray-500">{cap.description}</p>}
+                    <p className="text-sm text-primary">{cap.name}</p>
+                    {cap.description && <p className="text-xs text-muted">{cap.description}</p>}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-300">
+                  <td className="px-4 py-3 text-sm text-secondary">
                     {cap.cost_center_name
                       ? `${cap.cost_center_code ? cap.cost_center_code + ' · ' : ''}${cap.cost_center_name}`
                       : '—'}
@@ -457,7 +457,7 @@ export default function CostCenters() {
                           deleteCapMutation.mutate(cap.id)
                         }
                       }}
-                      className="text-red-400 hover:text-red-300 text-xs"
+                      className="text-danger hover:text-danger text-xs"
                     >
                       {t('common.delete')}
                     </button>
@@ -465,7 +465,7 @@ export default function CostCenters() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
 
@@ -476,10 +476,10 @@ export default function CostCenters() {
           onClick={() => setShowCapModal(false)}
         >
           <div
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md shadow-xl"
+            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-md shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">{t('costCenters.newCapability')}</h3>
+            <h3 className="text-lg font-semibold text-primary mb-4">{t('costCenters.newCapability')}</h3>
             <form
               onSubmit={(e) => {
                 e.preventDefault()
@@ -492,28 +492,28 @@ export default function CostCenters() {
               className="space-y-4"
             >
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('common.name')} *</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')} *</label>
                 <input
                   value={capForm.name}
                   onChange={(e) => setCapForm({ ...capForm, name: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm"
                   placeholder="Platform Services"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('common.description')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('common.description')}</label>
                 <input
                   value={capForm.description}
                   onChange={(e) => setCapForm({ ...capForm, description: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('costCenters.costCenter')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('costCenters.costCenter')}</label>
                 <select
                   value={capForm.cost_center_id}
                   onChange={(e) => setCapForm({ ...capForm, cost_center_id: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm"
                 >
                   <option value="">{t('costCenters.noCostCenter')}</option>
                   {costCenters.map((cc) => (
@@ -522,20 +522,20 @@ export default function CostCenters() {
                 </select>
               </div>
               {capError && (
-                <div className="p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">{capError}</div>
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">{capError}</div>
               )}
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowCapModal(false)}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createCapMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {t('costCenters.createCapability')}
                 </button>

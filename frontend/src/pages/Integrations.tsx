@@ -109,44 +109,44 @@ export default function Integrations() {
   }
 
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('integrations.title')}</h2>
+        <h2 className="page-title">{t('integrations.title')}</h2>
       </div>
 
       {isError && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           {t('integrations.loadFailed')}
         </div>
       )}
 
       {isLoading ? (
-        <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+        <div className="text-muted text-sm">{t('common.loading')}</div>
       ) : (
         <>
           {/* Provider cards */}
-          <h3 className="text-sm font-semibold text-white mb-3">{t('integrations.addConnection')}</h3>
+          <h3 className="text-sm font-semibold text-primary mb-3">{t('integrations.addConnection')}</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-8">
             {providers.map((p) => (
               <button
                 key={p.provider}
                 onClick={() => openCreate(p.provider)}
-                className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center hover:border-indigo-600 transition-colors"
+                className="bg-surface border border-edge rounded-xl p-4 text-center hover:border-accent transition-colors"
               >
                 <span className="text-3xl block">{p.icon}</span>
-                <span className="block text-sm text-white mt-2">{p.label}</span>
-                <span className="block text-xs text-gray-600 mt-0.5">{p.provider}</span>
+                <span className="block text-sm text-primary mt-2">{p.label}</span>
+                <span className="block text-xs text-muted mt-0.5">{p.provider}</span>
               </button>
             ))}
           </div>
 
           {/* Configured integrations */}
-          <h3 className="text-sm font-semibold text-white mb-3">{t('integrations.configured')}</h3>
+          <h3 className="text-sm font-semibold text-primary mb-3">{t('integrations.configured')}</h3>
           {integrations.length === 0 ? (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-8 text-center text-gray-500 text-sm">
+            <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
               {t('integrations.empty')}
             </div>
           ) : (
@@ -154,22 +154,22 @@ export default function Integrations() {
               {integrations.map((it) => {
                 const pmeta = providers.find((p) => p.provider === it.provider)
                 return (
-                  <div key={it.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                  <div key={it.id} className="bg-surface border border-edge rounded-xl p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{pmeta?.icon ?? '🔗'}</span>
                         <div>
-                          <p className="text-sm font-medium text-white">{it.name}</p>
-                          <p className="text-xs text-gray-500">{pmeta?.label ?? it.provider}</p>
+                          <p className="text-sm font-medium text-primary">{it.name}</p>
+                          <p className="text-xs text-muted">{pmeta?.label ?? it.provider}</p>
                         </div>
                       </div>
                       <span
                         className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           it.status === 'connected'
-                            ? 'bg-green-900/40 text-green-300'
+                            ? 'bg-success/10 text-success'
                             : it.status === 'error'
-                              ? 'bg-red-900/40 text-red-300'
-                              : 'bg-gray-800 text-gray-400'
+                              ? 'bg-danger/10 text-danger'
+                              : 'bg-subtle text-secondary'
                         }`}
                       >
                         {t(`integrations.status.${it.status}`, { defaultValue: it.status })}
@@ -179,19 +179,19 @@ export default function Integrations() {
                       <button
                         onClick={() => testMutation.mutate(it.id)}
                         disabled={testMutation.isPending}
-                        className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-lg disabled:opacity-50"
+                        className="px-3 py-1.5 bg-subtle hover:bg-emphasis text-primary font-medium rounded-lg disabled:opacity-50"
                       >
                         {t('cloudAccounts.test')}
                       </button>
                       <button
                         onClick={() => toggleMutation.mutate({ id: it.id, is_active: !it.is_active })}
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                          it.is_active ? 'bg-green-600' : 'bg-gray-700'
+                          it.is_active ? 'bg-success-solid' : 'bg-emphasis'
                         }`}
                         title={it.is_active ? t('common.active') : t('common.inactive')}
                       >
                         <span
-                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-surface transition-transform ${
                             it.is_active ? 'translate-x-[18px]' : 'translate-x-[3px]'
                           }`}
                         />
@@ -200,12 +200,12 @@ export default function Integrations() {
                         onClick={() => {
                           if (confirm(t('integrations.deleteConfirm', { name: it.name }))) deleteMutation.mutate(it.id)
                         }}
-                        className="text-red-400 hover:text-red-300"
+                        className="text-danger hover:text-danger"
                       >
                         {t('common.delete')}
                       </button>
                       {it.last_checked_at && (
-                        <span className="ml-auto text-gray-600">
+                        <span className="ml-auto text-muted">
                           {t('integrations.checkedAt', { date: new Date(it.last_checked_at).toLocaleDateString() })}
                         </span>
                       )}
@@ -224,15 +224,15 @@ export default function Integrations() {
           onClick={() => setShowModal(false)}
         >
           <div
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">
+            <h3 className="text-lg font-semibold text-primary mb-4">
               {meta.icon} {t('integrations.connectProvider', { name: meta.label })}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('common.name')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -242,7 +242,7 @@ export default function Integrations() {
               </div>
               {meta.fields.map((f) => (
                 <div key={f}>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">
+                  <label className="block text-xs font-medium text-secondary mb-1">
                     {f.replace(/_/g, ' ')}
                   </label>
                   <input
@@ -254,7 +254,7 @@ export default function Integrations() {
                 </div>
               ))}
               {formError && (
-                <div className="p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">
                   {formError}
                 </div>
               )}
@@ -262,14 +262,14 @@ export default function Integrations() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {t('integrations.connect')}
                 </button>

@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '../lib/api'
 import { auth } from '../lib/auth'
-import LanguageToggle from '../components/LanguageToggle'
+import AuthShell from '../components/AuthShell'
+import { ArrowRight, Eye, EyeOff } from 'lucide-react'
 import type { AuthResponse, ApiResponse } from '../types'
 
 export default function Login() {
@@ -15,6 +16,7 @@ export default function Login() {
   const [totpCode, setTotpCode] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [ssoEnabled, setSsoEnabled] = useState(false)
   const [forgotSent, setForgotSent] = useState(false)
 
@@ -30,9 +32,12 @@ export default function Login() {
 
   // SSO availability
   useEffect(() => {
-    api.get<{ data: { enabled: boolean } }>('/auth/oidc/config')
+    api
+      .get<{ data: { enabled: boolean } }>('/auth/oidc/config')
       .then((res) => setSsoEnabled(res.data.data.enabled))
-      .catch(() => {/* SSO optional */})
+      .catch(() => {
+        /* SSO optional */
+      })
   }, [])
 
   async function handleSubmit(e: FormEvent) {
@@ -40,11 +45,14 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const { data: res } = await api.post<ApiResponse<AuthResponse>>('/auth/login', {
-        email,
-        password,
-        totp_code: totpCode || undefined,
-      })
+      const { data: res } = await api.post<ApiResponse<AuthResponse>>(
+        '/auth/login',
+        {
+          email,
+          password,
+          totp_code: totpCode || undefined,
+        },
+      )
       auth.setTokens(res.data.access_token, res.data.refresh_token)
       navigate('/dashboard')
     } catch {
@@ -69,103 +77,135 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <LanguageToggle />
-      <div className="w-full max-w-sm bg-gray-900 rounded-2xl shadow-xl p-8 border border-gray-800">
-        <div className="mb-8 text-center">
-          <div className="text-4xl mb-2">☁</div>
-          <h1 className="text-2xl font-bold text-white">{t('login.title')}</h1>
-          <p className="text-gray-400 text-sm mt-1">{t('login.subtitle')}</p>
+    <AuthShell>
+      <div className="mb-9">
+        <h1 className="text-[30px] font-semibold tracking-[-1px] text-primary">
+          {t('design.welcomeBack')}
+        </h1>
+        <p className="mt-3 text-[13px] leading-relaxed text-secondary">
+          {t('design.signInDescription')}
+        </p>
+      </div>
+      {error && (
+        <div
+          role="alert"
+          className="mb-5 rounded-lg border border-danger/25 bg-danger/10 p-3 text-xs text-danger"
+        >
+          {error}
         </div>
-
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.email')}</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder={t('login.emailPlaceholder')}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.password')}</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder={t('login.passwordPlaceholder')}
-            />
-          </div>
-          {totpCode !== '' || error.includes('Two-factor') || error.includes('two-factor') ? (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                {t('login.totpCode')}
-              </label>
-              <input
-                value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value)}
-                inputMode="numeric"
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="000000"
-              />
-            </div>
-          ) : null}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-semibold rounded-lg transition-colors"
-          >
-            {loading ? t('login.signingIn') : t('login.signIn')}
-          </button>
-          <div className="flex items-center justify-between text-xs">
+      )}
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label htmlFor="login-email" className="auth-label">
+            {t('login.email')}
+          </label>
+          <input
+            id="login-email"
+            type="email"
+            autoComplete="username"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="auth-input"
+            placeholder={t('login.emailPlaceholder')}
+          />
+        </div>
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <label htmlFor="login-password" className="auth-label">
+              {t('login.password')}
+            </label>
             <button
               type="button"
               onClick={forgotPassword}
-              className="text-gray-500 hover:text-gray-300"
+              className="mb-2 text-[11px] font-medium text-accent hover:underline"
             >
               {t('login.forgotPassword')}
             </button>
+          </div>
+          <div className="relative">
+            <input
+              id="login-password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="auth-input pr-12"
+              placeholder={t('login.passwordPlaceholder')}
+            />
             <button
               type="button"
-              onClick={() => navigate('/reset-password')}
-              className="text-gray-500 hover:text-gray-300"
+              className="icon-button absolute right-1 top-1"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={t(
+                showPassword ? 'design.hidePassword' : 'design.showPassword',
+              )}
             >
-              {t('login.resetWithToken')}
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-          {forgotSent && (
-            <div className="p-3 rounded-lg bg-green-900/40 border border-green-700 text-green-400 text-sm">
-              {t('login.forgotSent')}
-            </div>
-          )}
-          {ssoEnabled && (
-            <div className="relative my-2">
-              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-800" /></div>
-              <div className="relative flex justify-center"><span className="bg-gray-900 px-3 text-xs text-gray-500">{t('login.or')}</span></div>
-            </div>
-          )}
-        </form>
-        {ssoEnabled && (
+        </div>
+        {totpCode !== '' ||
+        error.includes('Two-factor') ||
+        error.includes('two-factor') ? (
+          <div>
+            <label htmlFor="login-totp" className="auth-label">
+              {t('login.totpCode')}
+            </label>
+            <input
+              id="login-totp"
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value)}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              className="auth-input"
+              placeholder="000000"
+            />
+          </div>
+        ) : null}
+        {forgotSent && (
+          <div
+            role="status"
+            className="rounded-lg border border-success/25 bg-success/10 p-3 text-xs text-success"
+          >
+            {t('login.forgotSent')}
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn-primary !mt-7 w-full !py-3.5"
+        >
+          {loading ? t('login.signingIn') : t('login.signIn')}
+          <ArrowRight size={15} />
+        </button>
+      </form>
+      {ssoEnabled && (
+        <>
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-edge" />
+            <span className="text-xs text-muted">{t('login.or')}</span>
+            <div className="h-px flex-1 bg-edge" />
+          </div>
           <button
             type="button"
             onClick={loginWithSso}
-            className="mt-4 w-full py-2.5 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors"
+            className="btn-secondary w-full"
           >
             {t('login.sso')}
           </button>
-        )}
+        </>
+      )}
+      <div className="mt-6 text-center">
+        <button
+          type="button"
+          onClick={() => navigate('/reset-password')}
+          className="text-xs text-secondary hover:text-accent"
+        >
+          {t('login.resetWithToken')}
+        </button>
       </div>
-    </div>
+    </AuthShell>
   )
 }

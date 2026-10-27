@@ -27,10 +27,10 @@ interface Environment {
 }
 
 const statusColors: Record<string, string> = {
-  available:   'bg-green-900/50 text-green-300 border-green-700',
-  booked:      'bg-yellow-900/50 text-yellow-300 border-yellow-700',
-  maintenance: 'bg-orange-900/50 text-orange-300 border-orange-700',
-  archived:    'bg-gray-800 text-gray-500 border-gray-600',
+  available:   'bg-success/10 text-success border-success/25',
+  booked:      'bg-warning/10 text-warning border-warning/25',
+  maintenance: 'bg-warning/10 text-warning border-warning/25',
+  archived:    'bg-subtle text-muted border-strong',
 }
 
 function minutesUntil(iso: string, t: TFunction) {
@@ -96,46 +96,46 @@ export default function SharedEnvironments() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">{t('sharedEnvironments.title')}</h1>
-          <p className="text-sm text-gray-400 mt-1">{t('sharedEnvironments.subtitle')}</p>
+          <h1 className="page-title">{t('sharedEnvironments.title')}</h1>
+          <p className="text-sm text-secondary mt-1">{t('sharedEnvironments.subtitle')}</p>
         </div>
         <button onClick={() => setShowCreate(true)}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500">
+          className="px-4 py-2 bg-accent text-on-accent rounded-lg text-sm font-medium hover:bg-accent-hover">
           {t('sharedEnvironments.newEnvironment')}
         </button>
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('sharedEnvironments.total')}</p>
-          <p className="text-2xl font-bold text-white mt-1">{envs.length}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('sharedEnvironments.total')}</p>
+          <p className="text-2xl font-bold text-primary mt-1">{envs.length}</p>
         </div>
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('sharedEnvironments.available')}</p>
-          <p className="text-2xl font-bold text-green-400 mt-1">{available}</p>
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('sharedEnvironments.available')}</p>
+          <p className="text-2xl font-bold text-success mt-1">{available}</p>
         </div>
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('sharedEnvironments.booked')}</p>
-          <p className="text-2xl font-bold text-yellow-400 mt-1">{booked}</p>
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('sharedEnvironments.booked')}</p>
+          <p className="text-2xl font-bold text-warning mt-1">{booked}</p>
         </div>
       </div>
 
       {/* Environment Cards */}
       {isLoading ? (
-        <div className="text-center py-16 text-gray-500">{t('sharedEnvironments.loading')}</div>
+        <div className="text-center py-16 text-muted">{t('sharedEnvironments.loading')}</div>
       ) : envs.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
+        <div className="text-center py-16 text-muted">
           {t('sharedEnvironments.noEnvironments')}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {envs.map(env => (
-            <div key={env.id} className="bg-gray-900 rounded-xl border border-gray-700 p-5 flex flex-col gap-4">
+            <div key={env.id} className="bg-surface rounded-xl border border-strong p-5 flex flex-col gap-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-semibold text-white">{env.name}</h3>
-                  {env.description && <p className="text-xs text-gray-400 mt-1">{env.description}</p>}
+                  <h3 className="font-semibold text-primary">{env.name}</h3>
+                  {env.description && <p className="text-xs text-secondary mt-1">{env.description}</p>}
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full border font-medium ${statusColors[env.status] ?? statusColors.archived}`}>
                   {t(`sharedEnvironments.status.${env.status}`, { defaultValue: env.status })}
@@ -143,30 +143,30 @@ export default function SharedEnvironments() {
               </div>
 
               {env.booking && (
-                <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-lg p-3 text-xs space-y-1">
-                  <p className="text-yellow-300 font-medium">{t('sharedEnvironments.bookedBy', { name: env.booking.booked_by_name ?? t('sharedEnvironments.someone') })}</p>
-                  <p className="text-gray-400">{t('sharedEnvironments.until', { time: new Date(env.booking.end_time).toLocaleString() })}</p>
-                  <p className="text-yellow-400 font-semibold">{t('sharedEnvironments.releasesIn', { time: minutesUntil(env.booking.end_time, t) })}</p>
-                  {env.booking.notes && <p className="text-gray-300">"{env.booking.notes}"</p>}
+                <div className="bg-warning/10 border border-warning/25 rounded-lg p-3 text-xs space-y-1">
+                  <p className="text-warning font-medium">{t('sharedEnvironments.bookedBy', { name: env.booking.booked_by_name ?? t('sharedEnvironments.someone') })}</p>
+                  <p className="text-secondary">{t('sharedEnvironments.until', { time: new Date(env.booking.end_time).toLocaleString() })}</p>
+                  <p className="text-warning font-semibold">{t('sharedEnvironments.releasesIn', { time: minutesUntil(env.booking.end_time, t) })}</p>
+                  {env.booking.notes && <p className="text-secondary">"{env.booking.notes}"</p>}
                 </div>
               )}
 
               <div className="flex gap-2 mt-auto">
                 {env.status === 'available' && (
                   <button onClick={() => setBookingEnv(env)}
-                    className="flex-1 text-xs py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md font-medium">
+                    className="flex-1 text-xs py-1.5 bg-accent hover:bg-accent-hover text-on-accent rounded-md font-medium">
                     {t('sharedEnvironments.book')}
                   </button>
                 )}
                 {env.status === 'booked' && (
                   <button onClick={() => releaseEnv.mutate(env.id)}
                     disabled={releaseEnv.isPending}
-                    className="flex-1 text-xs py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-md font-medium disabled:opacity-50">
+                    className="flex-1 text-xs py-1.5 bg-emphasis hover:bg-emphasis text-primary rounded-md font-medium disabled:opacity-50">
                     {t('sharedEnvironments.release')}
                   </button>
                 )}
                 <button onClick={() => { if (confirm(t('sharedEnvironments.confirmDelete'))) deleteEnv.mutate(env.id) }}
-                  className="px-2 py-1.5 text-xs bg-red-900/40 hover:bg-red-800/60 text-red-300 rounded-md">
+                  className="px-2 py-1.5 text-xs bg-danger/10 hover:bg-danger/10 text-danger rounded-md">
                   ✕
                 </button>
               </div>
@@ -178,36 +178,36 @@ export default function SharedEnvironments() {
       {/* Create Environment Modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-2xl border border-gray-700 p-6 w-full max-w-md space-y-4">
-            <h2 className="text-lg font-bold text-white">{t('sharedEnvironments.newEnvironmentTitle')}</h2>
+          <div className="bg-surface rounded-2xl border border-strong p-6 w-full max-w-md space-y-4">
+            <h2 className="text-lg font-bold text-primary">{t('sharedEnvironments.newEnvironmentTitle')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('common.name')} *</label>
+                <label className="block text-xs text-secondary mb-1">{t('common.name')} *</label>
                 <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white"
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                   placeholder={t('sharedEnvironments.namePlaceholder')} />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('common.description')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
                 <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white resize-none"
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary resize-none"
                   rows={2} placeholder={t('sharedEnvironments.descPlaceholder')} />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('sharedEnvironments.autoReleaseLabel')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('sharedEnvironments.autoReleaseLabel')}</label>
                 <input type="number" min={1} max={72} value={form.auto_release_hours}
                   onChange={e => setForm(p => ({ ...p, auto_release_hours: parseInt(e.target.value) || 8 }))}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white" />
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary" />
               </div>
             </div>
             <div className="flex gap-2 pt-2">
               <button onClick={() => setShowCreate(false)}
-                className="flex-1 py-2 text-sm bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">
+                className="flex-1 py-2 text-sm bg-emphasis text-secondary rounded-lg hover:bg-emphasis">
                 {t('common.cancel')}
               </button>
               <button onClick={() => createEnv.mutate()}
                 disabled={createEnv.isPending || !form.name.trim()}
-                className="flex-1 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50">
+                className="flex-1 py-2 text-sm bg-accent text-on-accent rounded-lg hover:bg-accent-hover disabled:opacity-50">
                 {createEnv.isPending ? t('sharedEnvironments.creating') : t('sharedEnvironments.create')}
               </button>
             </div>
@@ -218,36 +218,36 @@ export default function SharedEnvironments() {
       {/* Book Environment Modal */}
       {bookingEnv && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-2xl border border-gray-700 p-6 w-full max-w-md space-y-4">
-            <h2 className="text-lg font-bold text-white">{t('sharedEnvironments.bookTitle', { name: bookingEnv.name })}</h2>
+          <div className="bg-surface rounded-2xl border border-strong p-6 w-full max-w-md space-y-4">
+            <h2 className="text-lg font-bold text-primary">{t('sharedEnvironments.bookTitle', { name: bookingEnv.name })}</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('sharedEnvironments.startTime')} *</label>
+                <label className="block text-xs text-secondary mb-1">{t('sharedEnvironments.startTime')} *</label>
                 <input type="datetime-local" value={bookForm.start_time}
                   onChange={e => setBookForm(p => ({ ...p, start_time: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white" />
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary" />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('sharedEnvironments.endTime')} *</label>
+                <label className="block text-xs text-secondary mb-1">{t('sharedEnvironments.endTime')} *</label>
                 <input type="datetime-local" value={bookForm.end_time}
                   onChange={e => setBookForm(p => ({ ...p, end_time: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white" />
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary" />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('sharedEnvironments.notes')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('sharedEnvironments.notes')}</label>
                 <input value={bookForm.notes} onChange={e => setBookForm(p => ({ ...p, notes: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white"
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                   placeholder={t('sharedEnvironments.notesPlaceholder')} />
               </div>
             </div>
             <div className="flex gap-2 pt-2">
               <button onClick={() => setBookingEnv(null)}
-                className="flex-1 py-2 text-sm bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">
+                className="flex-1 py-2 text-sm bg-emphasis text-secondary rounded-lg hover:bg-emphasis">
                 {t('common.cancel')}
               </button>
               <button onClick={() => bookEnv.mutate(bookingEnv.id)}
                 disabled={bookEnv.isPending || !bookForm.start_time || !bookForm.end_time}
-                className="flex-1 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50">
+                className="flex-1 py-2 text-sm bg-accent text-on-accent rounded-lg hover:bg-accent-hover disabled:opacity-50">
                 {bookEnv.isPending ? t('sharedEnvironments.booking') : t('sharedEnvironments.bookNow')}
               </button>
             </div>

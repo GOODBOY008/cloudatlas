@@ -2,7 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '../lib/api'
-import LanguageToggle from '../components/LanguageToggle'
+import AuthShell from '../components/AuthShell'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 
 export default function ResetPassword() {
   const navigate = useNavigate()
@@ -41,55 +42,69 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <LanguageToggle />
-      <div className="w-full max-w-sm bg-gray-900 rounded-2xl shadow-xl p-8 border border-gray-800">
-        <div className="mb-8 text-center">
-          <div className="text-4xl mb-2">☁</div>
-          <h1 className="text-2xl font-bold text-white">{t('reset.title')}</h1>
-          <p className="text-gray-400 text-sm mt-1">{t('reset.subtitle')}</p>
-        </div>
-
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">
-            {error}
-          </div>
-        )}
-        {message && (
-          <div className="mb-4 p-3 rounded-lg bg-green-900/40 border border-green-700 text-green-300 text-sm">
-            {message}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">{t('reset.token')}</label>
-            <input
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder={t('reset.tokenPlaceholder')}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">{t('reset.newPassword')}</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder={t('reset.passwordPlaceholder')}
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-semibold rounded-lg transition-colors"
-          >
-            {loading ? t('common.loading') : t('reset.submit')}
-          </button>
-        </form>
+    <AuthShell>
+      <button className="text-link mb-8" onClick={() => navigate('/login')}>
+        <ArrowLeft size={14} />
+        {t('design.backToSignIn')}
+      </button>
+      <div className="mb-8">
+        <h1 className="text-[30px] font-semibold tracking-[-1px] text-primary">
+          {t('reset.title')}
+        </h1>
+        <p className="mt-3 text-[13px] text-secondary">{t('reset.subtitle')}</p>
       </div>
-    </div>
+      {error && (
+        <div
+          role="alert"
+          className="mb-5 rounded-lg border border-danger/25 bg-danger/10 p-3 text-xs text-danger"
+        >
+          {error}
+        </div>
+      )}
+      {message && (
+        <div
+          role="status"
+          className="mb-5 rounded-lg border border-success/25 bg-success/10 p-3 text-xs text-success"
+        >
+          {message}
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label htmlFor="reset-token" className="auth-label">
+            {t('reset.token')}
+          </label>
+          <input
+            id="reset-token"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            className="auth-input font-mono"
+            placeholder={t('reset.tokenPlaceholder')}
+          />
+        </div>
+        <div>
+          <label htmlFor="reset-password" className="auth-label">
+            {t('reset.newPassword')}
+          </label>
+          <input
+            id="reset-password"
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="auth-input"
+            placeholder={t('reset.passwordPlaceholder')}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn-primary !mt-7 w-full !py-3.5"
+        >
+          {loading ? t('common.loading') : t('reset.submit')}
+          <ArrowRight size={15} />
+        </button>
+      </form>
+    </AuthShell>
   )
 }

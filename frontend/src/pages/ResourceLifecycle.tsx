@@ -29,19 +29,19 @@ interface LifecycleEvent {
 }
 
 const actionColors: Record<string, string> = {
-  flag:          'bg-blue-900/50 text-blue-300',
-  notify:        'bg-indigo-900/50 text-indigo-300',
-  decommission:  'bg-red-900/50 text-red-300',
-  stop:          'bg-orange-900/50 text-orange-300',
+  flag:          'bg-info/10 text-info',
+  notify:        'bg-accent-soft/50 text-accent',
+  decommission:  'bg-danger/10 text-danger',
+  stop:          'bg-warning/10 text-warning',
 }
 
 const eventColors: Record<string, string> = {
-  flagged:        'text-yellow-400',
-  notified:       'text-blue-400',
-  decommissioned: 'text-red-400',
-  stopped:        'text-orange-400',
-  exempted:       'text-green-400',
-  restored:       'text-emerald-400',
+  flagged:        'text-warning',
+  notified:       'text-info',
+  decommissioned: 'text-danger',
+  stopped:        'text-warning',
+  exempted:       'text-success',
+  restored:       'text-success',
 }
 
 export default function ResourceLifecycle() {
@@ -109,65 +109,65 @@ export default function ResourceLifecycle() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">{t('resourceLifecycle.title')}</h1>
-          <p className="text-sm text-gray-400 mt-1">{t('resourceLifecycle.subtitle')}</p>
+          <h1 className="page-title">{t('resourceLifecycle.title')}</h1>
+          <p className="text-sm text-secondary mt-1">{t('resourceLifecycle.subtitle')}</p>
         </div>
         <button onClick={() => setShowCreate(true)}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500">
+          className="px-4 py-2 bg-accent text-on-accent rounded-lg text-sm font-medium hover:bg-accent-hover">
           {t('resourceLifecycle.newPolicy')}
         </button>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('resourceLifecycle.totalPolicies')}</p>
-          <p className="text-2xl font-bold text-white mt-1">{pols.length}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('resourceLifecycle.totalPolicies')}</p>
+          <p className="text-2xl font-bold text-primary mt-1">{pols.length}</p>
         </div>
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('common.active')}</p>
-          <p className="text-2xl font-bold text-green-400 mt-1">{activePolicies}</p>
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('common.active')}</p>
+          <p className="text-2xl font-bold text-success mt-1">{activePolicies}</p>
         </div>
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('resourceLifecycle.lifecycleEvents')}</p>
-          <p className="text-2xl font-bold text-yellow-400 mt-1">{evts.length}</p>
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('resourceLifecycle.lifecycleEvents')}</p>
+          <p className="text-2xl font-bold text-warning mt-1">{evts.length}</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-700">
+      <div className="flex gap-2 border-b border-strong">
         {([
           { key: 'policies', label: t('resourceLifecycle.tabPolicies', { count: pols.length }) },
           { key: 'events', label: t('resourceLifecycle.tabEvents', { count: evts.length }) },
         ] as const).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === tab.key ? 'border-indigo-500 text-white' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === tab.key ? 'border-accent text-primary' : 'border-transparent text-secondary hover:text-primary'}`}>
             {tab.label}
           </button>
         ))}
       </div>
 
       {activeTab === 'policies' && (
-        <div className="bg-gray-900 rounded-xl border border-gray-700 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-gray-700">
+        <div className="bg-surface rounded-xl border border-strong overflow-hidden">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+            <thead><tr className="border-b border-strong">
               {['common.name', 'common.type', 'resourceLifecycle.colThreshold', 'resourceLifecycle.colAction', 'common.active', 'resourceLifecycle.colLastRun', 'common.actions'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">{t(h)}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
               ))}
             </tr></thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-edge">
               {policyLoading ? (
-                <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-500">{t('common.loading')}</td></tr>
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
               ) : pols.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-500">{t('resourceLifecycle.noPolicies')}</td></tr>
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-muted">{t('resourceLifecycle.noPolicies')}</td></tr>
               ) : pols.map(p => (
-                <tr key={p.id} className="hover:bg-gray-800">
+                <tr key={p.id} className="hover:bg-subtle">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-white">{p.name}</p>
-                    {p.description && <p className="text-xs text-gray-500 mt-0.5">{p.description}</p>}
+                    <p className="font-medium text-primary">{p.name}</p>
+                    {p.description && <p className="text-xs text-muted mt-0.5">{p.description}</p>}
                   </td>
-                  <td className="px-4 py-3 text-gray-300 text-xs">{t(`resourceLifecycle.policyType.${p.policy_type}`, { defaultValue: p.policy_type })}</td>
-                  <td className="px-4 py-3 text-gray-300 text-xs">
+                  <td className="px-4 py-3 text-secondary text-xs">{t(`resourceLifecycle.policyType.${p.policy_type}`, { defaultValue: p.policy_type })}</td>
+                  <td className="px-4 py-3 text-secondary text-xs">
                     {p.policy_type === 'ttl' && p.ttl_days != null ? t('resourceLifecycle.ttlDays', { days: p.ttl_days }) : null}
                     {p.policy_type === 'idle_shutdown' && p.idle_days != null ? t('resourceLifecycle.idleDays', { days: p.idle_days }) : null}
                     {p.policy_type !== 'ttl' && p.policy_type !== 'idle_shutdown' ? '—' : null}
@@ -176,103 +176,103 @@ export default function ResourceLifecycle() {
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${actionColors[p.action] ?? ''}`}>{t(`resourceLifecycle.action.${p.action}`, { defaultValue: p.action })}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold ${p.is_active ? 'text-green-400' : 'text-gray-500'}`}>
+                    <span className={`text-xs font-semibold ${p.is_active ? 'text-success' : 'text-muted'}`}>
                       {p.is_active ? t('resourceLifecycle.yes') : t('resourceLifecycle.no')}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">
+                  <td className="px-4 py-3 text-secondary text-xs">
                     {p.last_evaluated_at ? new Date(p.last_evaluated_at).toLocaleString() : t('common.never')}
                   </td>
                   <td className="px-4 py-3 flex gap-2">
                     <button onClick={() => evaluatePolicy.mutate(p.id)}
                       disabled={evaluatingId === p.id}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 disabled:opacity-50">
+                      className="text-xs text-accent hover:text-accent disabled:opacity-50">
                       {evaluatingId === p.id ? t('resourceLifecycle.running') : t('resourceLifecycle.run')}
                     </button>
                     <button onClick={() => { if (confirm(t('resourceLifecycle.confirmDelete'))) deletePolicy.mutate(p.id) }}
-                      className="text-xs text-red-400 hover:text-red-300">
+                      className="text-xs text-danger hover:text-danger">
                       {t('common.delete')}
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
       {activeTab === 'events' && (
-        <div className="bg-gray-900 rounded-xl border border-gray-700 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-gray-700">
+        <div className="bg-surface rounded-xl border border-strong overflow-hidden">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+            <thead><tr className="border-b border-strong">
               {['resourceLifecycle.colEvent', 'pools.colResource', 'common.type', 'resourceLifecycle.colPolicy', 'resourceLifecycle.colReason', 'resourceLifecycle.colTime'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">{t(h)}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
               ))}
             </tr></thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-edge">
               {eventLoading ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-500">{t('common.loading')}</td></tr>
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
               ) : evts.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-500">{t('resourceLifecycle.noEvents')}</td></tr>
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">{t('resourceLifecycle.noEvents')}</td></tr>
               ) : evts.map(e => (
-                <tr key={e.id} className="hover:bg-gray-800">
+                <tr key={e.id} className="hover:bg-subtle">
                   <td className="px-4 py-3">
-                    <span className={`font-medium capitalize ${eventColors[e.event_type] ?? 'text-gray-300'}`}>
+                    <span className={`font-medium capitalize ${eventColors[e.event_type] ?? 'text-secondary'}`}>
                       {t(`resourceLifecycle.eventType.${e.event_type}`, { defaultValue: e.event_type })}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-300">{e.cloud_resource_id?.slice(0, 30) ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{e.resource_type ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-300 text-xs">{e.policy_name ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs max-w-xs truncate">{e.reason ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{e.created_at?.slice(0, 16)}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-secondary">{e.cloud_resource_id?.slice(0, 30) ?? '—'}</td>
+                  <td className="px-4 py-3 text-secondary text-xs">{e.resource_type ?? '—'}</td>
+                  <td className="px-4 py-3 text-secondary text-xs">{e.policy_name ?? '—'}</td>
+                  <td className="px-4 py-3 text-secondary text-xs max-w-xs truncate">{e.reason ?? '—'}</td>
+                  <td className="px-4 py-3 text-secondary text-xs">{e.created_at?.slice(0, 16)}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
       {/* Create Policy Modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-2xl border border-gray-700 p-6 w-full max-w-md space-y-4">
-            <h2 className="text-lg font-bold text-white">{t('resourceLifecycle.newPolicyTitle')}</h2>
+          <div className="bg-surface rounded-2xl border border-strong p-6 w-full max-w-md space-y-4">
+            <h2 className="text-lg font-bold text-primary">{t('resourceLifecycle.newPolicyTitle')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('common.name')} *</label>
+                <label className="block text-xs text-secondary mb-1">{t('common.name')} *</label>
                 <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white"
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary"
                   placeholder={t('resourceLifecycle.namePlaceholder')} />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('resourceLifecycle.policyType')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('resourceLifecycle.policyType')}</label>
                 <select value={form.policy_type} onChange={e => setForm(p => ({ ...p, policy_type: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white">
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary">
                   <option value="ttl">{t('resourceLifecycle.typeTtlOption')}</option>
                   <option value="idle_shutdown">{t('resourceLifecycle.typeIdleOption')}</option>
                 </select>
               </div>
               {form.policy_type === 'ttl' && (
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">{t('resourceLifecycle.ttlDaysLabel')}</label>
+                  <label className="block text-xs text-secondary mb-1">{t('resourceLifecycle.ttlDaysLabel')}</label>
                   <input type="number" min={1} value={form.ttl_days}
                     onChange={e => setForm(p => ({ ...p, ttl_days: parseInt(e.target.value) || 30 }))}
-                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white" />
+                    className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary" />
                 </div>
               )}
               {form.policy_type === 'idle_shutdown' && (
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">{t('resourceLifecycle.idleDaysLabel')}</label>
+                  <label className="block text-xs text-secondary mb-1">{t('resourceLifecycle.idleDaysLabel')}</label>
                   <input type="number" min={1} value={form.idle_days}
                     onChange={e => setForm(p => ({ ...p, idle_days: parseInt(e.target.value) || 14 }))}
-                    className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white" />
+                    className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary" />
                 </div>
               )}
               <div>
-                <label className="block text-xs text-gray-400 mb-1">{t('resourceLifecycle.colAction')}</label>
+                <label className="block text-xs text-secondary mb-1">{t('resourceLifecycle.colAction')}</label>
                 <select value={form.action} onChange={e => setForm(p => ({ ...p, action: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white">
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary">
                   <option value="flag">{t('resourceLifecycle.optionFlag')}</option>
                   <option value="notify">{t('resourceLifecycle.optionNotify')}</option>
                   <option value="stop">{t('resourceLifecycle.optionStop')}</option>
@@ -282,12 +282,12 @@ export default function ResourceLifecycle() {
             </div>
             <div className="flex gap-2 pt-2">
               <button onClick={() => setShowCreate(false)}
-                className="flex-1 py-2 text-sm bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">
+                className="flex-1 py-2 text-sm bg-emphasis text-secondary rounded-lg hover:bg-emphasis">
                 {t('common.cancel')}
               </button>
               <button onClick={() => createPolicy.mutate()}
                 disabled={createPolicy.isPending || !form.name.trim()}
-                className="flex-1 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50">
+                className="flex-1 py-2 text-sm bg-accent text-on-accent rounded-lg hover:bg-accent-hover disabled:opacity-50">
                 {createPolicy.isPending ? t('resourceLifecycle.creating') : t('resourceLifecycle.createPolicy')}
               </button>
             </div>

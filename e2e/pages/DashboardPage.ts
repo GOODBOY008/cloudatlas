@@ -17,7 +17,7 @@ export class DashboardPage extends BasePage {
     this.recommendationsCard = page.locator('main').getByText('Recommendation').first();
     this.poolsCard = page.locator('main').getByText('Pool').first();
     this.costTrendChart = page.locator('main svg').first();
-    this.openExpensesBtn = page.getByRole('button', { name: /open expenses/i });
+    this.openExpensesBtn = page.getByRole('button', { name: /explore costs/i });
     this.openPoolsBtn = page.getByRole('button', { name: /open pools/i });
   }
 

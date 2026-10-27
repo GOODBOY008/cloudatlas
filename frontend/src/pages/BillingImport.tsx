@@ -32,11 +32,11 @@ function phaseLabelKey(phase: string | null): string | null {
 function JobStatusBadge({ status }: { status: string }) {
   const { t } = useTranslation()
   const colors: Record<string, string> = {
-    pending: 'bg-gray-700 text-gray-300',
-    running: 'bg-indigo-900/60 text-indigo-300',
-    succeeded: 'bg-green-900/40 text-green-300',
-    failed: 'bg-red-900/40 text-red-300',
-    cancelled: 'bg-yellow-900/40 text-yellow-300',
+    pending: 'bg-emphasis text-secondary',
+    running: 'bg-accent-soft/60 text-accent',
+    succeeded: 'bg-success/10 text-success',
+    failed: 'bg-danger/10 text-danger',
+    cancelled: 'bg-warning/10 text-warning',
   }
   return (
     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${colors[status] ?? colors.pending}`}>
@@ -153,18 +153,18 @@ export default function BillingImport() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('billingImport.title')}</h2>
+        <h2 className="page-title">{t('billingImport.title')}</h2>
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
-        <h3 className="text-sm font-semibold text-white mb-3">{t('billingImport.triggerImport')}</h3>
+      <div className="bg-surface border border-edge rounded-xl p-5 mb-6">
+        <h3 className="text-sm font-semibold text-primary mb-3">{t('billingImport.triggerImport')}</h3>
         <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
           <div className="min-w-[260px] flex-1">
-            <label className="block text-xs font-medium text-gray-400 mb-1">{t('billingImport.cloudAccount')}</label>
+            <label className="block text-xs font-medium text-secondary mb-1">{t('billingImport.cloudAccount')}</label>
             <select
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent"
             >
               <option value="">{t('billingImport.selectAccount')}</option>
               {accounts.map((a) => (
@@ -175,7 +175,7 @@ export default function BillingImport() {
             </select>
           </div>
           <div className="w-[140px]">
-            <label className="block text-xs font-medium text-gray-400 mb-1">
+            <label className="block text-xs font-medium text-secondary mb-1">
               {t('billingImport.daysLabel')}
             </label>
             <input
@@ -184,31 +184,31 @@ export default function BillingImport() {
               max={90}
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>
           <button
             type="submit"
             disabled={submitDisabled || importMutation.isPending}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             {billingActiveFor(accountId) ? t('billingImport.importing') : t('billingImport.runImport')}
           </button>
         </form>
 
         {error && (
-          <div className="mt-4 p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">
+          <div className="mt-4 p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">
             {error}
           </div>
         )}
 
         {/* ── Live progress card (spec §5.2) ─────────────────────────────── */}
         {job && !isJobTerminal(job) && (
-          <div className="mt-4 p-4 rounded-lg bg-indigo-950/40 border border-indigo-800" data-testid="billing-progress-card">
+          <div className="mt-4 p-4 rounded-lg bg-accent-soft/40 border border-accent" data-testid="billing-progress-card">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <p className="text-sm font-medium text-white">{t('billingImport.progressTitle')}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-sm font-medium text-primary">{t('billingImport.progressTitle')}</p>
+                <p className="text-xs text-secondary mt-0.5">
                   {jobAccountName} ·{' '}
                   {phaseLabelKey(job.phase)
                     ? t(phaseLabelKey(job.phase)!)
@@ -217,12 +217,12 @@ export default function BillingImport() {
               </div>
               <div className="flex items-center gap-3">
                 {elapsed !== null && (
-                  <span className="text-xs text-gray-500 font-mono">{elapsed}s</span>
+                  <span className="text-xs text-muted font-mono">{elapsed}s</span>
                 )}
                 {!confirmCancel ? (
                   <button
                     onClick={() => setConfirmCancel(true)}
-                    className="px-3 py-1.5 text-xs rounded bg-red-900/50 hover:bg-red-800/60 text-red-200 transition-colors"
+                    className="px-3 py-1.5 text-xs rounded bg-danger/10 hover:bg-danger/10 text-danger transition-colors"
                   >
                     {t('jobs.cancel')}
                   </button>
@@ -231,13 +231,13 @@ export default function BillingImport() {
                     <button
                       onClick={() => cancelMutation.mutate(job.id)}
                       disabled={cancelMutation.isPending}
-                      className="px-3 py-1.5 text-xs rounded bg-red-700 hover:bg-red-600 disabled:opacity-60 text-white"
+                      className="px-3 py-1.5 text-xs rounded bg-danger-solid hover:bg-danger-solid/90 disabled:opacity-60 text-white"
                     >
                       {t('jobs.cancelConfirm')}
                     </button>
                     <button
                       onClick={() => setConfirmCancel(false)}
-                      className="px-3 py-1.5 text-xs rounded text-gray-400 hover:text-white"
+                      className="px-3 py-1.5 text-xs rounded text-secondary hover:text-primary"
                     >
                       {t('common.cancel')}
                     </button>
@@ -246,19 +246,19 @@ export default function BillingImport() {
               </div>
             </div>
             {pct !== null ? (
-              <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
+              <div className="w-full bg-subtle rounded-full h-2.5 overflow-hidden">
                 <div
-                  className="bg-indigo-500 h-full transition-all duration-300"
+                  className="bg-accent h-full transition-all duration-300"
                   style={{ width: `${pct}%` }}
                 />
               </div>
             ) : (
-              <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
-                <div className="bg-indigo-500/60 h-full w-1/3 animate-pulse" />
+              <div className="w-full bg-subtle rounded-full h-2.5 overflow-hidden">
+                <div className="bg-accent/60 h-full w-1/3 animate-pulse" />
               </div>
             )}
             {job.progress_total !== null && job.progress_current !== null && (
-              <p className="text-xs text-gray-500 mt-1.5 font-mono">
+              <p className="text-xs text-muted mt-1.5 font-mono">
                 {job.progress_current.toLocaleString()} / {job.progress_total.toLocaleString()}
               </p>
             )}
@@ -270,16 +270,16 @@ export default function BillingImport() {
           <div
             className={`mt-4 p-3 rounded-lg text-sm ${
               job.status === 'succeeded'
-                ? 'bg-green-900/40 border border-green-700 text-green-400'
+                ? 'bg-success/10 border border-success/25 text-success'
                 : job.status === 'cancelled'
-                  ? 'bg-yellow-900/40 border border-yellow-700 text-yellow-300'
-                  : 'bg-red-900/40 border border-red-700 text-red-400'
+                  ? 'bg-warning/10 border border-warning/25 text-warning'
+                  : 'bg-danger/10 border border-danger/25 text-danger'
             }`}
             data-testid="billing-result-box"
           >
             <div className="flex items-center gap-2 mb-1">
               <JobStatusBadge status={job.status} />
-              <span className="text-xs text-gray-500">{jobAccountName}</span>
+              <span className="text-xs text-muted">{jobAccountName}</span>
             </div>
             {job.status === 'succeeded' ? (
               <>
@@ -299,19 +299,19 @@ export default function BillingImport() {
         )}
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mb-6">
-        <div className="px-5 py-4 border-b border-gray-800">
-          <h3 className="text-sm font-semibold text-white">{t('billingImport.importHistory')}</h3>
+      <div className="bg-surface border border-edge rounded-xl overflow-hidden mb-6">
+        <div className="px-5 py-4 border-b border-edge">
+          <h3 className="text-sm font-semibold text-primary">{t('billingImport.importHistory')}</h3>
         </div>
         {isLoading ? (
-          <div className="p-5 text-gray-500 text-sm">{t('common.loading')}</div>
+          <div className="p-5 text-muted text-sm">{t('common.loading')}</div>
         ) : history.length === 0 ? (
-          <div className="p-5 text-center text-gray-500 text-sm">
+          <div className="p-5 text-center text-muted text-sm">
             {t('billingImport.empty')}
           </div>
         ) : (
-          <table className="w-full text-left">
-            <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+            <thead className="border-b border-edge text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">{t('billingImport.colAccount')}</th>
                 <th className="px-4 py-3 font-medium">{t('billingImport.colProvider')}</th>
@@ -322,31 +322,31 @@ export default function BillingImport() {
             </thead>
             <tbody>
               {history.map((h) => (
-                <tr key={h.cloud_account_id} className="border-b border-gray-700 last:border-0 hover:bg-gray-800/40 transition-colors">
-                  <td className="px-4 py-3 text-sm text-white">{accountName(h.cloud_account_id)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-400">{providerLabel(h.provider)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-300">{h.raw_rows.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-gray-300">{h.expense_rows.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
+                <tr key={h.cloud_account_id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                  <td className="px-4 py-3 text-sm text-primary">{accountName(h.cloud_account_id)}</td>
+                  <td className="px-4 py-3 text-sm text-secondary">{providerLabel(h.provider)}</td>
+                  <td className="px-4 py-3 text-sm text-secondary">{h.raw_rows.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm text-secondary">{h.expense_rows.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-xs text-muted">
                     {h.last_import_at ? new Date(h.last_import_at).toLocaleString() : t('common.never')}
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
 
       {/* ── 最近导入任务 (spec §5.2) ───────────────────────────────────────── */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-800">
-          <h3 className="text-sm font-semibold text-white">{t('billingImport.recentImports')}</h3>
+      <div className="bg-surface border border-edge rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-edge">
+          <h3 className="text-sm font-semibold text-primary">{t('billingImport.recentImports')}</h3>
         </div>
         {recentJobs.length === 0 ? (
-          <div className="p-5 text-center text-gray-500 text-sm">{t('billingImport.empty')}</div>
+          <div className="p-5 text-center text-muted text-sm">{t('billingImport.empty')}</div>
         ) : (
-          <table className="w-full text-left">
-            <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+            <thead className="border-b border-edge text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">{t('billingImport.colAccount')}</th>
                 <th className="px-4 py-3 font-medium">{t('common.status')}</th>
@@ -358,27 +358,27 @@ export default function BillingImport() {
             </thead>
             <tbody>
               {recentJobs.map((j) => (
-                <tr key={j.id} className="border-b border-gray-700 last:border-0 hover:bg-gray-800/40 transition-colors">
-                  <td className="px-4 py-3 text-sm text-white">{j.account_name ?? accountName(j.cloud_account_id)}</td>
+                <tr key={j.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                  <td className="px-4 py-3 text-sm text-primary">{j.account_name ?? accountName(j.cloud_account_id)}</td>
                   <td className="px-4 py-3"><JobStatusBadge status={j.status} /></td>
-                  <td className="px-4 py-3 text-sm text-gray-300">
+                  <td className="px-4 py-3 text-sm text-secondary">
                     {j.status === 'succeeded' ? (j.result?.raw_rows_inserted ?? 0).toLocaleString() : '—'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-300">
+                  <td className="px-4 py-3 text-sm text-secondary">
                     {j.params?.days != null ? String(j.params.days) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-400">
+                  <td className="px-4 py-3 text-sm text-secondary">
                     {j.triggered_by === 'scheduler'
                       ? t('jobs.triggeredBy.scheduler')
                       : t('jobs.triggeredBy.user')}
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
+                  <td className="px-4 py-3 text-xs text-muted">
                     {j.started_at ? new Date(j.started_at).toLocaleString() : '—'}
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
     </div>

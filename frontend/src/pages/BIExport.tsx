@@ -175,92 +175,92 @@ export default function BIExport() {
   }
 
   const inputCls =
-    'bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-500'
+    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('biExport.title')}</h2>
+        <h2 className="page-title">{t('biExport.title')}</h2>
         <button
           onClick={openCreate}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
         >
           {t('biExport.newExport')}
         </button>
       </div>
 
       {isError && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           {t('biExport.loadFailed')}
         </div>
       )}
 
       {isLoading ? (
-        <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+        <div className="text-muted text-sm">{t('common.loading')}</div>
       ) : exports.length === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-8 text-center text-gray-500 text-sm">
+        <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
           {t('biExport.empty')}
         </div>
       ) : (
         <div className="space-y-3">
           {exports.map((e) => (
-            <div key={e.id} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <div key={e.id} className="bg-surface border border-edge rounded-xl overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4">
                 <div className="flex items-center gap-3">
                   <div>
-                    <p className="font-medium text-white">{e.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="font-medium text-primary">{e.name}</p>
+                    <p className="text-xs text-muted mt-0.5">
                       {t(`biExport.scope.${e.scope}`, { defaultValue: e.scope })} · {e.format.toUpperCase()}
                       {typeof e.filters?.start_date === 'string' && ` · ${e.filters.start_date} → ${e.filters.end_date ?? t('biExport.now')}`}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 text-xs">
-                  <span className="text-gray-500">{t('biExport.runsCount', { count: e.run_count })}</span>
+                  <span className="text-muted">{t('biExport.runsCount', { count: e.run_count })}</span>
                   {e.last_run_at && (
-                    <span className="text-gray-500">{t('biExport.lastRun', { date: new Date(e.last_run_at).toLocaleDateString() })}</span>
+                    <span className="text-muted">{t('biExport.lastRun', { date: new Date(e.last_run_at).toLocaleDateString() })}</span>
                   )}
                   <button
                     onClick={() => runMutation.mutate(e.id)}
                     disabled={runMutation.isPending}
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg disabled:opacity-50"
+                    className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent font-medium rounded-lg disabled:opacity-50"
                   >
                     {t('biExport.run')}
                   </button>
                   <button
                     onClick={() => download(e.id)}
-                    className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-lg"
+                    className="px-3 py-1.5 bg-subtle hover:bg-emphasis text-primary font-medium rounded-lg"
                   >
                     {t('biExport.download')}
                   </button>
-                  <button onClick={() => openEdit(e)} className="text-indigo-400 hover:text-indigo-300">
+                  <button onClick={() => openEdit(e)} className="text-accent hover:text-accent">
                     {t('common.edit')}
                   </button>
                   <button
                     onClick={() => {
                       if (confirm(t('biExport.confirmDelete', { name: e.name }))) deleteMutation.mutate(e.id)
                     }}
-                    className="text-red-400 hover:text-red-300"
+                    className="text-danger hover:text-danger"
                   >
                     {t('common.delete')}
                   </button>
                   <button
                     onClick={() => setExpandedId(expandedId === e.id ? null : e.id)}
-                    className="text-gray-400 hover:text-gray-200"
+                    className="text-secondary hover:text-primary"
                   >
                     {expandedId === e.id ? t('biExport.hideRuns') : t('biExport.showRuns')}
                   </button>
                 </div>
               </div>
               {expandedId === e.id && (
-                <div className="border-t border-gray-800">
+                <div className="border-t border-edge">
                   {runsLoading ? (
-                    <div className="p-4 text-gray-500 text-xs">{t('common.loading')}</div>
+                    <div className="p-4 text-muted text-xs">{t('common.loading')}</div>
                   ) : runs.length === 0 ? (
-                    <div className="p-4 text-gray-500 text-xs">{t('biExport.noRuns')}</div>
+                    <div className="p-4 text-muted text-xs">{t('biExport.noRuns')}</div>
                   ) : (
-                    <table className="w-full text-left">
-                      <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+                    <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+                      <thead className="border-b border-edge text-xs uppercase text-muted">
                         <tr>
                           <th className="px-4 py-2 font-medium">{t('common.status')}</th>
                           <th className="px-4 py-2 font-medium">{t('biExport.colRows')}</th>
@@ -270,27 +270,27 @@ export default function BIExport() {
                       </thead>
                       <tbody>
                         {runs.map((r) => (
-                          <tr key={r.id} className="border-b border-gray-700 last:border-0">
+                          <tr key={r.id} className="border-b border-strong last:border-0">
                             <td className="px-4 py-2 text-xs">
                               <span
                                 className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                                   r.status === 'completed'
-                                    ? 'bg-green-900/40 text-green-300'
-                                    : 'bg-red-900/40 text-red-300'
+                                    ? 'bg-success/10 text-success'
+                                    : 'bg-danger/10 text-danger'
                                 }`}
                               >
                                 {t(`status.${r.status}`, { defaultValue: r.status })}
                               </span>
                             </td>
-                            <td className="px-4 py-2 text-xs text-gray-300">{r.row_count.toLocaleString()}</td>
-                            <td className="px-4 py-2 text-xs text-gray-500">{r.error_message ?? '—'}</td>
-                            <td className="px-4 py-2 text-xs text-gray-500">
+                            <td className="px-4 py-2 text-xs text-secondary">{r.row_count.toLocaleString()}</td>
+                            <td className="px-4 py-2 text-xs text-muted">{r.error_message ?? '—'}</td>
+                            <td className="px-4 py-2 text-xs text-muted">
                               {new Date(r.created_at).toLocaleString()}
                             </td>
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </table></div>
                   )}
                 </div>
               )}
@@ -302,15 +302,15 @@ export default function BIExport() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={closeModal}>
           <div
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">
+            <h3 className="text-lg font-semibold text-primary mb-4">
               {editingId ? t('biExport.editExport') : t('biExport.newExportTitle')}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">{t('common.name')}</label>
+                <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -320,7 +320,7 @@ export default function BIExport() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">{t('biExport.format')}</label>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('biExport.format')}</label>
                   <select
                     value={form.format}
                     onChange={(e) => setForm({ ...form, format: e.target.value as 'csv' | 'json' })}
@@ -331,7 +331,7 @@ export default function BIExport() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">{t('biExport.scope')}</label>
+                  <label className="block text-xs font-medium text-secondary mb-1">{t('biExport.scope')}</label>
                   <select
                     value={form.scope}
                     onChange={(e) =>
@@ -350,7 +350,7 @@ export default function BIExport() {
               {form.scope === 'expenses' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1">{t('biExport.startDate')}</label>
+                    <label className="block text-xs font-medium text-secondary mb-1">{t('biExport.startDate')}</label>
                     <input
                       type="date"
                       value={form.start_date}
@@ -359,7 +359,7 @@ export default function BIExport() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1">{t('biExport.endDate')}</label>
+                    <label className="block text-xs font-medium text-secondary mb-1">{t('biExport.endDate')}</label>
                     <input
                       type="date"
                       value={form.end_date}
@@ -370,7 +370,7 @@ export default function BIExport() {
                 </div>
               )}
               {formError && (
-                <div className="p-3 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-sm">
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">
                   {formError}
                 </div>
               )}
@@ -378,14 +378,14 @@ export default function BIExport() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {editingId ? t('biExport.saveChanges') : t('biExport.createExport')}
                 </button>

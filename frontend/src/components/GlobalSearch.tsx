@@ -1,32 +1,54 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search } from 'lucide-react'
+import { Search, ArrowUpRight } from 'lucide-react'
 import api from '../lib/api'
 import { useOrgStore } from '../store/orgStore'
+import { useDialogFocus } from '../lib/hooks/useDialogFocus'
 
 interface SearchResults {
   cis: Array<{ id: string; name: string; display_name: string }>
-  resources: Array<{ id: string; name: string | null; resource_type: string | null; cost: number }>
-  recommendations: Array<{ id: string; title: string; rec_type: string; savings: number }>
+  resources: Array<{
+    id: string
+    name: string | null
+    resource_type: string | null
+    cost: number
+  }>
+  recommendations: Array<{
+    id: string
+    title: string
+    rec_type: string
+    savings: number
+  }>
   services: Array<{ id: string; name: string; display_name: string }>
   pools: Array<{ id: string; name: string }>
 }
 
-const EMPTY: SearchResults = { cis: [], resources: [], recommendations: [], services: [], pools: [] }
+const EMPTY: SearchResults = {
+  cis: [],
+  resources: [],
+  recommendations: [],
+  services: [],
+  pools: [],
+}
 
 /** Cmd-K global search overlay (product gap P3). */
-export default function GlobalSearch() {
+export default function GlobalSearch({
+  open,
+  onOpenChange: setOpen,
+}: {
+  open: boolean
+  onOpenChange: Dispatch<SetStateAction<boolean>>
+}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id
 
-  const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResults>(EMPTY)
   const [loading, setLoading] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useDialogFocus<HTMLDivElement>(open, () => setOpen(false))
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -38,13 +60,12 @@ export default function GlobalSearch() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [setOpen])
 
   useEffect(() => {
     if (open) {
       setQuery('')
       setResults(EMPTY)
-      setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [open])
 
@@ -58,7 +79,9 @@ export default function GlobalSearch() {
     setLoading(true)
     const timer = setTimeout(() => {
       api
-        .get<{ data: SearchResults }>(`/orgs/${orgId}/search?q=${encodeURIComponent(q)}`)
+        .get<{ data: SearchResults }>(
+          `/orgs/${orgId}/search?q=${encodeURIComponent(q)}`,
+        )
         .then((res) => setResults(res.data.data ?? EMPTY))
         .catch(() => setResults(EMPTY))
         .finally(() => setLoading(false))
@@ -73,7 +96,12 @@ export default function GlobalSearch() {
 
   if (!open) return null
 
-  type SearchGroup = Array<{ key: string; label: string; sub: string; path: string }>
+  type SearchGroup = Array<{
+    key: string
+    label: string
+    sub: string
+    path: string
+  }>
   const groups: Array<[string, SearchGroup]> = []
   const ciGroup: SearchGroup = results.cis.map((r) => ({
     key: r.id,
@@ -93,8 +121,18 @@ export default function GlobalSearch() {
     sub: `${r.rec_type} · $${r.savings.toFixed(2)}/mo`,
     path: '/recommendations',
   }))
-  const serviceGroup: SearchGroup = results.services.map((r) => ({ key: r.id, label: r.display_name, sub: r.name, path: '/services' }))
-  const poolGroup: SearchGroup = results.pools.map((r) => ({ key: r.id, label: r.name, sub: '', path: '/pools' }))
+  const serviceGroup: SearchGroup = results.services.map((r) => ({
+    key: r.id,
+    label: r.display_name,
+    sub: r.name,
+    path: '/services',
+  }))
+  const poolGroup: SearchGroup = results.pools.map((r) => ({
+    key: r.id,
+    label: r.name,
+    sub: '',
+    path: '/pools',
+  }))
   const groupTuples: Array<[string, SearchGroup]> = [
     [t('search.groupCis'), ciGroup],
     [t('nav.resources'), resourceGroup],
@@ -107,39 +145,76 @@ export default function GlobalSearch() {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center pt-24" onClick={() => setOpen(false)}>
-      <div className="absolute inset-0 bg-black/50" />
+    <div
+      className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[15vh]"
+      onClick={() => setOpen(false)}
+    >
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-lg bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('common.search')}
+        tabIndex={-1}
+        className="relative w-full max-w-xl bg-surface border border-edge rounded-2xl shadow-popover overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800">
-          <Search size={16} className="text-gray-500" />
+        <div className="flex items-center gap-3 px-5 py-5 border-b border-edge">
+          <Search size={16} className="text-muted" />
           <input
-            ref={inputRef}
+            aria-label={t('common.search')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('search.placeholder')}
-            className="flex-1 bg-transparent text-white text-sm focus:outline-none"
+            className="flex-1 bg-transparent text-primary text-sm focus:outline-none"
           />
-          <kbd className="text-[10px] text-gray-600 border border-gray-700 rounded px-1.5 py-0.5">ESC</kbd>
+          <button
+            onClick={() => setOpen(false)}
+            aria-label={t('design.closeSearch')}
+            className="text-[10px] text-muted border border-edge rounded px-1.5 py-1"
+          >
+            ESC
+          </button>
         </div>
         <div className="max-h-[420px] overflow-y-auto">
-          {loading && <div className="px-4 py-6 text-center text-gray-500 text-sm">{t('common.loading')}</div>}
+          {query.trim().length < 2 && (
+            <div className="empty-state">
+              <span className="empty-state-icon">
+                <Search size={20} />
+              </span>
+              <p>{t('design.searchHint')}</p>
+            </div>
+          )}
+          {loading && (
+            <div className="px-4 py-6 text-center text-muted text-sm">
+              {t('common.loading')}
+            </div>
+          )}
           {!loading && groups.length === 0 && query.trim().length >= 2 && (
-            <div className="px-4 py-8 text-center text-gray-500 text-sm">{t('search.empty')}</div>
+            <div className="px-4 py-8 text-center text-muted text-sm">
+              {t('search.empty')}
+            </div>
           )}
           {groups.map(([label, items]) => (
-            <div key={label} className="border-b border-gray-800 last:border-0">
-              <p className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-wider text-gray-600">{label}</p>
+            <div key={label} className="border-b border-edge last:border-0">
+              <p className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-wider text-muted">
+                {label}
+              </p>
               {items.map((item) => (
                 <button
                   key={item.key}
                   onClick={() => go(item.path)}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-800 transition-colors"
+                  className="flex w-full items-center justify-between gap-3 text-left px-5 py-3 hover:bg-subtle transition-colors"
                 >
-                  <p className="text-sm text-white truncate">{item.label}</p>
-                  <p className="text-xs text-gray-500 truncate">{item.sub}</p>
+                  <span className="min-w-0">
+                    <span className="block text-sm text-primary truncate">
+                      {item.label}
+                    </span>
+                    <span className="block text-xs text-muted truncate">
+                      {item.sub}
+                    </span>
+                  </span>
+                  <ArrowUpRight size={14} className="shrink-0 text-muted" />
                 </button>
               ))}
             </div>

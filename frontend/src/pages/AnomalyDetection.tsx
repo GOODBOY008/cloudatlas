@@ -76,20 +76,20 @@ export default function AnomalyDetection() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">{t('anomalyDetection.title')}</h1>
-          <p className="text-sm text-gray-400 mt-1">{t('anomalyDetection.subtitle')}</p>
+          <h1 className="page-title">{t('anomalyDetection.title')}</h1>
+          <p className="text-sm text-secondary mt-1">{t('anomalyDetection.subtitle')}</p>
         </div>
         <div className="flex gap-3">
           <button
             onClick={() => evaluate.mutate()}
             disabled={evaluate.isPending}
-            className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-warning-solid hover:bg-warning-solid/90 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
           >
             {evaluate.isPending ? t('anomalyDetection.evaluating') : t('anomalyDetection.runEvaluate')}
           </button>
           <button
             onClick={() => setShowCreate(true)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg transition-colors"
           >
             {t('anomalyDetection.addPolicy')}
           </button>
@@ -97,32 +97,32 @@ export default function AnomalyDetection() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('anomalyDetection.totalAnomalies')}</p>
-          <p className="text-2xl font-bold text-yellow-300 mt-1">{(anomalies ?? []).length}</p>
-          <p className="text-xs text-gray-500 mt-1">{t('anomalyDetection.thisPeriod')}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('anomalyDetection.totalAnomalies')}</p>
+          <p className="text-2xl font-bold text-warning mt-1">{(anomalies ?? []).length}</p>
+          <p className="text-xs text-muted mt-1">{t('anomalyDetection.thisPeriod')}</p>
         </div>
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('anomalyDetection.costImpact')}</p>
-          <p className="text-2xl font-bold text-red-300 mt-1">{fmt(totalAnomalyCost)}</p>
-          <p className="text-xs text-gray-500 mt-1">{t('anomalyDetection.aboveBaseline')}</p>
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('anomalyDetection.costImpact')}</p>
+          <p className="text-2xl font-bold text-danger mt-1">{fmt(totalAnomalyCost)}</p>
+          <p className="text-xs text-muted mt-1">{t('anomalyDetection.aboveBaseline')}</p>
         </div>
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">{t('anomalyDetection.activePolicies')}</p>
-          <p className="text-2xl font-bold text-indigo-300 mt-1">{(constraints ?? []).filter(c => c.is_active).length}</p>
-          <p className="text-xs text-gray-500 mt-1">{t('anomalyDetection.ofTotal', { count: (constraints ?? []).length })}</p>
+        <div className="bg-surface rounded-xl border border-strong p-5">
+          <p className="text-xs text-secondary uppercase tracking-wider">{t('anomalyDetection.activePolicies')}</p>
+          <p className="text-2xl font-bold text-accent mt-1">{(constraints ?? []).filter(c => c.is_active).length}</p>
+          <p className="text-xs text-muted mt-1">{t('anomalyDetection.ofTotal', { count: (constraints ?? []).length })}</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-700">
+      <div className="flex gap-2 border-b border-strong">
         {(['violations', 'policies'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-              activeTab === tab ? 'border-indigo-500 text-white' : 'border-transparent text-gray-400 hover:text-gray-200'
+              activeTab === tab ? 'border-accent text-primary' : 'border-transparent text-secondary hover:text-primary'
             }`}
           >
             {tab === 'violations' ? t('anomalyDetection.tabAnomalies', { count: (anomalies ?? []).length }) : t('anomalyDetection.tabPolicies', { count: (constraints ?? []).length })}
@@ -134,13 +134,13 @@ export default function AnomalyDetection() {
         <div className="space-y-4">
           {/* Chart */}
           {topAnomalies.length > 0 && (
-            <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-              <p className="text-sm font-semibold text-white mb-3">{t('anomalyDetection.topAnomaliesByDeviation')}</p>
+            <div className="bg-surface rounded-xl border border-strong p-5">
+              <p className="text-sm font-semibold text-primary mb-3">{t('anomalyDetection.topAnomaliesByDeviation')}</p>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={topAnomalies.map(a => ({ name: (a.resource_name ?? a.cloud_resource_id).slice(0, 16), deviation: Math.round(a.deviation_pct) }))}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9CA3AF' }} />
-                  <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} unit="%" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
+                  <YAxis tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} unit="%" />
                   <Tooltip formatter={(v: number) => `${v}%`} />
                   <Bar dataKey="deviation" radius={[4, 4, 0, 0]}>
                     {topAnomalies.map((_, i) => <Cell key={i} fill={i < 3 ? '#ef4444' : '#f59e0b'} />)}
@@ -151,77 +151,77 @@ export default function AnomalyDetection() {
           )}
 
           {/* Anomalies table */}
-          <div className="bg-gray-900 rounded-xl border border-gray-700 overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-surface rounded-xl border border-strong overflow-hidden">
+            <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-700">
+                <tr className="border-b border-strong">
                   {['anomalyDetection.colResource', 'common.type', 'anomalyDetection.colDate', 'anomalyDetection.colCost', 'anomalyDetection.colBaseline', 'anomalyDetection.colDeviation', 'anomalyDetection.colZScore'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">{t(h)}</th>
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-edge">
                 {aLoading ? (
-                  <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-500">{t('common.loading')}</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
                 ) : (anomalies ?? []).length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-500">{t('anomalyDetection.noAnomalies')}</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-10 text-center text-muted">{t('anomalyDetection.noAnomalies')}</td></tr>
                 ) : (anomalies ?? []).map((a, i) => (
-                  <tr key={i} className="hover:bg-gray-800">
+                  <tr key={i} className="hover:bg-subtle">
                     <td className="px-4 py-3">
-                      <div className="font-medium text-white">{a.resource_name ?? a.cloud_resource_id.slice(0, 20)}</div>
-                      <div className="text-xs text-gray-500">{a.date?.slice(0, 10)}</div>
+                      <div className="font-medium text-primary">{a.resource_name ?? a.cloud_resource_id.slice(0, 20)}</div>
+                      <div className="text-xs text-muted">{a.date?.slice(0, 10)}</div>
                     </td>
-                    <td className="px-4 py-3 text-gray-300">{t(`resType.${a.resource_type}`, { defaultValue: a.resource_type })}</td>
-                    <td className="px-4 py-3 text-gray-400">{a.date?.slice(0, 10)}</td>
-                    <td className="px-4 py-3 font-semibold text-red-300">{fmt(a.cost)}</td>
-                    <td className="px-4 py-3 text-gray-400">{fmt(a.mean_cost)}</td>
+                    <td className="px-4 py-3 text-secondary">{t(`resType.${a.resource_type}`, { defaultValue: a.resource_type })}</td>
+                    <td className="px-4 py-3 text-secondary">{a.date?.slice(0, 10)}</td>
+                    <td className="px-4 py-3 font-semibold text-danger">{fmt(a.cost)}</td>
+                    <td className="px-4 py-3 text-secondary">{fmt(a.mean_cost)}</td>
                     <td className="px-4 py-3">
-                      <span className={`font-semibold ${a.deviation_pct > 100 ? 'text-red-400' : 'text-yellow-400'}`}>
+                      <span className={`font-semibold ${a.deviation_pct > 100 ? 'text-danger' : 'text-warning'}`}>
                         +{a.deviation_pct.toFixed(0)}%
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-300">{a.z_score.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-secondary">{a.z_score.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         </div>
       )}
 
       {activeTab === 'policies' && (
-        <div className="bg-gray-900 rounded-xl border border-gray-700 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-surface rounded-xl border border-strong overflow-hidden">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-700">
+              <tr className="border-b border-strong">
                 {['anomalyDetection.colPolicyName', 'common.type', 'anomalyDetection.colLimit', 'common.status', 'anomalyDetection.colLastTriggered', 'common.actions'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">{t(h)}</th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-edge">
               {cLoading ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-500">{t('common.loading')}</td></tr>
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
               ) : (constraints ?? []).length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-500">{t('anomalyDetection.noPolicies')}</td></tr>
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">{t('anomalyDetection.noPolicies')}</td></tr>
               ) : (constraints ?? []).map(c => (
-                <tr key={c.id} className="hover:bg-gray-800">
-                  <td className="px-4 py-3 font-medium text-white">{c.name}</td>
-                  <td className="px-4 py-3"><span className="px-2 py-0.5 bg-indigo-900 text-indigo-300 rounded text-xs">{t(`anomalyDetection.constraintType.${c.constraint_type}`, { defaultValue: c.constraint_type })}</span></td>
-                  <td className="px-4 py-3 text-gray-300">{c.limit_value != null ? fmt(c.limit_value) : '—'}</td>
+                <tr key={c.id} className="hover:bg-subtle">
+                  <td className="px-4 py-3 font-medium text-primary">{c.name}</td>
+                  <td className="px-4 py-3"><span className="px-2 py-0.5 bg-accent-soft text-accent rounded text-xs">{t(`anomalyDetection.constraintType.${c.constraint_type}`, { defaultValue: c.constraint_type })}</span></td>
+                  <td className="px-4 py-3 text-secondary">{c.limit_value != null ? fmt(c.limit_value) : '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${c.is_active ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-400'}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${c.is_active ? 'bg-success/10 text-success' : 'bg-emphasis text-secondary'}`}>
                       {c.is_active ? t('common.active') : t('common.inactive')}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{c.last_triggered_at ? c.last_triggered_at.slice(0, 16) : t('common.never')}</td>
+                  <td className="px-4 py-3 text-secondary text-xs">{c.last_triggered_at ? c.last_triggered_at.slice(0, 16) : t('common.never')}</td>
                   <td className="px-4 py-3">
-                    <button onClick={() => deleteConstraint.mutate(c.id)} className="text-red-400 hover:text-red-300 text-xs">{t('common.delete')}</button>
+                    <button onClick={() => deleteConstraint.mutate(c.id)} className="text-danger hover:text-danger text-xs">{t('common.delete')}</button>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
@@ -229,33 +229,33 @@ export default function AnomalyDetection() {
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowCreate(false)} />
-          <div className="relative bg-gray-900 rounded-xl border border-gray-700 p-6 w-full max-w-md space-y-4">
-            <h3 className="text-lg font-semibold text-white">{t('anomalyDetection.newPolicy')}</h3>
+          <div className="relative bg-surface rounded-xl border border-strong p-6 w-full max-w-md space-y-4">
+            <h3 className="text-lg font-semibold text-primary">{t('anomalyDetection.newPolicy')}</h3>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">{t('common.name')}</label>
+                <label className="text-xs text-secondary mb-1 block">{t('common.name')}</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-indigo-500" />
+                  className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
               </div>
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">{t('common.type')}</label>
+                <label className="text-xs text-secondary mb-1 block">{t('common.type')}</label>
                 <select value={form.constraint_type} onChange={e => setForm(f => ({ ...f, constraint_type: e.target.value }))}
-                  className="w-full bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700">
+                  className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong">
                   {TYPES.map(type => <option key={type} value={type}>{t(`anomalyDetection.constraintType.${type}`, { defaultValue: type })}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">{t('anomalyDetection.limitValue')}</label>
+                <label className="text-xs text-secondary mb-1 block">{t('anomalyDetection.limitValue')}</label>
                 <input type="number" value={form.limit_value} onChange={e => setForm(f => ({ ...f, limit_value: e.target.value }))}
-                  className="w-full bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-indigo-500" />
+                  className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
               </div>
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowCreate(false)} className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg">{t('common.cancel')}</button>
+              <button onClick={() => setShowCreate(false)} className="flex-1 px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg">{t('common.cancel')}</button>
               <button
                 onClick={() => createConstraint.mutate({ name: form.name, constraint_type: form.constraint_type, limit_value: form.limit_value ? parseFloat(form.limit_value) : null })}
                 disabled={!form.name || createConstraint.isPending}
-                className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg disabled:opacity-50"
               >
                 {t('anomalyDetection.create')}
               </button>

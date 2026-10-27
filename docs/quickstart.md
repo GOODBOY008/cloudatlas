@@ -184,27 +184,29 @@ TOTAL: <N> passed, 0 failed
 
 ## First Five Minutes — a Tour
 
-1. **Dashboard** — month-to-date spend, 30-day trend with forecast, top resources, and pools needing attention. If the onboarding banner offers to load demo data, click it.
+1. **Dashboard** — the workspace overview shows month-to-date spend, a 30-day cost trend, a separate forecast panel, top resources, and pools needing attention. If the onboarding banner offers to load demo data, click it.
 
-   ![Dashboard](screenshots/quickstart/quickstart-t2-dashboard.png)
+   ![Dashboard](screenshots/dashboard-en.png)
 
 2. **Recommendations** — press **Run Engine**, then browse the findings (idle instances, orphan volumes, rightsizing, …) with estimated monthly savings per item.
 
-   ![Recommendations](screenshots/quickstart/quickstart-t3-recommendations.png)
+   ![Recommendations](screenshots/recommendations-en.png)
 
 3. **Cost Explorer** — slice the seeded spend by service, region, cloud account, or tag; click any bar or row to drill into resources.
 
-   ![Cost Explorer](screenshots/quickstart/quickstart-t4-cost-explorer.png)
+   ![Cost Explorer](screenshots/cost-explorer-en.png)
 
 4. **Cost Map** — treemap and world-map views of spend distribution, plus unit economics and the pool budget matrix.
 
-   ![Cost Map](screenshots/quickstart/quickstart-t5-cost-map.png)
+   ![Cost Map](screenshots/cost-map-en.png)
 
 5. **CMDB** — browse configuration items (instances, databases, volumes, buckets), open one for its topology, audit trail, and linked costs.
 
-   ![CMDB](screenshots/quickstart/quickstart-t6-cmdb.png)
+   ![CMDB](screenshots/cmdb-en.png)
 
 Every page above works on seed data alone — no cloud account connection required.
+
+Expand the sidebar sections to browse each workspace area, or open the navigation drawer on mobile. The header includes search, language, and light/dark controls. Use **⌘/Ctrl+K** for global search and **⌘/Ctrl+I** for Copilot; see the [system keyboard shortcuts](user-guide.md#system-keyboard-shortcuts) for focus, dismissal, and panel resizing controls.
 
 ---
 

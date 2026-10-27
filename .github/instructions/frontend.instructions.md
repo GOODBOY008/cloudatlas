@@ -67,7 +67,12 @@ export default function SomePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Page Title" subtitle="Description" />
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">Page Title</h2>
+          <p className="page-description">Description</p>
+        </div>
+      </div>
       {/* widgets */}
     </div>
   );
@@ -125,12 +130,17 @@ api.interceptors.response.use(
 
 ## Styling Conventions
 
-- Use **TailwindCSS** utility classes. No custom CSS except in `globals.css`.
-- Color palette: zinc/slate for UI chrome; blue for primary actions; green/red/yellow for status.
-- Use `space-y-*` and `gap-*` for spacing. Never inline styles.
-- Charts: **Recharts** for all data visualization (LineChart, BarChart, PieChart, AreaChart).
-- Table pattern: header + scrollable body, sort by column, pagination via `page`/`pageSize` query params.
-- Responsive: mobile-first. Sidebar collapses to drawer on `sm` breakpoint.
+- Use locally compiled **TailwindCSS** utilities. Define shared tokens and component classes in `frontend/src/styles.css`, with mappings in `frontend/tailwind.config.cjs`.
+- Use semantic slate/teal tokens: `bg-canvas`, `bg-surface`, `bg-subtle`, `text-primary`, `text-secondary`, `text-muted`, `border-edge`, and `border-strong`.
+- Primary actions use `btn-primary` or `bg-accent text-on-accent hover:bg-accent-hover`. Status colors use `success`, `warning`, `danger`, `info`, or `violet`; use `*-solid text-white` on solid status buttons.
+- Light mode is the default; `themeStore` preserves the saved preference. Avoid hardcoded dark-first colors or new light-mode override blocks.
+- Use shared `page-header`, `page-title`, `page-description`, `panel`, `btn-secondary`, and `icon-button` classes. The layout owns outer page padding.
+- Use `space-y-*` and `gap-*` for spacing. Reserve inline styles for dynamic dimensions, chart colors, or other values utilities cannot express.
+- Charts: use **Recharts** for standard plots and CSS variables for neutral strokes/text. Custom SVG/canvas colors must follow the theme, as in `CostMap.tsx` and `ModelTopology.tsx`.
+- Tables: wrap wide tables in `<div className="table-scroll" tabIndex={0}>`; retain existing sorting and pagination behavior.
+- Responsive: mobile-first. Sidebar becomes a drawer below `lg` (1024 px). Check mobile form wrapping and metric grids.
+- Accessibility: label inputs and icon buttons, preserve visible focus, and use shared `Modal`/`useDialogFocus` for dialog focus handling. Keep English and Chinese translations aligned.
+- Keep the [design system guide](../../CONTRIBUTING.md#frontend-design-system) and [system shortcuts](../../docs/user-guide.md#system-keyboard-shortcuts) current when changing these conventions.
 
 ## Code Conventions
 

@@ -152,23 +152,23 @@ export default function AICenter() {
 
   const toggleCls =
     'relative inline-flex h-5 w-9 items-center rounded-full transition-colors'
-  const knobCls = 'inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform'
+  const knobCls = 'inline-block h-3.5 w-3.5 transform rounded-full bg-surface transition-transform'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">{t('aiCenter.title')}</h2>
+        <h2 className="page-title">{t('aiCenter.title')}</h2>
       </div>
 
-      <div className="flex gap-1 mb-4 border-b border-gray-800 flex-wrap">
+      <div className="flex gap-1 mb-4 border-b border-edge flex-wrap">
         {(['assistant', 'forecast', 'anomalies', 'notes', 'settings'] as const).map((tabKey) => (
           <button
             key={tabKey}
             onClick={() => setTab(tabKey)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               tab === tabKey
-                ? 'border-indigo-500 text-white'
-                : 'border-transparent text-gray-500 hover:text-gray-300'
+                ? 'border-accent text-primary'
+                : 'border-transparent text-muted hover:text-secondary'
             }`}
           >
             {tabLabels[tabKey]}
@@ -178,15 +178,15 @@ export default function AICenter() {
 
       {tab === 'assistant' && (
         <div className="max-w-xl">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-8 text-center">
-            <Sparkles size={28} className="mx-auto text-indigo-500 dark:text-indigo-400 mb-3" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+          <div className="bg-surface border border-edge rounded-xl p-8 text-center">
+            <Sparkles size={28} className="mx-auto text-accent mb-3" />
+            <h3 className="text-lg font-semibold text-primary mb-1">
               {t('copilot.redirectTitle')}
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">{t('copilot.redirectBody')}</p>
+            <p className="text-sm text-secondary mb-5">{t('copilot.redirectBody')}</p>
             <button
               onClick={() => useCopilotStore.getState().setOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
             >
               <Sparkles size={15} />
               {t('copilot.openCopilot')}
@@ -197,27 +197,27 @@ export default function AICenter() {
 
       {tab === 'forecast' && (
         <div className="max-w-3xl space-y-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-            <p className="text-sm text-gray-300 mb-3">
+          <div className="bg-surface border border-edge rounded-xl p-5">
+            <p className="text-sm text-secondary mb-3">
               {t('aiCenter.forecastDesc')}
             </p>
             <button
               onClick={runForecast}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+              className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
             >
               {t('aiCenter.generateForecast')}
             </button>
             {forecast?.summary && (
               <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div className="bg-gray-800 rounded-lg p-3">
-                  <p className="text-xs text-gray-500">{t('aiCenter.historicalTotal90d')}</p>
-                  <p className="text-white font-semibold">
+                <div className="bg-subtle rounded-lg p-3">
+                  <p className="text-xs text-muted">{t('aiCenter.historicalTotal90d')}</p>
+                  <p className="text-primary font-semibold">
                     ${Number(forecast.summary.historical_total).toLocaleString()}
                   </p>
                 </div>
-                <div className="bg-gray-800 rounded-lg p-3">
-                  <p className="text-xs text-gray-500">{t('aiCenter.projectedNext14d')}</p>
-                  <p className="text-white font-semibold">
+                <div className="bg-subtle rounded-lg p-3">
+                  <p className="text-xs text-muted">{t('aiCenter.projectedNext14d')}</p>
+                  <p className="text-primary font-semibold">
                     ${Number(forecast.summary.projected_total_next_14d).toLocaleString()}
                   </p>
                 </div>
@@ -225,9 +225,9 @@ export default function AICenter() {
             )}
           </div>
           {forecast && (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+            <div className="bg-surface border border-edge rounded-xl overflow-hidden">
+              <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+                <thead className="border-b border-edge text-xs uppercase text-muted">
                   <tr>
                     <th className="px-4 py-2 font-medium">{t('aiCenter.colDate')}</th>
                     <th className="px-4 py-2 font-medium">{t('aiCenter.colForecast')}</th>
@@ -235,15 +235,15 @@ export default function AICenter() {
                 </thead>
                 <tbody>
                   {forecast.points.map((p) => (
-                    <tr key={p.date} className="border-b border-gray-700 last:border-0">
-                      <td className="px-4 py-2 text-sm text-gray-300">{p.date}</td>
-                      <td className="px-4 py-2 text-sm text-white">
+                    <tr key={p.date} className="border-b border-strong last:border-0">
+                      <td className="px-4 py-2 text-sm text-secondary">{p.date}</td>
+                      <td className="px-4 py-2 text-sm text-primary">
                         ${p.forecast.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           )}
         </div>
@@ -251,26 +251,26 @@ export default function AICenter() {
 
       {tab === 'anomalies' && (
         <div className="max-w-3xl space-y-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-            <p className="text-sm text-gray-300 mb-3">
+          <div className="bg-surface border border-edge rounded-xl p-5">
+            <p className="text-sm text-secondary mb-3">
               {t('aiCenter.anomaliesDesc')}
             </p>
             <button
               onClick={runAnomalies}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+              className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
             >
               {t('aiCenter.scanForAnomalies')}
             </button>
           </div>
           {anomalies && (
             anomalies.length === 0 ? (
-              <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-8 text-center text-gray-500 text-sm">
+              <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
                 {t('aiCenter.noAnomaliesDetected')}
               </div>
             ) : (
-              <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                <table className="w-full text-left">
-                  <thead className="border-b border-gray-800 text-xs uppercase text-gray-500">
+              <div className="bg-surface border border-edge rounded-xl overflow-hidden">
+                <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+                  <thead className="border-b border-edge text-xs uppercase text-muted">
                     <tr>
                       <th className="px-4 py-2 font-medium">{t('aiCenter.colDate')}</th>
                       <th className="px-4 py-2 font-medium">{t('aiCenter.colDirection')}</th>
@@ -280,27 +280,27 @@ export default function AICenter() {
                   </thead>
                   <tbody>
                     {anomalies.map((a) => (
-                      <tr key={a.date} className="border-b border-gray-700 last:border-0">
-                        <td className="px-4 py-2 text-sm text-gray-300">{a.date}</td>
+                      <tr key={a.date} className="border-b border-strong last:border-0">
+                        <td className="px-4 py-2 text-sm text-secondary">{a.date}</td>
                         <td className="px-4 py-2">
                           <span
                             className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                               a.direction === 'spike'
-                                ? 'bg-red-900/40 text-red-300'
-                                : 'bg-blue-900/40 text-blue-300'
+                                ? 'bg-danger/10 text-danger'
+                                : 'bg-info/10 text-info'
                             }`}
                           >
                             {t(`aiCenter.direction.${a.direction}`, { defaultValue: a.direction })}
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-sm text-white">
+                        <td className="px-4 py-2 text-sm text-primary">
                           ${a.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </td>
-                        <td className="px-4 py-2 text-sm font-mono text-gray-400">{a.z_score}</td>
+                        <td className="px-4 py-2 text-sm font-mono text-secondary">{a.z_score}</td>
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </div>
             )
           )}
@@ -310,8 +310,8 @@ export default function AICenter() {
       {tab === 'notes' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-5xl">
           <div className="space-y-4">
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-3">{t('aiCenter.addKnowledgeNote')}</h3>
+            <div className="bg-surface border border-edge rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-primary mb-3">{t('aiCenter.addKnowledgeNote')}</h3>
               <form
                 onSubmit={(e) => {
                   e.preventDefault()
@@ -327,57 +327,57 @@ export default function AICenter() {
                   value={noteTitle}
                   onChange={(e) => setNoteTitle(e.target.value)}
                   placeholder={t('aiCenter.titlePlaceholder')}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 />
                 <textarea
                   value={noteBody}
                   onChange={(e) => setNoteBody(e.target.value)}
                   rows={4}
                   placeholder={t('aiCenter.bodyPlaceholder')}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 />
                 {noteError && (
-                  <div className="p-2 rounded-lg bg-red-900/40 border border-red-700 text-red-400 text-xs">
+                  <div className="p-2 rounded-lg bg-danger/10 border border-danger/25 text-danger text-xs">
                     {noteError}
                   </div>
                 )}
                 <button
                   type="submit"
                   disabled={createNoteMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   {t('aiCenter.saveNote')}
                 </button>
               </form>
             </div>
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-3">{t('aiCenter.semanticSearch')}</h3>
+            <div className="bg-surface border border-edge rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-primary mb-3">{t('aiCenter.semanticSearch')}</h3>
               <form onSubmit={searchNotes} className="flex gap-2">
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t('aiCenter.searchPlaceholder')}
-                  className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="flex-1 bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
                 >
                   {t('common.search')}
                 </button>
               </form>
               {searchResults && (
                 <div className="mt-3 space-y-2">
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted">
                     {t(searchMode === 'semantic' ? 'aiCenter.semanticMode' : 'aiCenter.keywordMode')} —{' '}
                     {t('aiCenter.resultsCount', { count: searchResults.length })}
                   </p>
                   {searchResults.map((r) => (
-                    <div key={r.id} className="bg-gray-800 rounded-lg p-3">
-                      <p className="text-sm text-white font-medium">{r.title}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{r.body}</p>
+                    <div key={r.id} className="bg-subtle rounded-lg p-3">
+                      <p className="text-sm text-primary font-medium">{r.title}</p>
+                      <p className="text-xs text-secondary mt-0.5">{r.body}</p>
                       {r.score < 1 && (
-                        <p className="text-xs text-indigo-400 mt-1">{t('aiCenter.score')} {r.score}</p>
+                        <p className="text-xs text-accent mt-1">{t('aiCenter.score')} {r.score}</p>
                       )}
                     </div>
                   ))}
@@ -385,21 +385,21 @@ export default function AICenter() {
               )}
             </div>
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden self-start">
-            <div className="px-5 py-4 border-b border-gray-800">
-              <h3 className="text-sm font-semibold text-white">{t('aiCenter.notesCount', { count: notes.length })}</h3>
+          <div className="bg-surface border border-edge rounded-xl overflow-hidden self-start">
+            <div className="px-5 py-4 border-b border-edge">
+              <h3 className="text-sm font-semibold text-primary">{t('aiCenter.notesCount', { count: notes.length })}</h3>
             </div>
             {notesLoading ? (
-              <div className="p-5 text-gray-500 text-sm">{t('common.loading')}</div>
+              <div className="p-5 text-muted text-sm">{t('common.loading')}</div>
             ) : notes.length === 0 ? (
-              <div className="p-5 text-center text-gray-500 text-sm">{t('aiCenter.noNotes')}</div>
+              <div className="p-5 text-center text-muted text-sm">{t('aiCenter.noNotes')}</div>
             ) : (
-              <div className="divide-y divide-gray-800">
+              <div className="divide-y divide-edge">
                 {notes.map((n) => (
                   <div key={n.id} className="px-5 py-3">
-                    <p className="text-sm text-white font-medium">{n.title}</p>
-                    <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{n.body}</p>
-                    <p className="text-xs text-gray-600 mt-1">
+                    <p className="text-sm text-primary font-medium">{n.title}</p>
+                    <p className="text-xs text-secondary mt-0.5 line-clamp-2">{n.body}</p>
+                    <p className="text-xs text-muted mt-1">
                       {new Date(n.created_at).toLocaleDateString()}
                     </p>
                   </div>
@@ -413,7 +413,7 @@ export default function AICenter() {
       {tab === 'settings' && (
         <div className="max-w-2xl space-y-3">
           {settingsLoading ? (
-            <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+            <div className="text-muted text-sm">{t('common.loading')}</div>
           ) : (
             settings &&
             (
@@ -425,13 +425,13 @@ export default function AICenter() {
                 ['rag_enabled', 'aiCenter.settingRag'],
               ] as const
             ).map(([key, label]) => (
-              <div key={key} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between">
-                <span className="text-sm text-white">{t(label)}</span>
+              <div key={key} className="bg-surface border border-edge rounded-xl p-4 flex items-center justify-between">
+                <span className="text-sm text-primary">{t(label)}</span>
                 <button
                   onClick={() =>
                     settingsMutation.mutate({ [key]: !settings[key as keyof AiSettings] })
                   }
-                  className={`${toggleCls} ${settings[key as keyof AiSettings] ? 'bg-green-600' : 'bg-gray-700'}`}
+                  className={`${toggleCls} ${settings[key as keyof AiSettings] ? 'bg-success-solid' : 'bg-emphasis'}`}
                   title={settings[key as keyof AiSettings] ? t('aiCenter.enabled') : t('aiCenter.disabled')}
                 >
                   <span
@@ -443,10 +443,10 @@ export default function AICenter() {
               </div>
             ))
           )}
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-muted">
             {t('aiCenter.settingsNote')}
           </p>
-          <p className="text-xs text-gray-600 dark:text-gray-400">
+          <p className="text-xs text-secondary">
             {t('aiCenter.providerSummary', {
               mode: t(`settings.aiProvider.mode.${providerInfo?.source ?? 'local'}`),
             })}

@@ -9,9 +9,9 @@ import { useOrgStore } from '../store/orgStore'
 import type { Recommendation } from '../types'
 
 const STATUS_COLORS: Record<string, string> = {
-  active: 'bg-yellow-900/40 text-yellow-300',
-  dismissed: 'bg-gray-700 text-gray-400',
-  applied: 'bg-green-900/40 text-green-300',
+  active: 'bg-warning/10 text-warning',
+  dismissed: 'bg-emphasis text-secondary',
+  applied: 'bg-success/10 text-success',
 }
 
 interface Category {
@@ -105,62 +105,62 @@ function RecModal({
   const steps = getActionSteps(rec.rec_type).map((k) => t(`recommendations.actionStep.${k}`))
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-lg shadow-2xl">
-        <div className="p-5 border-b border-gray-800 flex items-start justify-between">
+      <div className="bg-surface border border-edge rounded-xl w-full max-w-lg shadow-2xl">
+        <div className="p-5 border-b border-edge flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[rec.status] ?? STATUS_COLORS.active}`}>
                 {t(`recStatus.${rec.status}`, { defaultValue: rec.status })}
               </span>
-              <span className="text-xs text-gray-500 uppercase">
+              <span className="text-xs text-muted uppercase">
                 {t(`recType.${rec.rec_type}`, { defaultValue: rec.rec_type })}
               </span>
             </div>
-            <h3 className="text-lg font-semibold text-white">{rec.title}</h3>
+            <h3 className="text-lg font-semibold text-primary">{rec.title}</h3>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors text-xl leading-none ml-4">✕</button>
+          <button onClick={onClose} className="text-secondary hover:text-primary transition-colors text-xl leading-none ml-4">✕</button>
         </div>
 
         <div className="p-5 space-y-4">
-          <p className="text-gray-400 text-sm">{rec.description}</p>
+          <p className="text-secondary text-sm">{rec.description}</p>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gray-800/60 rounded-lg p-3">
-              <p className="text-xs text-gray-500 mb-1">{t('recommendations.monthlyCost')}</p>
-              <p className="text-white font-semibold">${rec.current_monthly_cost.toFixed(2)}</p>
+            <div className="bg-subtle/60 rounded-lg p-3">
+              <p className="text-xs text-muted mb-1">{t('recommendations.monthlyCost')}</p>
+              <p className="text-primary font-semibold">${rec.current_monthly_cost.toFixed(2)}</p>
             </div>
-            <div className="bg-green-900/20 border border-green-800/40 rounded-lg p-3">
-              <p className="text-xs text-gray-500 mb-1">{t('recommendations.potentialSavings')}</p>
-              <p className="text-green-400 font-semibold">${rec.potential_savings.toFixed(2)}/mo</p>
+            <div className="bg-success/10 border border-success/25 rounded-lg p-3">
+              <p className="text-xs text-muted mb-1">{t('recommendations.potentialSavings')}</p>
+              <p className="text-success font-semibold">${rec.potential_savings.toFixed(2)}/mo</p>
             </div>
           </div>
 
           {rec.cloud_resource_id && (
-            <div className="bg-gray-800/40 rounded-lg px-3 py-2">
-              <span className="text-xs text-gray-500">{t('recommendations.resource')}</span>
-              <span className="text-xs text-gray-300 font-mono">{rec.cloud_resource_id}</span>
+            <div className="bg-subtle/40 rounded-lg px-3 py-2">
+              <span className="text-xs text-muted">{t('recommendations.resource')}</span>
+              <span className="text-xs text-secondary font-mono">{rec.cloud_resource_id}</span>
             </div>
           )}
 
           {rec.status === 'dismissed' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-gray-800/40 rounded-lg px-3 py-3">
-                <p className="text-xs text-gray-500 mb-1">{t('recommendations.dismissedAt')}</p>
-                <p className="text-sm text-gray-200">{formatTimestamp(rec.dismissed_at)}</p>
+              <div className="bg-subtle/40 rounded-lg px-3 py-3">
+                <p className="text-xs text-muted mb-1">{t('recommendations.dismissedAt')}</p>
+                <p className="text-sm text-primary">{formatTimestamp(rec.dismissed_at)}</p>
               </div>
-              <div className="bg-gray-800/40 rounded-lg px-3 py-3">
-                <p className="text-xs text-gray-500 mb-1">{t('recommendations.dismissReason')}</p>
-                <p className="text-sm text-gray-200">{rec.dismiss_reason || t('recommendations.noReasonRecorded')}</p>
+              <div className="bg-subtle/40 rounded-lg px-3 py-3">
+                <p className="text-xs text-muted mb-1">{t('recommendations.dismissReason')}</p>
+                <p className="text-sm text-primary">{rec.dismiss_reason || t('recommendations.noReasonRecorded')}</p>
               </div>
             </div>
           )}
 
           <div>
-            <h4 className="text-white font-medium text-sm mb-2">{t('recommendations.recommendedActions')}</h4>
+            <h4 className="text-primary font-medium text-sm mb-2">{t('recommendations.recommendedActions')}</h4>
             <ol className="space-y-2">
               {steps.map((step, i) => (
-                <li key={i} className="flex gap-2 text-sm text-gray-300">
-                  <span className="text-blue-400 font-medium flex-shrink-0">{i + 1}.</span>
+                <li key={i} className="flex gap-2 text-sm text-secondary">
+                  <span className="text-info font-medium flex-shrink-0">{i + 1}.</span>
                   <span>{step}</span>
                 </li>
               ))}
@@ -168,20 +168,20 @@ function RecModal({
           </div>
         </div>
 
-        <div className="flex gap-3 p-5 border-t border-gray-800">
+        <div className="flex gap-3 p-5 border-t border-edge">
           {rec.status === 'active' && (
             <>
               <button
                 onClick={onApply}
                 disabled={isBusy}
-                className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white rounded-lg transition-colors"
+                className="px-4 py-2 text-sm bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent rounded-lg transition-colors"
               >
                 {t('recommendations.apply')}
               </button>
               <button
                 onClick={onDismiss}
                 disabled={isBusy}
-                className="px-4 py-2 text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm text-secondary hover:text-primary border border-strong hover:border-strong rounded-lg transition-colors"
               >
                 {t('recommendations.dismiss')}
               </button>
@@ -191,7 +191,7 @@ function RecModal({
             <button
               onClick={onVerify}
               disabled={isBusy}
-              className="px-4 py-2 text-sm bg-green-600 hover:bg-green-500 disabled:opacity-60 text-white rounded-lg transition-colors"
+              className="px-4 py-2 text-sm bg-success-solid hover:bg-success-solid/90 disabled:opacity-60 text-white rounded-lg transition-colors"
             >
               {t('recommendations.verifySavings')}
             </button>
@@ -200,14 +200,14 @@ function RecModal({
             <button
               onClick={onReactivate}
               disabled={isBusy}
-              className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white rounded-lg transition-colors"
+              className="px-4 py-2 text-sm bg-success-solid hover:bg-success-solid/90 disabled:opacity-60 text-white rounded-lg transition-colors"
             >
               {t('recommendations.restore')}
             </button>
           )}
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors ml-auto"
+            className="px-4 py-2 text-sm bg-accent hover:bg-accent-hover text-on-accent rounded-lg transition-colors ml-auto"
           >
             {t('recommendations.close')}
           </button>
@@ -329,22 +329,22 @@ export default function Recommendations() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-white">{t('recommendations.title')}</h2>
-          <p className="text-sm text-gray-400 mt-1">
+          <h2 className="page-title">{t('recommendations.title')}</h2>
+          <p className="text-sm text-secondary mt-1">
             {isArchiveView ? t('recommendations.subtitleArchived') : t('recommendations.subtitleActive')}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex rounded-lg border border-gray-800 bg-gray-900 p-1">
+          <div className="flex rounded-lg border border-edge bg-surface p-1">
             <button
               onClick={() => navigate('/recommendations')}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${!isArchiveView ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${!isArchiveView ? 'bg-accent text-on-accent' : 'text-secondary hover:text-primary'}`}
             >
               {t('common.active')}
             </button>
             <button
               onClick={() => navigate('/recommendations/archived')}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${isArchiveView ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${isArchiveView ? 'bg-accent text-on-accent' : 'text-secondary hover:text-primary'}`}
             >
               {t('recommendations.tabArchived')}
             </button>
@@ -353,7 +353,7 @@ export default function Recommendations() {
             <button
               onClick={() => runMutation.mutate()}
               disabled={runMutation.isPending}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+              className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm font-medium rounded-lg transition-colors"
             >
               {runMutation.isPending ? t('recommendations.running') : t('recommendations.runEngine')}
             </button>
@@ -367,11 +367,11 @@ export default function Recommendations() {
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             placeholder={isArchiveView ? t('recommendations.searchArchived') : t('recommendations.searchActive')}
-            className="w-full rounded-xl border border-gray-800 bg-gray-900 px-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
         {isArchiveView && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted">
             {t('recommendations.restoreWarning')}
           </p>
         )}
@@ -379,20 +379,20 @@ export default function Recommendations() {
 
       {/* Summary bar */}
       {!isArchiveView && activeData.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <p className="text-xs text-gray-400 mb-1">{t('common.active')}</p>
-            <p className="text-2xl font-bold text-white">{activeData.length}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="bg-surface border border-edge rounded-xl p-4 text-center">
+            <p className="text-xs text-secondary mb-1">{t('common.active')}</p>
+            <p className="text-2xl font-bold text-primary">{activeData.length}</p>
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <p className="text-xs text-gray-400 mb-1">{t('recommendations.potentialSavings')}</p>
-            <p className="text-2xl font-bold text-green-400">
+          <div className="bg-surface border border-edge rounded-xl p-4 text-center">
+            <p className="text-xs text-secondary mb-1">{t('recommendations.potentialSavings')}</p>
+            <p className="text-2xl font-bold text-success">
               ${activeData.reduce((s, r) => s + (r.potential_savings ?? 0), 0).toFixed(0)}/mo
             </p>
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <p className="text-xs text-gray-400 mb-1">{t('recommendations.currentCostAffected')}</p>
-            <p className="text-2xl font-bold text-white">
+          <div className="bg-surface border border-edge rounded-xl p-4 text-center">
+            <p className="text-xs text-secondary mb-1">{t('recommendations.currentCostAffected')}</p>
+            <p className="text-2xl font-bold text-primary">
               ${activeData.reduce((s, r) => s + (r.current_monthly_cost ?? 0), 0).toFixed(0)}/mo
             </p>
           </div>
@@ -400,24 +400,24 @@ export default function Recommendations() {
       )}
 
       {isArchiveView && archivedData.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <p className="text-xs text-gray-400 mb-1">{t('recommendations.tabArchived')}</p>
-            <p className="text-2xl font-bold text-white">{archivedData.length}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="bg-surface border border-edge rounded-xl p-4 text-center">
+            <p className="text-xs text-secondary mb-1">{t('recommendations.tabArchived')}</p>
+            <p className="text-2xl font-bold text-primary">{archivedData.length}</p>
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <p className="text-xs text-gray-400 mb-1">{t('recommendations.recoverableSavings')}</p>
-            <p className="text-2xl font-bold text-emerald-400">${archivedData.reduce((s, r) => s + (r.potential_savings ?? 0), 0).toFixed(0)}/mo</p>
+          <div className="bg-surface border border-edge rounded-xl p-4 text-center">
+            <p className="text-xs text-secondary mb-1">{t('recommendations.recoverableSavings')}</p>
+            <p className="text-2xl font-bold text-success">${archivedData.reduce((s, r) => s + (r.potential_savings ?? 0), 0).toFixed(0)}/mo</p>
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <p className="text-xs text-gray-400 mb-1">{t('recommendations.lastDismissed')}</p>
-            <p className="text-sm font-semibold text-white">{formatTimestamp(latestDismissedAt)}</p>
+          <div className="bg-surface border border-edge rounded-xl p-4 text-center">
+            <p className="text-xs text-secondary mb-1">{t('recommendations.lastDismissed')}</p>
+            <p className="text-sm font-semibold text-primary">{formatTimestamp(latestDismissedAt)}</p>
           </div>
         </div>
       )}
 
       {isError && (
-        <div className="mb-4 p-3 rounded-lg bg-yellow-900/40 border border-yellow-700 text-yellow-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/25 text-warning text-sm">
           {t('recommendations.loadFailed')}
         </div>
       )}
@@ -433,15 +433,15 @@ export default function Recommendations() {
                 onClick={() => setActiveCategory(cat.key)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   activeCategory === cat.key
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:text-white'
+                    ? 'bg-accent text-on-accent'
+                    : 'bg-subtle text-secondary hover:text-primary'
                 }`}
               >
                 <span>{cat.icon}</span>
                 <span>{t(`recCategory.${cat.key}`, { defaultValue: cat.label })}</span>
                 <span
                   className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    activeCategory === cat.key ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-400'
+                    activeCategory === cat.key ? 'bg-accent text-on-accent' : 'bg-emphasis text-secondary'
                   }`}
                 >
                   {count}
@@ -454,22 +454,22 @@ export default function Recommendations() {
 
       {/* Savings breakdown by category */}
       {!isArchiveView && activeData.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-5">
+        <div className="bg-surface border border-edge rounded-xl p-4 mb-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-secondary">
               {t('recommendations.showingCount', { count: filteredRecs.length })}
             </span>
-            <span className="text-sm font-semibold text-green-400">
+            <span className="text-sm font-semibold text-success">
               {t('recommendations.totalPotentialSavings', { amount: totalSavings.toFixed(0) })}
             </span>
           </div>
-          <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+          <div className="flex flex-wrap gap-3 text-xs text-muted">
             {savingsByCategory
               .filter((c) => c.savings > 0)
               .map((c) => (
                 <span key={c.key}>
                   {c.icon} {t(`recCategory.${c.key}`, { defaultValue: c.label })}{' '}
-                  <span className="text-green-400/80">${c.savings.toFixed(0)}</span>
+                  <span className="text-success/80">${c.savings.toFixed(0)}</span>
                 </span>
               ))}
           </div>
@@ -477,9 +477,9 @@ export default function Recommendations() {
       )}
 
       {isLoading ? (
-        <div className="text-gray-500 text-sm">{t('common.loading')}</div>
+        <div className="text-muted text-sm">{t('common.loading')}</div>
       ) : filteredRecs.length === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-8 text-center text-gray-500 text-sm">
+        <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
           {!isArchiveView && activeData.length === 0
             ? t('recommendations.noActive')
             : isArchiveView
@@ -491,33 +491,33 @@ export default function Recommendations() {
           {filteredRecs.map((rec) => (
             <div
               key={rec.id}
-              className="bg-gray-900 border border-gray-800 rounded-xl p-5 cursor-pointer hover:border-gray-700 transition-colors"
+              className="bg-surface border border-edge rounded-xl p-5 cursor-pointer hover:border-strong transition-colors"
               onClick={() => setSelectedRec(rec)}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[rec.status] ?? STATUS_COLORS.active}`}>
                       {t(`recStatus.${rec.status}`, { defaultValue: rec.status })}
                     </span>
-                    <span className="text-xs text-gray-500 uppercase">
+                    <span className="text-xs text-muted uppercase">
                       {t(`recType.${rec.rec_type}`, { defaultValue: rec.rec_type })}
                     </span>
                   </div>
-                  <h3 className="font-semibold text-white">{rec.title}</h3>
-                  <p className="text-sm text-gray-400 mt-1 line-clamp-2">{rec.description}</p>
+                  <h3 className="font-semibold text-primary">{rec.title}</h3>
+                  <p className="text-sm text-secondary mt-1 line-clamp-2">{rec.description}</p>
                   {rec.status === 'dismissed' && (
-                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted">
                       <span>{t('recommendations.dismissedAtLabel', { date: formatTimestamp(rec.dismissed_at) })}</span>
                       <span>{t('recommendations.reasonLabel', { reason: rec.dismiss_reason || t('recommendations.noReasonRecorded') })}</span>
                     </div>
                   )}
                 </div>
-                <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">{t('recommendations.potentialSavings')}</p>
-                    <p className="text-lg font-bold text-green-400">${rec.potential_savings.toFixed(2)}/mo</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                <div className="flex w-full sm:w-auto sm:flex-col items-center sm:items-end justify-between gap-2 flex-shrink-0">
+                  <div className="text-left sm:text-right">
+                    <p className="text-xs text-muted">{t('recommendations.potentialSavings')}</p>
+                    <p className="text-lg font-bold text-success">${rec.potential_savings.toFixed(2)}/mo</p>
+                    <p className="text-xs text-muted mt-0.5">
                       {t('recommendations.currentCost', { amount: rec.current_monthly_cost.toFixed(2) })}
                     </p>
                   </div>
@@ -525,7 +525,7 @@ export default function Recommendations() {
                     <button
                       onClick={(e) => { e.stopPropagation(); dismissMutation.mutate(rec.id) }}
                       disabled={mutationBusy}
-                      className="px-3 py-1 text-xs text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 rounded-lg transition-colors disabled:opacity-50"
+                      className="px-3 py-1 text-xs text-secondary hover:text-primary border border-strong hover:border-strong rounded-lg transition-colors disabled:opacity-50"
                     >
                       {t('recommendations.dismiss')}
                     </button>
@@ -534,7 +534,7 @@ export default function Recommendations() {
                     <button
                       onClick={(e) => { e.stopPropagation(); reactivateMutation.mutate(rec.id) }}
                       disabled={mutationBusy}
-                      className="px-3 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors disabled:opacity-50"
+                      className="px-3 py-1 text-xs bg-success-solid hover:bg-success-solid/90 text-white rounded-lg transition-colors disabled:opacity-50"
                     >
                       {t('recommendations.restore')}
                     </button>

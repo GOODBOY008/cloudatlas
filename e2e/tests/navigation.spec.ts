@@ -21,8 +21,11 @@ test.describe('Navigation & Sidebar', () => {
   });
 
   test('NAV-01 — sidebar nav sections visible @smoke', async ({ page }) => {
-    const nav = page.locator('nav');
+    const nav = page.getByRole('navigation', { name: 'Primary navigation' });
     await expect(nav).toBeVisible();
+    for (const section of await nav.locator('button[aria-expanded]').all()) {
+      if (await section.getAttribute('aria-expanded') === 'false') await section.click();
+    }
     // Expect at least 25 navigable links (32 in the new structure, 33 incl. duplicate settings pre-redesign)
     const links = nav.getByRole('link');
     expect(await links.count()).toBeGreaterThanOrEqual(25);
@@ -68,6 +71,9 @@ test.describe('Navigation & Sidebar', () => {
       { name: /recommendations/i, url: /recommendations/ },
     ];
     for (const { name, url } of linksToCheck) {
+      for (const section of await page.locator('nav button[aria-expanded]').all()) {
+        if (await section.getAttribute('aria-expanded') === 'false') await section.click();
+      }
       const link = page.locator('nav').getByRole('link', { name }).first();
       if (await link.isVisible()) {
         await link.click();
@@ -119,6 +125,9 @@ test.describe('Navigation & Sidebar', () => {
   });
 
   test('NAV-10 — renamed nav labels are present (post-redesign) @regression', async ({ page }) => {
+    for (const section of await page.locator('nav button[aria-expanded]').all()) {
+        if (await section.getAttribute('aria-expanded') === 'false') await section.click();
+      }
     const navText = (await page.locator('nav').textContent()) ?? '';
     // Renamed in the 2026-06-01 redesign — old labels must NOT appear.
     const renamed = [

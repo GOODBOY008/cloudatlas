@@ -22,7 +22,7 @@ export class ExpensesPage extends BasePage {
   }
 
   async clickTab(tab: ExpensesTab): Promise<void> {
-    await this.page.getByRole('button', { name: tab }).click();
+    await this.main.getByRole('button', { name: tab, exact: true }).click();
     await this.page.waitForLoadState('networkidle');
   }
 

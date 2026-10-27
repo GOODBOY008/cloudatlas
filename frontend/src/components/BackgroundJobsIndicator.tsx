@@ -9,9 +9,9 @@ import { useActiveJobs } from '../lib/hooks/useJobs'
 import type { AccountJob } from '../types'
 
 const STATUS_DOT: Record<string, string> = {
-  succeeded: 'bg-green-500',
-  failed: 'bg-red-500',
-  cancelled: 'bg-yellow-500',
+  succeeded: 'bg-success-solid',
+  failed: 'bg-danger-solid',
+  cancelled: 'bg-warning-solid',
 }
 
 function phaseLabelKey(phase: string | null): string | null {
@@ -83,14 +83,16 @@ export default function BackgroundJobsIndicator() {
       <button
         onClick={() => setOpen((v) => !v)}
         title={t('jobs.activeJobs')}
+        aria-label={t('jobs.activeJobs')}
+        aria-expanded={open}
         data-testid="background-jobs-indicator"
-        className="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+        className="icon-button relative"
       >
         <RefreshCw size={18} className={activeJobs.length > 0 ? 'animate-spin' : ''} />
         {activeJobs.length > 0 && (
           <span
             data-testid="background-jobs-count"
-            className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-indigo-500 text-white text-[10px] font-bold"
+            className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-accent text-on-accent text-[10px] font-bold"
           >
             {activeJobs.length > 9 ? '9+' : activeJobs.length}
           </span>
@@ -98,13 +100,13 @@ export default function BackgroundJobsIndicator() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 w-[340px] max-w-[90vw] bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
-          <div className="px-4 py-3 border-b border-gray-800">
-            <span className="text-sm font-semibold text-white">{t('jobs.activeJobs')}</span>
+        <div className="absolute right-0 top-11 w-[340px] max-w-[90vw] bg-surface border border-strong rounded-xl shadow-2xl overflow-hidden z-50">
+          <div className="px-4 py-3 border-b border-edge">
+            <span className="text-sm font-semibold text-primary">{t('jobs.activeJobs')}</span>
           </div>
           <div className="max-h-[400px] overflow-y-auto">
             {activeJobs.length === 0 && recentTerminal.length === 0 && (
-              <div className="px-4 py-10 text-center text-sm text-gray-500">
+              <div className="px-4 py-10 text-center text-sm text-muted">
                 {t('notifications.empty')}
               </div>
             )}
@@ -117,28 +119,28 @@ export default function BackgroundJobsIndicator() {
                 <button
                   key={job.id}
                   onClick={() => goTo(job)}
-                  className="w-full text-left px-4 py-3 border-b border-gray-800 last:border-0 hover:bg-gray-800/50 transition-colors"
+                  className="w-full text-left px-4 py-3 border-b border-edge last:border-0 hover:bg-subtle/50 transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <Cloud size={13} className="text-indigo-400 shrink-0" />
-                    <span className="text-sm text-white truncate">
+                    <Cloud size={13} className="text-accent shrink-0" />
+                    <span className="text-sm text-primary truncate">
                       {job.account_name ?? job.cloud_account_id.slice(0, 8)}
                     </span>
-                    <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-900/60 text-indigo-300 shrink-0">
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-accent-soft/60 text-accent shrink-0">
                       {job.job_kind === 'billing_import'
                         ? t('jobs.kind.billingImport')
                         : t('jobs.kind.discovery')}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mt-1.5">
-                    <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-subtle rounded-full overflow-hidden">
                       {pct !== null ? (
-                        <div className="bg-indigo-500 h-full" style={{ width: `${pct}%` }} />
+                        <div className="bg-accent h-full" style={{ width: `${pct}%` }} />
                       ) : (
-                        <div className="bg-indigo-500/60 h-full w-1/3 animate-pulse" />
+                        <div className="bg-accent/60 h-full w-1/3 animate-pulse" />
                       )}
                     </div>
-                    <span className="text-[10px] text-gray-400 font-mono shrink-0">
+                    <span className="text-[10px] text-secondary font-mono shrink-0">
                       {job.progress_current !== null && job.progress_total !== null
                         ? `${job.progress_current}/${job.progress_total}`
                         : (phaseLabelKey(job.phase) ? t(phaseLabelKey(job.phase)!) : t('jobs.status.running'))}
@@ -151,19 +153,19 @@ export default function BackgroundJobsIndicator() {
               <button
                 key={job.id}
                 onClick={() => goTo(job)}
-                className="w-full text-left px-4 py-2.5 border-b border-gray-800 last:border-0 hover:bg-gray-800/50 transition-colors"
+                className="w-full text-left px-4 py-2.5 border-b border-edge last:border-0 hover:bg-subtle/50 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[job.status] ?? 'bg-gray-500'}`} />
-                  <span className="text-xs text-gray-300 truncate">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[job.status] ?? 'bg-emphasis'}`} />
+                  <span className="text-xs text-secondary truncate">
                     {job.account_name ?? job.cloud_account_id.slice(0, 8)}
                   </span>
-                  <span className="text-[10px] text-gray-600 shrink-0">
+                  <span className="text-[10px] text-muted shrink-0">
                     {job.job_kind === 'billing_import'
                       ? t('jobs.kind.billingImport')
                       : t('jobs.kind.discovery')}
                   </span>
-                  <span className="ml-auto text-[10px] text-gray-500 shrink-0">
+                  <span className="ml-auto text-[10px] text-muted shrink-0">
                     {job.completed_at ? new Date(job.completed_at).toLocaleTimeString() : ''}
                   </span>
                 </div>

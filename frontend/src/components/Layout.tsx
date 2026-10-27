@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
   ChevronDown,
+  ChevronRight,
+  Check,
+  Search,
+  Sun,
+  Moon,
   Menu,
   X,
   Archive,
@@ -64,6 +69,8 @@ import { setStoredLanguage, syncHtmlLang } from '../i18n'
 import { useOrgStore } from '../store/orgStore'
 import { useCopilotStore } from '../store/copilotStore'
 import { useThemeStore } from '../store/themeStore'
+import Brand from './Brand'
+import { useDialogFocus } from '../lib/hooks/useDialogFocus'
 import type { Organization } from '../types'
 
 type NavItem = { to: string; labelKey: string; icon: LucideIcon }
@@ -88,8 +95,16 @@ const costManagementNavItems: NavItem[] = [
 const resourceManagementNavItems: NavItem[] = [
   { to: '/resources', labelKey: 'nav.resources', icon: Boxes },
   { to: '/pools', labelKey: 'nav.pools', icon: Layers },
-  { to: '/shared-environments', labelKey: 'nav.sharedEnvironments', icon: Globe },
-  { to: '/resource-lifecycle', labelKey: 'nav.resourceLifecycle', icon: RefreshCw },
+  {
+    to: '/shared-environments',
+    labelKey: 'nav.sharedEnvironments',
+    icon: Globe,
+  },
+  {
+    to: '/resource-lifecycle',
+    labelKey: 'nav.resourceLifecycle',
+    icon: RefreshCw,
+  },
   { to: '/k8s-rightsizing', labelKey: 'nav.k8sRightsizing', icon: Container },
   { to: '/archive', labelKey: 'nav.archive', icon: Archive },
 ]
@@ -99,10 +114,18 @@ const assetInventoryNavItems: NavItem[] = [
   { to: '/services', labelKey: 'nav.services', icon: Puzzle },
   { to: '/dynamic-groups', labelKey: 'nav.dynamicGroups', icon: Target },
   { to: '/ci-types', labelKey: 'nav.ciTypes', icon: Type },
-  { to: '/ci-classifications', labelKey: 'nav.classifications', icon: FolderTree },
+  {
+    to: '/ci-classifications',
+    labelKey: 'nav.classifications',
+    icon: FolderTree,
+  },
   { to: '/association-kinds', labelKey: 'nav.associations', icon: Link },
   { to: '/model-topology', labelKey: 'nav.modelTopology', icon: Network },
-  { to: '/service-templates', labelKey: 'nav.serviceTemplates', icon: ClipboardList },
+  {
+    to: '/service-templates',
+    labelKey: 'nav.serviceTemplates',
+    icon: ClipboardList,
+  },
   { to: '/ci-topology', labelKey: 'nav.ciTopology', icon: Network },
   { to: '/field-templates', labelKey: 'nav.fieldTemplates', icon: Layers },
   { to: '/ci-import', labelKey: 'nav.ciImport', icon: Download },
@@ -113,10 +136,18 @@ const assetInventoryNavItems: NavItem[] = [
 const governanceNavItems: NavItem[] = [
   { to: '/compliance', labelKey: 'nav.compliance', icon: ShieldCheck },
   { to: '/tagging-coverage', labelKey: 'nav.taggingCoverage', icon: Tags },
-  { to: '/tagging-policies', labelKey: 'nav.taggingPolicies', icon: BookMarked },
+  {
+    to: '/tagging-policies',
+    labelKey: 'nav.taggingPolicies',
+    icon: BookMarked,
+  },
   { to: '/constraints', labelKey: 'nav.constraints', icon: TrafficCone },
   { to: '/drift', labelKey: 'nav.drift', icon: Wind },
-  { to: '/anomaly-detection', labelKey: 'nav.anomalyDetection', icon: AlertTriangle },
+  {
+    to: '/anomaly-detection',
+    labelKey: 'nav.anomalyDetection',
+    icon: AlertTriangle,
+  },
   { to: '/schedules', labelKey: 'nav.powerSchedules', icon: Clock },
   { to: '/ci-apply-rules', labelKey: 'nav.applyRules', icon: Zap },
 ]
@@ -134,44 +165,125 @@ const administrationNavItems: NavItem[] = [
   { to: '/settings', labelKey: 'nav.settings', icon: Settings },
 ]
 
-const navCls = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-    isActive
-      ? 'bg-indigo-600 text-white'
-      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-  }`
+const navSections = [
+  { key: 'nav.section.overview', items: overviewNavItems },
+  { key: 'nav.section.costManagement', items: costManagementNavItems },
+  { key: 'nav.section.resourceManagement', items: resourceManagementNavItems },
+  { key: 'nav.section.assetInventory', items: assetInventoryNavItems },
+  { key: 'nav.section.governance', items: governanceNavItems },
+  { key: 'nav.section.administration', items: administrationNavItems },
+]
 
-function NavSection({ labelKey }: { labelKey: string }) {
+function NavSection({
+  section,
+  onNavigate,
+}: {
+  section: (typeof navSections)[number]
+  onNavigate: () => void
+}) {
   const { t } = useTranslation()
-  return (
-    <div className="pt-3 pb-1">
-      <p className="px-3 text-xs font-semibold uppercase text-gray-400 dark:text-gray-600 tracking-wider">{t(labelKey)}</p>
-    </div>
+  const { pathname } = useLocation()
+  const active = section.items.some(
+    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
   )
-}
-
-function NavGroup({ items }: { items: NavItem[] }) {
-  const { t } = useTranslation()
+  const [expanded, setExpanded] = useState(
+    active ||
+      section.key === 'nav.section.overview' ||
+      section.key === 'nav.section.costManagement',
+  )
+  useEffect(() => {
+    if (active) setExpanded(true)
+  }, [active])
   return (
-    <>
-      {items.map(({ to, labelKey, icon: Icon }) => (
-        <NavLink key={to} to={to} className={navCls}>
-          <Icon size={18} />
-          {t(labelKey)}
-        </NavLink>
-      ))}
-    </>
+    <div>
+      <button
+        type="button"
+        className="nav-heading"
+        aria-expanded={expanded}
+        onClick={() => setExpanded(!expanded)}
+      >
+        {t(section.key)}
+        <ChevronDown
+          size={12}
+          className={`transition-transform ${expanded ? '' : '-rotate-90'}`}
+        />
+      </button>
+      {expanded && (
+        <div className="space-y-0.5">
+          {section.items.map(({ to, labelKey, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                `nav-link ${isActive ? 'active' : ''}`
+              }
+            >
+              <Icon size={17} />
+              <span className="truncate">{t(labelKey)}</span>
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
 export default function Layout() {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { t, i18n } = useTranslation()
-  const { organizations, currentOrg, setOrganizations, setCurrentOrg } = useOrgStore()
+  const { organizations, currentOrg, setOrganizations, setCurrentOrg } =
+    useOrgStore()
   const [orgMenuOpen, setOrgMenuOpen] = useState(false)
   const { theme, toggleTheme } = useThemeStore()
   const toggleCopilot = useCopilotStore((s) => s.toggle)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const orgMenuRef = useRef<HTMLDivElement>(null)
+  const mobileNavRef = useDialogFocus<HTMLElement>(mobileNavOpen, () =>
+    setMobileNavOpen(false),
+  )
+  const mainRef = useRef<HTMLElement>(null)
+  const currentSection = navSections.find((section) =>
+    section.items.some(
+      (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
+    ),
+  )
+  const currentItem = currentSection?.items.find(
+    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
+  )
+
+  useEffect(() => {
+    setMobileNavOpen(false)
+    setOrgMenuOpen(false)
+    mainRef.current?.scrollTo(0, 0)
+  }, [pathname])
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1024px)')
+    const closeOnDesktop = () => {
+      if (desktop.matches) setMobileNavOpen(false)
+    }
+    desktop.addEventListener('change', closeOnDesktop)
+    return () => desktop.removeEventListener('change', closeOnDesktop)
+  }, [])
+
+  useEffect(() => {
+    function dismiss(event: MouseEvent) {
+      if (!orgMenuRef.current?.contains(event.target as Node))
+        setOrgMenuOpen(false)
+    }
+    function escape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOrgMenuOpen(false)
+    }
+    document.addEventListener('mousedown', dismiss)
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('mousedown', dismiss)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [])
 
   function switchLanguage() {
     const next = i18n.language === 'zh' ? 'en' : 'zh'
@@ -180,43 +292,32 @@ export default function Layout() {
     syncHtmlLang(next)
   }
 
-  // Sync theme class on <html>
   useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'dark') {
-      root.classList.add('dark')
-    } else {
-      root.classList.remove('dark')
-    }
-  }, [theme])
-
-  useEffect(() => {
-    api.get<{ data: Organization[] }>('/organizations')
+    api
+      .get<{ data: Organization[] }>('/organizations')
       .then((res) => {
-        setOrganizations(res.data.data ?? [])
-        // Restore the last-used org when available.
-        const saved = window.localStorage.getItem('cloudatlas-org')
         const orgs = res.data.data ?? []
-        const match = orgs.find((o) => o.id === saved)
-        if (match) {
-          setCurrentOrg(match)
-          loadOrgCurrency(match.id)
-        }
+        setOrganizations(orgs)
+        const selected = useOrgStore.getState().currentOrg
+        if (selected) loadOrgCurrency(selected.id)
       })
-      .catch(() => {/* graceful: org not required for all pages */})
-  }, [setOrganizations, setCurrentOrg])
+      .catch(() => {
+        /* Some pages can be used without an organization. */
+      })
+  }, [setOrganizations])
 
   function switchOrg(org: Organization) {
     setCurrentOrg(org)
-    window.localStorage.setItem('cloudatlas-org', org.id)
     setOrgMenuOpen(false)
     loadOrgCurrency(org.id)
     navigate('/dashboard')
   }
 
-  function loadOrgCurrency(orgIdToLoad: string) {
+  function loadOrgCurrency(id: string) {
     api
-      .get<{ data: { settings?: { currency?: string } } }>(`/organizations/${orgIdToLoad}`)
+      .get<{ data: { settings?: { currency?: string } } }>(
+        `/organizations/${id}`,
+      )
       .then((res) => setOrgCurrency(res.data.data.settings?.currency ?? 'USD'))
       .catch(() => {})
   }
@@ -226,167 +327,231 @@ export default function Layout() {
     navigate('/login')
   }
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-950 transition-colors duration-200">
-      {/* Sidebar */}
-      <aside className="hidden lg:flex w-56 flex-shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-colors duration-200">
-        <div className="px-5 py-5 border-b border-gray-200 dark:border-gray-800">
-          <span className="text-xl font-bold text-indigo-500 dark:text-indigo-400">☁ CloudAtlas</span>
+  const workspace = (
+    <div ref={orgMenuRef} className="relative">
+      <button
+        className="workspace-switch w-[calc(100%-2rem)]"
+        disabled={organizations.length < 2}
+        aria-label={t('design.switchWorkspace')}
+        aria-expanded={orgMenuOpen}
+        onClick={() => setOrgMenuOpen(!orgMenuOpen)}
+      >
+        <span className="workspace-avatar">
+          {currentOrg?.name.slice(0, 2).toUpperCase() ?? 'CA'}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-xs font-semibold text-primary">
+            {currentOrg?.name ?? t('design.workspace')}
+          </span>
+          <span className="mt-1 block text-[10px] text-muted">
+            {t('header.platformTitle')}
+          </span>
+        </span>
+        {organizations.length > 1 && (
+          <ChevronDown size={14} className="text-muted" />
+        )}
+      </button>
+      {orgMenuOpen && (
+        <div className="absolute left-4 right-4 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-edge bg-surface p-1 shadow-popover">
+          {organizations.map((org) => (
+            <button
+              key={org.id}
+              onClick={() => switchOrg(org)}
+              className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-xs text-secondary hover:bg-subtle"
+            >
+              <span className="truncate">{org.name}</span>
+              {org.id === currentOrg?.id && (
+                <Check size={14} className="shrink-0 text-accent" />
+              )}
+            </button>
+          ))}
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          <NavSection labelKey="nav.section.overview" />
-          <NavGroup items={overviewNavItems} />
+      )}
+    </div>
+  )
 
-          <NavSection labelKey="nav.section.costManagement" />
-          <NavGroup items={costManagementNavItems} />
-
-          <NavSection labelKey="nav.section.resourceManagement" />
-          <NavGroup items={resourceManagementNavItems} />
-
-          <NavSection labelKey="nav.section.assetInventory" />
-          <NavGroup items={assetInventoryNavItems} />
-
-          <NavSection labelKey="nav.section.governance" />
-          <NavGroup items={governanceNavItems} />
-
-          <NavSection labelKey="nav.section.administration" />
-          <NavGroup items={administrationNavItems} />
-        </nav>
-        <div className="px-3 py-4 border-t border-gray-200 dark:border-gray-800">
+  const sidebarContents = (mobile: boolean) => (
+    <>
+      <div className="flex h-[88px] shrink-0 items-center justify-between px-5">
+        <Brand />
+        {mobile && (
           <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+            className="icon-button"
+            onClick={() => setMobileNavOpen(false)}
+            aria-label={t('design.closeNavigation')}
           >
-            <LogOut size={18} />
-            {t('common.logout')}
+            <X size={18} />
           </button>
+        )}
+      </div>
+      {workspace}
+      <nav
+        aria-label={t('design.primaryNavigation')}
+        className="flex-1 overflow-y-auto px-4 pb-5 pt-1"
+      >
+        {navSections.map((section) => (
+          <NavSection
+            key={section.key}
+            section={section}
+            onNavigate={() => setMobileNavOpen(false)}
+          />
+        ))}
+      </nav>
+      <div className="mx-4 mb-4 rounded-xl border border-edge bg-canvas p-3.5">
+        <div className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-primary">
+          <Sparkles size={14} className="text-accent" />
+          {t('design.copilotHeading')}
         </div>
-      </aside>
+        <p className="mb-3 text-[11px] leading-relaxed text-muted">
+          {t('design.copilotDescription')}
+        </p>
+        <button
+          className="text-link"
+          onClick={() => {
+            setMobileNavOpen(false)
+            toggleCopilot()
+          }}
+        >
+          {t('design.openCopilot')}
+          <ChevronRight size={13} />
+        </button>
+      </div>
+      <div className="border-t border-edge px-4 py-3">
+        <button className="nav-link w-full" onClick={handleLogout}>
+          <LogOut size={16} />
+          {t('common.logout')}
+        </button>
+      </div>
+    </>
+  )
 
-      {/* Main area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-14 flex-shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 transition-colors duration-200">
-          <h1 className="text-sm text-gray-500 dark:text-gray-400">{t('header.platformTitle')}</h1>
-          <div className="flex items-center gap-2">
-            {/* Mobile nav toggle */}
+  return (
+    <div className="app-shell">
+      <a href="#main-content" className="skip-link">
+        {t('design.skipToContent')}
+      </a>
+      <aside className="app-sidebar">
+        {!mobileNavOpen && sidebarContents(false)}
+      </aside>
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="app-header">
+          <div className="flex min-w-0 items-center gap-3">
             <button
               onClick={() => setMobileNavOpen(true)}
               aria-label="Menu"
-              className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-expanded={mobileNavOpen}
+              className="icon-button lg:hidden"
             >
-              <Menu size={18} />
+              <Menu size={20} />
             </button>
-            {/* Org switcher */}
-            {organizations.length > 1 && (
-              <div className="relative">
-                <button
-                  onClick={() => setOrgMenuOpen((v) => !v)}
-                  className="flex items-center gap-1 h-9 px-3 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <span className="max-w-[140px] truncate">{currentOrg?.name ?? '…'}</span>
-                  <ChevronDown size={14} />
-                </button>
-                {orgMenuOpen && (
-                  <div className="absolute right-0 top-11 w-56 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
-                    {organizations.map((o) => (
-                      <button
-                        key={o.id}
-                        onClick={() => switchOrg(o)}
-                        className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-800 transition-colors ${
-                          o.id === currentOrg?.id ? 'text-indigo-400' : 'text-white'
-                        }`}
-                      >
-                        {o.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {/* Notifications */}
-            <NotificationBell />
-            {/* Background jobs (async discovery / billing import) */}
-            <BackgroundJobsIndicator />
-            {/* Copilot toggle (labeled — sparkle icons alone test poorly for discoverability) */}
+            <div className="flex min-w-0 items-center gap-2 text-xs">
+              <span className="hidden text-muted xl:inline">
+                {currentSection
+                  ? t(currentSection.key)
+                  : t('header.platformTitle')}
+              </span>
+              <ChevronRight size={13} className="hidden text-muted xl:block" />
+              <span className="truncate font-medium text-primary">
+                {currentItem ? t(currentItem.labelKey) : 'CloudAtlas'}
+              </span>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <button
-              onClick={toggleCopilot}
-              title={`${t('copilot.title')} (⌘/Ctrl+I)`}
-              className="hidden lg:flex h-9 px-3 items-center gap-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+              className="search-trigger !border-transparent !bg-transparent !px-2 md:!border-edge md:!bg-canvas md:!px-3"
+              onClick={() => setSearchOpen(true)}
+              aria-label={t('common.search')}
             >
-              <Sparkles size={16} className="text-indigo-500 dark:text-indigo-400" />
-              {t('copilot.title')}
+              <Search size={16} />
+              <span className="mr-5 hidden md:inline">
+                {t('design.searchAnything')}
+              </span>
+              <kbd className="hidden rounded border border-edge bg-surface px-1 py-0.5 text-[10px] md:inline">
+                ⌘ K
+              </kbd>
             </button>
-            {/* Language switcher */}
+            <span className="mx-1 hidden h-5 w-px bg-edge sm:block" />
+            <NotificationBell />
+            <span className="hidden sm:contents">
+              <BackgroundJobsIndicator />
+            </span>
             <button
               onClick={switchLanguage}
               title={t('header.switchLanguage')}
-              className="h-9 px-3 flex items-center justify-center rounded-lg text-xs font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+              aria-label={t('header.switchLanguage')}
+              className="icon-button text-[11px] font-semibold"
             >
               {i18n.language === 'zh' ? 'EN' : t('common.languageName')}
             </button>
-            {/* Theme toggle */}
             <button
               onClick={toggleTheme}
-              title={theme === 'dark' ? t('header.themeToLight') : t('header.themeToDark')}
-              className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+              title={
+                theme === 'dark'
+                  ? t('header.themeToLight')
+                  : t('header.themeToDark')
+              }
+              aria-label={
+                theme === 'dark'
+                  ? t('header.themeToLight')
+                  : t('header.themeToDark')
+              }
+              className="icon-button"
             >
-            {theme === 'dark' ? (
-              /* Sun icon */
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="4"/>
-                <line x1="12" y1="2" x2="12" y2="6"/>
-                <line x1="12" y1="18" x2="12" y2="22"/>
-                <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/>
-                <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
-                <line x1="2" y1="12" x2="6" y2="12"/>
-                <line x1="18" y1="12" x2="22" y2="12"/>
-                <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/>
-                <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
-              </svg>
-            ) : (
-              /* Moon icon */
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-              </svg>
-            )}
-          </button>
+              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">
-          <Outlet />
+        <main
+          ref={mainRef}
+          id="main-content"
+          tabIndex={-1}
+          className="app-main"
+        >
+          <div className="page-content">
+            <Suspense
+              fallback={
+                <div
+                  className="space-y-5"
+                  role="status"
+                  aria-label={t('common.loading')}
+                >
+                  <div className="skeleton h-9 w-52" />
+                  <div className="skeleton h-36" />
+                  <div className="skeleton h-80" />
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
+          </div>
+          <footer className="mt-10 flex items-center justify-between border-t border-edge pt-5 text-[10px] text-muted">
+            <span>CloudAtlas</span>
+            <span>{t('design.footer')}</span>
+          </footer>
         </main>
       </div>
-      {/* Mobile nav drawer */}
       {mobileNavOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileNavOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-y-auto shadow-2xl">
-            <div className="px-5 py-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-              <span className="text-lg font-bold text-indigo-500 dark:text-indigo-400">☁ CloudAtlas</span>
-              <button onClick={() => setMobileNavOpen(false)} aria-label="Close" className="text-gray-400 hover:text-gray-200">
-                <X size={18} />
-              </button>
-            </div>
-            <nav className="flex-1 px-3 py-4 space-y-1">
-              <NavSection labelKey="nav.section.overview" />
-              <NavGroup items={overviewNavItems} />
-              <NavSection labelKey="nav.section.costManagement" />
-              <NavGroup items={costManagementNavItems} />
-              <NavSection labelKey="nav.section.resourceManagement" />
-              <NavGroup items={resourceManagementNavItems} />
-              <NavSection labelKey="nav.section.assetInventory" />
-              <NavGroup items={assetInventoryNavItems} />
-              <NavSection labelKey="nav.section.governance" />
-              <NavGroup items={governanceNavItems} />
-              <NavSection labelKey="nav.section.administration" />
-              <NavGroup items={administrationNavItems} />
-            </nav>
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setMobileNavOpen(false)}
+            aria-hidden="true"
+          />
+          <aside
+            ref={mobileNavRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('design.primaryNavigation')}
+            tabIndex={-1}
+            className="mobile-nav"
+          >
+            {sidebarContents(true)}
           </aside>
         </div>
       )}
       <CopilotFab />
       <CopilotPanel />
-      <GlobalSearch />
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   )
 }

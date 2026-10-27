@@ -51,17 +51,17 @@ function fmt(v: number) {
 
 function typeColor(t: string) {
   const m: Record<string, string> = {
-    instance: 'bg-blue-900 text-blue-300',
-    volume: 'bg-purple-900 text-purple-300',
-    snapshot: 'bg-yellow-900 text-yellow-300',
-    bucket: 'bg-green-900 text-green-300',
-    rds_instance: 'bg-red-900 text-red-300',
-    load_balancer: 'bg-indigo-900 text-indigo-300',
-    ip_address: 'bg-gray-700 text-gray-300',
-    k8s_pod: 'bg-cyan-900 text-cyan-300',
-    k8s_cluster: 'bg-teal-900 text-teal-300',
+    instance: 'bg-info/10 text-info',
+    volume: 'bg-violet/10 text-violet',
+    snapshot: 'bg-warning/10 text-warning',
+    bucket: 'bg-success/10 text-success',
+    rds_instance: 'bg-danger/10 text-danger',
+    load_balancer: 'bg-accent-soft text-accent',
+    ip_address: 'bg-emphasis text-secondary',
+    k8s_pod: 'bg-info/10 text-info',
+    k8s_cluster: 'bg-accent/10 text-accent',
   }
-  return m[t] ?? 'bg-gray-700 text-gray-300'
+  return m[t] ?? 'bg-emphasis text-secondary'
 }
 
 function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource; orgId: string; onClose: () => void }) {
@@ -172,13 +172,13 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <aside className="relative z-50 w-[560px] bg-gray-900 border-l border-gray-700 flex flex-col overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+      <aside className="relative z-50 w-[560px] bg-surface border-l border-strong flex flex-col overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-strong">
           <div>
-            <h2 className="text-lg font-semibold text-white truncate">{r.name || r.cloud_resource_id}</h2>
-            <p className="text-xs text-gray-400">{r.cloud_resource_id}</p>
+            <h2 className="text-lg font-semibold text-primary truncate">{r.name || r.cloud_resource_id}</h2>
+            <p className="text-xs text-secondary">{r.cloud_resource_id}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">✕</button>
+          <button onClick={onClose} className="text-secondary hover:text-primary text-xl">✕</button>
         </div>
 
         <div className="p-6 space-y-6">
@@ -189,9 +189,9 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
               { label: t('resources.kpiLastMonth'), value: fmt(r.last_month_cost ?? 0) },
               { label: t('resources.kpiStatus'), value: r.active ? t('common.active') : t('common.inactive') },
             ].map(c => (
-              <div key={c.label} className="bg-gray-800 rounded-lg p-3">
-                <p className="text-xs text-gray-400">{c.label}</p>
-                <p className="text-sm font-semibold text-white mt-1">{c.value}</p>
+              <div key={c.label} className="bg-subtle rounded-lg p-3">
+                <p className="text-xs text-secondary">{c.label}</p>
+                <p className="text-sm font-semibold text-primary mt-1">{c.value}</p>
               </div>
             ))}
           </div>
@@ -207,9 +207,9 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
               [t('resources.metaLastSeen'), r.last_seen?.slice(0, 10) ?? '—'],
               [t('resources.metaPool'), r.pool_id ?? t('resources.unassigned')],
             ].map(([k, v]) => (
-              <div key={k} className="bg-gray-800 rounded p-2">
-                <span className="text-gray-400 text-xs">{k}: </span>
-                <span className="text-white">{v}</span>
+              <div key={k} className="bg-subtle rounded p-2">
+                <span className="text-secondary text-xs">{k}: </span>
+                <span className="text-primary">{v}</span>
               </div>
             ))}
           </div>
@@ -217,19 +217,19 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
           {/* Recommendations (G12 drill-down) */}
           {recommendations && recommendations.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-white mb-3">
+              <h3 className="text-sm font-semibold text-primary mb-3">
                 {t('resources.recommendationsCount', { count: recommendations.length })}
               </h3>
               <div className="space-y-2">
                 {recommendations.map((rec) => (
-                  <div key={rec.id} className="bg-gray-800 rounded-lg p-3">
+                  <div key={rec.id} className="bg-subtle rounded-lg p-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-white">{rec.title}</p>
-                      <span className="text-xs font-medium text-green-400">
+                      <p className="text-sm text-primary">{rec.title}</p>
+                      <span className="text-xs font-medium text-success">
                         ${rec.potential_savings.toLocaleString(undefined, { maximumFractionDigits: 2 })}/mo
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted mt-1">
                       {rec.rec_type} · {rec.status} · {new Date(rec.created_at).toLocaleDateString()}
                     </p>
                   </div>
@@ -241,20 +241,20 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
           {/* Daily cost chart */}
           {chartData.length > 0 && (
             <div>
-              <p className="text-xs text-gray-400 mb-2">{t('resources.dailyCost')}</p>
+              <p className="text-xs text-secondary mb-2">{t('resources.dailyCost')}</p>
               <ResponsiveContainer width="100%" height={120}>
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="rCost" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#299d87" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#299d87" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} />
-                  <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
+                  <YAxis tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
                   <Tooltip formatter={(v: number) => fmt(v)} />
-                  <Area type="monotone" dataKey="cost" stroke="#6366f1" fill="url(#rCost)" dot={false} />
+                  <Area type="monotone" dataKey="cost" stroke="#299d87" fill="url(#rCost)" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -263,10 +263,10 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
           {/* Recommendations */}
           {(r.recommendations ?? []).length > 0 && (
             <div>
-              <p className="text-xs text-gray-400 mb-2">{t('resources.recommendations')}</p>
+              <p className="text-xs text-secondary mb-2">{t('resources.recommendations')}</p>
               <div className="space-y-1">
                 {r.recommendations.map((rec: string, i: number) => (
-                  <div key={i} className="bg-yellow-900/30 border border-yellow-700 rounded px-3 py-1.5 text-xs text-yellow-300">{rec}</div>
+                  <div key={i} className="bg-warning/10 border border-warning/25 rounded px-3 py-1.5 text-xs text-warning">{rec}</div>
                 ))}
               </div>
             </div>
@@ -275,13 +275,13 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
           {/* Tags editor */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {t('cmdb.tags')} {tagEntries.length > 0 && <span className="text-gray-600">({tagEntries.length})</span>}
+              <p className="text-xs font-semibold text-secondary uppercase tracking-wider">
+                {t('cmdb.tags')} {tagEntries.length > 0 && <span className="text-muted">({tagEntries.length})</span>}
               </p>
               {!editingTags && (
                 <button
                   onClick={startTagEdit}
-                  className="text-xs text-indigo-400 hover:text-indigo-300"
+                  className="text-xs text-accent hover:text-accent"
                 >
                   {t('common.edit')}
                 </button>
@@ -298,23 +298,23 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
                         onChange={(e) => updateTagRow(idx, 'key', e.target.value)}
                         placeholder="key"
                         aria-label={t('cmdb.tagKeyAria', { n: idx + 1 })}
-                        className="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="flex-1 min-w-0 bg-subtle border border-strong rounded px-2 py-1 text-xs text-primary font-mono focus:outline-none focus:ring-1 focus:ring-accent"
                       />
-                      <span className="text-gray-600 text-xs">=</span>
+                      <span className="text-muted text-xs">=</span>
                       <input
                         type="text"
                         value={row.value}
                         onChange={(e) => updateTagRow(idx, 'value', e.target.value)}
                         placeholder="value"
                         aria-label={t('cmdb.tagValueAria', { n: idx + 1 })}
-                        className="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="flex-1 min-w-0 bg-subtle border border-strong rounded px-2 py-1 text-xs text-primary font-mono focus:outline-none focus:ring-1 focus:ring-accent"
                       />
                       <button
                         type="button"
                         onClick={() => removeTagRow(idx)}
                         disabled={patchTags.isPending}
                         aria-label={t('cmdb.tagRemoveAria', { n: idx + 1 })}
-                        className="text-gray-500 hover:text-red-400 disabled:opacity-30 transition-colors text-base leading-none px-1"
+                        className="text-muted hover:text-danger disabled:opacity-30 transition-colors text-base leading-none px-1"
                       >
                         ×
                       </button>
@@ -325,26 +325,26 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
                   type="button"
                   onClick={addTagRow}
                   disabled={patchTags.isPending}
-                  className="w-full py-1 text-xs text-indigo-400 hover:text-indigo-300 disabled:opacity-40 border border-dashed border-gray-700 rounded transition-colors"
+                  className="w-full py-1 text-xs text-accent hover:text-accent disabled:opacity-40 border border-dashed border-strong rounded transition-colors"
                 >
                   {t('cmdb.addTag')}
                 </button>
                 {tagError && (
-                  <p className="text-xs text-red-400" data-testid="resource-tags-error">{tagError}</p>
+                  <p className="text-xs text-danger" data-testid="resource-tags-error">{tagError}</p>
                 )}
                 <div className="flex gap-2">
                   <button
                     onClick={handleSaveTags}
                     disabled={patchTags.isPending}
                     data-testid="resource-tags-save"
-                    className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs rounded transition-colors"
+                    className="flex-1 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent text-xs rounded transition-colors"
                   >
                     {patchTags.isPending ? t('cmdb.savingTags') : t('common.save')}
                   </button>
                   <button
                     onClick={cancelTagEdit}
                     disabled={patchTags.isPending}
-                    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-gray-200 text-xs rounded transition-colors"
+                    className="px-3 py-1.5 bg-emphasis hover:bg-emphasis disabled:opacity-40 text-primary text-xs rounded transition-colors"
                   >
                     {t('common.cancel')}
                   </button>
@@ -353,9 +353,9 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
             ) : (
               <div className="flex flex-wrap gap-1">
                 {tagEntries.map(([k, v]) => (
-                  <span key={k} className="px-2 py-0.5 bg-gray-700 rounded text-xs text-gray-200">{k}: {String(v)}</span>
+                  <span key={k} className="px-2 py-0.5 bg-emphasis rounded text-xs text-primary">{k}: {String(v)}</span>
                 ))}
-                {tagEntries.length === 0 && <span className="text-xs text-gray-500">{t('cmdb.noTags')}</span>}
+                {tagEntries.length === 0 && <span className="text-xs text-muted">{t('cmdb.noTags')}</span>}
               </div>
             )}
           </div>
@@ -393,10 +393,10 @@ export default function Resources() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">{t('resources.title')}</h1>
-          <p className="text-sm text-gray-400 mt-1">{t('resources.subtitle')}</p>
+          <h1 className="page-title">{t('resources.title')}</h1>
+          <p className="text-sm text-secondary mt-1">{t('resources.subtitle')}</p>
         </div>
-        <div className="text-sm text-gray-400">{t('resources.totalCount', { count: total.toLocaleString() })}</div>
+        <div className="text-sm text-secondary">{t('resources.totalCount', { count: total.toLocaleString() })}</div>
       </div>
 
       {/* Filters */}
@@ -405,12 +405,12 @@ export default function Resources() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder={t('resources.searchPlaceholder')}
-          className="flex-1 min-w-[200px] bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700 focus:outline-none focus:border-indigo-500"
+          className="flex-1 min-w-[200px] bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent"
         />
         <select
           value={typeFilter}
           onChange={e => setTypeFilter(e.target.value)}
-          className="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700"
+          className="bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong"
         >
           <option value="">{t('resources.allTypes')}</option>
           {RESOURCE_TYPES.map((rt) => <option key={rt} value={rt}>{t(`resType.${rt}`, { defaultValue: rt })}</option>)}
@@ -418,7 +418,7 @@ export default function Resources() {
         <select
           value={activeFilter === null ? '' : String(activeFilter)}
           onChange={e => setActiveFilter(e.target.value === '' ? null : e.target.value === 'true')}
-          className="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm border border-gray-700"
+          className="bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong"
         >
           <option value="">{t('resources.allStatus')}</option>
           <option value="true">{t('common.active')}</option>
@@ -427,45 +427,45 @@ export default function Resources() {
       </div>
 
       {/* Table */}
-      <div className="bg-gray-900 rounded-xl border border-gray-700 overflow-hidden">
+      <div className="bg-surface rounded-xl border border-strong overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-700">
+              <tr className="border-b border-strong">
                 {[t('resources.colNameId'), t('common.type'), t('cmdb.provider'), t('cmdb.region'), t('resources.colService'), t('resources.colPool'), t('resources.colTotalCost'), t('resources.colLastMonth'), t('common.status')].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-edge">
               {isLoading ? (
-                <tr><td colSpan={9} className="px-4 py-10 text-center text-gray-500">{t('common.loading')}</td></tr>
+                <tr><td colSpan={9} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
               ) : resources.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-10 text-center text-gray-500">{t('resources.noResources')}</td></tr>
+                <tr><td colSpan={9} className="px-4 py-10 text-center text-muted">{t('resources.noResources')}</td></tr>
               ) : resources.map(r => (
-                <tr key={r.id} onClick={() => setSelected(r)} className="hover:bg-gray-800 cursor-pointer transition-colors">
+                <tr key={r.id} onClick={() => setSelected(r)} className="hover:bg-subtle cursor-pointer transition-colors">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-white">{r.name || r.cloud_resource_id.slice(0, 24)}</div>
-                    <div className="text-xs text-gray-500 font-mono">{r.cloud_resource_id.slice(0, 32)}</div>
+                    <div className="font-medium text-primary">{r.name || r.cloud_resource_id.slice(0, 24)}</div>
+                    <div className="text-xs text-muted font-mono">{r.cloud_resource_id.slice(0, 32)}</div>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${typeColor(r.resource_type)}`}>{t(`resType.${r.resource_type}`, { defaultValue: r.resource_type })}</span>
                   </td>
                   <td className="px-4 py-3"><ProviderBadge provider={r.provider} /></td>
-                  <td className="px-4 py-3 text-gray-300">{r.cloud_region}</td>
-                  <td className="px-4 py-3 text-gray-300">{r.service_name ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{r.pool_id ? r.pool_id.slice(0, 8) + '…' : t('resources.unassigned')}</td>
-                  <td className="px-4 py-3 font-semibold text-indigo-300">{fmt(r.total_cost ?? 0)}</td>
-                  <td className="px-4 py-3 text-gray-300">{fmt(r.last_month_cost ?? 0)}</td>
+                  <td className="px-4 py-3 text-secondary">{r.cloud_region}</td>
+                  <td className="px-4 py-3 text-secondary">{r.service_name ?? '—'}</td>
+                  <td className="px-4 py-3 text-secondary text-xs">{r.pool_id ? r.pool_id.slice(0, 8) + '…' : t('resources.unassigned')}</td>
+                  <td className="px-4 py-3 font-semibold text-accent">{fmt(r.total_cost ?? 0)}</td>
+                  <td className="px-4 py-3 text-secondary">{fmt(r.last_month_cost ?? 0)}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${r.active ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-400'}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${r.active ? 'bg-success/10 text-success' : 'bg-emphasis text-secondary'}`}>
                       {r.active ? t('common.active') : t('common.inactive')}
                     </span>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
 
         {/* Pagination */}

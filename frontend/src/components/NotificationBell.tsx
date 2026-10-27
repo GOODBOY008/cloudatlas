@@ -15,12 +15,12 @@ interface Notification {
 }
 
 const KIND_COLORS: Record<string, string> = {
-  budget_alert: 'bg-red-900/40 text-red-300',
-  anomaly: 'bg-yellow-900/40 text-yellow-300',
-  recommendation: 'bg-green-900/40 text-green-300',
-  webhook: 'bg-blue-900/40 text-blue-300',
-  sync: 'bg-blue-100 text-blue-700',
-  system: 'bg-gray-800 text-gray-400',
+  budget_alert: 'bg-danger/10 text-danger',
+  anomaly: 'bg-warning/10 text-warning',
+  recommendation: 'bg-success/10 text-success',
+  webhook: 'bg-info/10 text-info',
+  sync: 'bg-info/10 text-info',
+  system: 'bg-subtle text-secondary',
 }
 
 /** i18n label for a notification kind; raw kind as fallback. */
@@ -90,24 +90,26 @@ export default function NotificationBell() {
       <button
         onClick={() => setOpen((v) => !v)}
         title={t('notifications.title')}
-        className="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+        aria-label={t('notifications.title')}
+        aria-expanded={open}
+        className="icon-button relative"
       >
         <Bell size={18} />
         {unread > 0 && (
-          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-danger-solid text-white text-[10px] font-bold">
             {unread > 99 ? '99+' : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 w-[360px] max-w-[90vw] bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-            <span className="text-sm font-semibold text-white">{t('notifications.title')}</span>
+        <div className="fixed right-4 top-16 w-[360px] max-w-[calc(100vw-2rem)] bg-surface border border-edge rounded-xl shadow-popover overflow-hidden z-50 sm:absolute sm:right-0 sm:top-11">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-edge">
+            <span className="text-sm font-semibold text-primary">{t('notifications.title')}</span>
             {unread > 0 && (
               <button
                 onClick={markAllRead}
-                className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
+                className="flex items-center gap-1 text-xs text-accent hover:text-accent"
               >
                 <CheckCheck size={14} /> {t('notifications.markAllRead')}
               </button>
@@ -115,7 +117,7 @@ export default function NotificationBell() {
           </div>
           <div className="max-h-[400px] overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="px-4 py-10 text-center text-sm text-gray-500">
+              <div className="px-4 py-10 text-center text-sm text-muted">
                 {t('notifications.empty')}
               </div>
             ) : (
@@ -123,7 +125,7 @@ export default function NotificationBell() {
                 <button
                   key={n.id}
                   onClick={() => !n.read_at && markRead(n.id)}
-                  className={`w-full text-left px-4 py-3 border-b border-gray-800 last:border-0 hover:bg-gray-800/50 transition-colors ${
+                  className={`w-full text-left px-4 py-3 border-b border-edge last:border-0 hover:bg-subtle/50 transition-colors ${
                     n.read_at ? 'opacity-60' : ''
                   }`}
                 >
@@ -131,11 +133,11 @@ export default function NotificationBell() {
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${KIND_COLORS[n.kind] ?? KIND_COLORS.system}`}>
                       {kindLabel(t, n.kind)}
                     </span>
-                    {!n.read_at && <span className="w-2 h-2 rounded-full bg-indigo-500" />}
+                    {!n.read_at && <span className="w-2 h-2 rounded-full bg-accent" />}
                   </div>
-                  <p className="text-sm text-white mt-1">{n.title}</p>
-                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{n.body}</p>
-                  <p className="text-xs text-gray-600 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                  <p className="text-sm text-primary mt-1">{n.title}</p>
+                  <p className="text-xs text-secondary mt-0.5 line-clamp-2">{n.body}</p>
+                  <p className="text-xs text-muted mt-1">{new Date(n.created_at).toLocaleString()}</p>
                 </button>
               ))
             )}

@@ -45,7 +45,7 @@ export default function PaginationBar({
 
   if (total === 0) {
     return (
-      <div className="px-4 py-3 border-t border-gray-700 text-sm text-gray-400">
+      <div className="px-4 py-3 border-t border-strong text-sm text-secondary">
         {t('pagination.empty')}
       </div>
     )
@@ -55,18 +55,18 @@ export default function PaginationBar({
   const end = Math.min(page * perPage, total)
 
   return (
-    <div className="px-4 py-3 border-t border-gray-700 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-400">
+    <div className="px-4 py-3 border-t border-strong flex flex-wrap items-center justify-between gap-2 text-sm text-secondary">
       <span>
         {t('pagination.showing', { start: start.toLocaleString(), end: end.toLocaleString(), total: total.toLocaleString() })}
       </span>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-1.5">
           <span className="text-xs">{t('pagination.perPage')}</span>
           <select
             data-testid="per-page-select"
             value={perPage}
             onChange={(e) => onPerPageChange(Number(e.target.value))}
-            className="bg-gray-800 text-gray-200 rounded px-1.5 py-1 text-xs border border-gray-700 focus:outline-none focus:border-indigo-500"
+            className="bg-subtle text-primary rounded px-1.5 py-1 text-xs border border-strong focus:outline-none focus:border-accent"
           >
             {PER_PAGE_OPTIONS.map((n) => (
               <option key={n} value={n}>{n}</option>
@@ -77,13 +77,13 @@ export default function PaginationBar({
           data-testid="prev-page"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="px-3 py-1 rounded bg-gray-800 disabled:opacity-40 hover:bg-gray-700 transition-colors"
+          className="px-3 py-1 rounded bg-subtle disabled:opacity-40 hover:bg-emphasis transition-colors"
         >
           {t('pagination.prev')}
         </button>
         {pageWindow(page, totalPages).map((p, i) =>
           p === '…' ? (
-            <span key={`gap-${i}`} className="px-1 text-gray-600">…</span>
+            <span key={`gap-${i}`} className="px-1 text-muted">…</span>
           ) : (
             <button
               key={p}
@@ -92,8 +92,8 @@ export default function PaginationBar({
               onClick={() => onPageChange(p)}
               className={
                 p === page
-                  ? 'px-2.5 py-1 rounded bg-indigo-600 text-white font-medium'
-                  : 'px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 transition-colors'
+                  ? 'px-2.5 py-1 rounded bg-accent text-on-accent font-medium'
+                  : 'px-2.5 py-1 rounded bg-subtle hover:bg-emphasis transition-colors'
               }
             >
               {p}
@@ -104,7 +104,7 @@ export default function PaginationBar({
           data-testid="next-page"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="px-3 py-1 rounded bg-gray-800 disabled:opacity-40 hover:bg-gray-700 transition-colors"
+          className="px-3 py-1 rounded bg-subtle disabled:opacity-40 hover:bg-emphasis transition-colors"
         >
           {t('pagination.next')}
         </button>

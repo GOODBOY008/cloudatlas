@@ -23,8 +23,8 @@ interface ProviderInfo {
 }
 
 const MODE_BADGE: Record<string, string> = {
-  org: 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-900 text-indigo-600 dark:text-indigo-300',
-  env: 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300',
+  org: 'bg-accent-soft bg-accent-soft/60 border-accent border-accent text-accent text-accent',
+  env: 'bg-subtle border-strong text-secondary',
   local: 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400',
 }
 
@@ -128,7 +128,7 @@ export default function AiProviderSection() {
           <Sparkles size={12} />
           {t(`settings.aiProvider.mode.${source}`)}
         </span>
-        <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.aiProvider.desc')}</p>
+        <p className="text-xs text-secondary">{t('settings.aiProvider.desc')}</p>
       </div>
 
       {source === 'local' && (
@@ -138,12 +138,12 @@ export default function AiProviderSection() {
       )}
 
       {adminDenied && (
-        <div className="rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+        <div className="rounded-lg border border-danger/25 bg-danger/10 px-4 py-3 text-sm text-danger">
           {t('settings.aiProvider.adminOnly')}
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 space-y-4">
+      <div className="rounded-xl border border-edge bg-surface p-5 space-y-4">
         {/* Enable toggle */}
         <label className="flex items-center gap-3 cursor-pointer">
           <input
@@ -152,53 +152,53 @@ export default function AiProviderSection() {
             onChange={(e) => setEnabled(e.target.checked)}
             className="w-4 h-4 rounded accent-indigo-600"
           />
-          <span className="text-sm font-medium text-gray-900 dark:text-white">
+          <span className="text-sm font-medium text-primary">
             {t('settings.aiProvider.enable')}
           </span>
         </label>
 
         {/* Base URL */}
         <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+          <label className="block text-xs font-medium text-secondary mb-1">
             {t('settings.aiProvider.baseUrl')}
           </label>
           <input
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
             placeholder={info?.effective.base_url ?? 'https://api.openai.com/v1'}
-            className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
           />
-          <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{t('settings.aiProvider.baseUrlHelp')}</p>
+          <p className="mt-1 text-xs text-muted">{t('settings.aiProvider.baseUrlHelp')}</p>
         </div>
 
         {/* API key */}
         <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+          <label className="block text-xs font-medium text-secondary mb-1">
             {t('settings.aiProvider.apiKey')}
           </label>
           {info?.api_key_set && !clearKey && (
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs text-green-600 dark:text-green-400 font-mono">
+              <span className="text-xs text-success font-mono">
                 {t('settings.aiProvider.apiKeySet', { hint: info.api_key_hint ?? '' })}
               </span>
               <button
                 type="button"
                 onClick={() => setClearKey(true)}
-                className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-secondary hover:text-danger transition-colors"
               >
                 <Trash2 size={12} /> {t('settings.aiProvider.clearKey')}
               </button>
             </div>
           )}
           {clearKey ? (
-            <p className="text-xs text-red-500">{t('settings.aiProvider.clearKey')} ✓</p>
+            <p className="text-xs text-danger">{t('settings.aiProvider.clearKey')} ✓</p>
           ) : (
             <input
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={info?.api_key_set ? t('settings.aiProvider.apiKeyKeep') : 'sk-…'}
-              className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
             />
           )}
         </div>
@@ -206,25 +206,25 @@ export default function AiProviderSection() {
         {/* Models */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+            <label className="block text-xs font-medium text-secondary mb-1">
               {t('settings.aiProvider.chatModel')}
             </label>
             <input
               value={chatModel}
               onChange={(e) => setChatModel(e.target.value)}
               placeholder={info?.effective.chat_model ?? 'gpt-4o-mini'}
-              className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+            <label className="block text-xs font-medium text-secondary mb-1">
               {t('settings.aiProvider.embedModel')}
             </label>
             <input
               value={embedModel}
               onChange={(e) => setEmbedModel(e.target.value)}
               placeholder={info?.effective.embed_model ?? 'text-embedding-3-small'}
-              className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>
         </div>
@@ -233,19 +233,19 @@ export default function AiProviderSection() {
           <div>
             {testResult &&
               (testResult.ok ? (
-                <div className="rounded-lg border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/40 px-3 py-2 text-sm text-green-700 dark:text-green-400">
+                <div className="rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-sm text-success">
                   {t('settings.aiProvider.testOk')}
                 </div>
               ) : (
-                <div className="rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+                <div className="rounded-lg border border-danger/25 bg-danger/10 px-3 py-2 text-sm text-danger">
                   {t('settings.aiProvider.testFail', { error: testResult.error ?? '' })}
                 </div>
               ))}
             {message && !error && (
-              <div className="mt-2 text-sm text-green-600 dark:text-green-400">{message}</div>
+              <div className="mt-2 text-sm text-success">{message}</div>
             )}
             {error && (
-              <div className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</div>
+              <div className="mt-2 text-sm text-danger">{error}</div>
             )}
           </div>
         )}
@@ -255,7 +255,7 @@ export default function AiProviderSection() {
             type="button"
             onClick={save}
             disabled={saving}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             {t('settings.aiProvider.save')}
           </button>
@@ -263,7 +263,7 @@ export default function AiProviderSection() {
             type="button"
             onClick={runTest}
             disabled={testing}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-subtle hover:bg-emphasis text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             {testing ? t('settings.aiProvider.testing') : t('settings.aiProvider.test')}
           </button>

@@ -57,7 +57,7 @@ test.describe('Expenses Tabs @regression', () => {
 
   for (const tab of TABS) {
     test(`EXP tab — ${tab} renders`, async ({ expensesPage }) => {
-      const btn = expensesPage.page.getByRole('button', { name: tab }).first();
+      const btn = expensesPage.main.getByRole('button', { name: tab, exact: true });
       const isVisible = await btn.isVisible();
       if (!isVisible) {
         test.skip(true, `Tab "${tab}" not found`);

@@ -191,17 +191,47 @@ let rows = sqlx::query_as::<_, Foo>(
 // Types in src/types/index.ts
 // Zustand for client state, React Query for server state
 // Pages in src/pages/, reusable components in src/components/
-
-// Component pattern:
-// Cards/panels:    bg-gray-900 border border-gray-800 rounded-xl
-// Text:            text-white (values), text-gray-400 (labels)
-// Inputs:          bg-gray-800 border border-gray-700 rounded-lg
-// Buttons:         bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg
-// Error messages:  bg-red-900/40 border border-red-700 text-red-400
-
-// Light mode is handled automatically via CSS overrides in index.html
-// No need to add dark: variants — use dark-first classes
 ```
+
+### Frontend Design System
+
+CloudAtlas uses a slate-and-teal palette with semantic tokens shared by every page. Light mode is the default for a new browser; saved dark-mode preferences remain in effect. Change tokens centrally instead of adding page-specific light-mode overrides.
+
+| Layer | Source |
+|---|---|
+| Theme tokens, shared classes, typography, focus styles, reduced motion | `frontend/src/styles.css` |
+| Tailwind token mapping and content scanning | `frontend/tailwind.config.cjs` |
+| Local CSS compilation | `frontend/postcss.config.cjs` |
+| Persisted preference | `frontend/src/store/themeStore.ts` (`cloudatlas-theme`) |
+| Theme before React starts | `frontend/index.html` |
+| Workspace navigation, breadcrumbs, theme/language controls | `frontend/src/components/Layout.tsx` |
+| Login and password-reset layout | `frontend/src/components/AuthShell.tsx` |
+
+Tailwind is compiled during the Vite build, and Inter Variable is bundled locally. The interface does not require a Tailwind CDN script or a remote font request.
+
+| Role | Classes |
+|---|---|
+| Page / panel / secondary surface | `bg-canvas`, `bg-surface`, `bg-subtle`, `bg-emphasis` |
+| Main / secondary / muted text | `text-primary`, `text-secondary`, `text-muted` |
+| Borders | `border-edge`, `border-strong` |
+| Primary action | `bg-accent text-on-accent hover:bg-accent-hover` |
+| Selected or accented surface | `bg-accent-soft text-accent` |
+| Status message or badge | `bg-danger/10 border-danger/25 text-danger` (also `success`, `warning`, `info`, `violet`) |
+| Solid status button | `bg-danger-solid text-white` (also `success`, `warning`, `info`, `violet`) |
+
+Use the shared classes for consistent layout and interaction:
+
+- Page headings: `page-header`, `page-title`, and `page-description`. Keep the root as `space-y-6`; the layout owns outer padding.
+- Panels: `panel`, `panel-heading`, `panel-title`, and `panel-caption`.
+- Actions: `btn-primary`, `btn-secondary`, `icon-button`, and `text-link`. Icon-only buttons need an accessible label.
+- Loading and empty states: `skeleton` and `empty-state`.
+- Tables: wrap wide tables in `<div className="table-scroll" tabIndex={0}>` so touch, trackpad, and keyboard users can scroll within the panel. Avoid hiding overflow on the table container.
+- Forms: use semantic surface, text, and border tokens with visible focus styles. Associate each input with a label.
+- Charts: use CSS variables for neutral strokes and text. SVG/canvas renderers with inline colors should consume `useThemeStore`, following `CostMap.tsx` and `ModelTopology.tsx`.
+- Modal dialogs: reuse `Modal` or `useDialogFocus` for Escape dismissal, focus trapping, and focus restoration. Preserve child autofocus and return focus to the launcher. Non-modal panels such as desktop Copilot allow focus to leave. Mobile navigation becomes a drawer below the `lg` breakpoint (1024 px).
+- Copy: add matching keys in `frontend/src/i18n/locales/en.ts` and `zh.ts`.
+
+Document changes to global key bindings in the [system keyboard shortcuts reference](docs/user-guide.md#system-keyboard-shortcuts). Search uses **⌘/Ctrl+K** and Copilot uses **⌘/Ctrl+I**; theme and language controls do not have dedicated global bindings.
 
 ---
 
@@ -228,6 +258,7 @@ cargo test -- --nocapture
 
 ```bash
 cd frontend
+npm test             # Vitest unit tests
 npm run build        # Type-check + bundle (must pass with 0 errors)
 ```
 
@@ -237,7 +268,12 @@ npm run build        # Type-check + bundle (must pass with 0 errors)
 cd e2e
 npm install
 npx playwright test
+
+# Theme, navigation, dashboard, and critical-path coverage
+npx playwright test tests/theme.spec.ts tests/navigation.spec.ts tests/dashboard.spec.ts tests/smoke.spec.ts --project=chromium
 ```
+
+For UI changes, also inspect light and dark modes, English and Chinese labels, keyboard focus, and narrow-screen navigation and table scrolling. See the [E2E guide](e2e/README.md) for environment variables and setup.
 
 ### API Smoke Tests
 
