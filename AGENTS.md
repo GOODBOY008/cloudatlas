@@ -97,9 +97,10 @@ Use the same semantic class in both themes. Do not add `dark:` color duplicates 
 4. Place tables in `<div className="table-scroll" tabIndex={0}>` so wide columns remain accessible on small screens.
 5. Use `skeleton` for loading placeholders and `empty-state` / `empty-state-icon` for empty panels.
 6. Use semantic CSS variables in chart styles, such as `rgb(var(--border))` and `rgb(var(--text-muted))`. Maps and custom SVGs should consume `useThemeStore` (see `CostMap.tsx` and `ModelTopology.tsx`).
-7. New overlays should use `useDialogFocus` for Escape, focus containment, and restoration; the shared `Modal` already includes it.
+7. Modal dialogs should use `Modal` or `useDialogFocus` for Escape, focus containment, and restoration. Preserve a child's existing `autoFocus` target and capture the launcher before child autofocus runs. Non-modal panels (such as desktop Copilot) must allow Tab focus to leave the panel.
 8. Keep new labels in both `i18n/locales/en.ts` and `zh.ts`. Shared design labels use the `design.*` prefix.
 9. Respect reduced motion and retain visible keyboard focus. Avoid overriding semantic tokens with page-specific light/dark hacks.
+10. Let `orgStore.setOrganizations` preserve or reconcile workspace selection. Read the selected workspace from the store after reconciliation; only Zustand persistence should write `cloudatlas-org` (a JSON state envelope, not a bare ID).
 
 ---
 

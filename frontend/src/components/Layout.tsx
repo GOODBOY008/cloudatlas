@@ -298,21 +298,16 @@ export default function Layout() {
       .then((res) => {
         const orgs = res.data.data ?? []
         setOrganizations(orgs)
-        const saved = window.localStorage.getItem('cloudatlas-org')
-        const selected = orgs.find((org) => org.id === saved) ?? orgs[0]
-        if (selected) {
-          setCurrentOrg(selected)
-          loadOrgCurrency(selected.id)
-        }
+        const selected = useOrgStore.getState().currentOrg
+        if (selected) loadOrgCurrency(selected.id)
       })
       .catch(() => {
         /* Some pages can be used without an organization. */
       })
-  }, [setOrganizations, setCurrentOrg])
+  }, [setOrganizations])
 
   function switchOrg(org: Organization) {
     setCurrentOrg(org)
-    window.localStorage.setItem('cloudatlas-org', org.id)
     setOrgMenuOpen(false)
     loadOrgCurrency(org.id)
     navigate('/dashboard')

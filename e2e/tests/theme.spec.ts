@@ -43,6 +43,29 @@ test.describe('Workspace design and accessibility', () => {
     await page.keyboard.press('Escape');
   });
 
+  test('account dialogs preserve autofocus and return focus to their launcher', async ({ page }) => {
+    await page.route('**/api/v1/orgs/*/cloud-accounts', (route) => route.fulfill({
+      json: { data: [{ id: 'focus-account', name: 'Focus test account', provider: 'other', currency: 'USD', is_active: true, resource_count: 0, has_credentials: false, last_sync_at: null }] },
+    }));
+    await page.goto('/cloud-accounts');
+    const launcher = page.getByRole('button', { name: 'Edit', exact: true });
+    await launcher.click();
+    const dialog = page.getByRole('dialog');
+    const name = dialog.getByRole('textbox');
+    await expect(name).toBeFocused();
+    await page.keyboard.press('End');
+    await page.keyboard.type(' updated');
+    await expect(name).toHaveValue('Focus test account updated');
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(launcher).toBeFocused();
+
+    await launcher.click();
+    await expect(name).toBeFocused();
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(launcher).toBeFocused();
+  });
+
   test('collapsed navigation remains reachable on mobile and closes on navigation or resize', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/dashboard');

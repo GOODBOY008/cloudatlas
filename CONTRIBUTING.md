@@ -228,7 +228,7 @@ Use the shared classes for consistent layout and interaction:
 - Tables: wrap wide tables in `<div className="table-scroll" tabIndex={0}>` so touch, trackpad, and keyboard users can scroll within the panel. Avoid hiding overflow on the table container.
 - Forms: use semantic surface, text, and border tokens with visible focus styles. Associate each input with a label.
 - Charts: use CSS variables for neutral strokes and text. SVG/canvas renderers with inline colors should consume `useThemeStore`, following `CostMap.tsx` and `ModelTopology.tsx`.
-- Dialogs: reuse `Modal` or `useDialogFocus` for Escape dismissal, focus trapping, and focus restoration. Mobile navigation becomes a drawer below the `lg` breakpoint (1024 px).
+- Modal dialogs: reuse `Modal` or `useDialogFocus` for Escape dismissal, focus trapping, and focus restoration. Preserve child autofocus and return focus to the launcher. Non-modal panels such as desktop Copilot allow focus to leave. Mobile navigation becomes a drawer below the `lg` breakpoint (1024 px).
 - Copy: add matching keys in `frontend/src/i18n/locales/en.ts` and `zh.ts`.
 
 Document changes to global key bindings in the [system keyboard shortcuts reference](docs/user-guide.md#system-keyboard-shortcuts). Search uses **⌘/Ctrl+K** and Copilot uses **⌘/Ctrl+I**; theme and language controls do not have dedicated global bindings.

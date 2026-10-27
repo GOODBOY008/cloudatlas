@@ -71,7 +71,7 @@ cd e2e
 npx playwright test tests/theme.spec.ts tests/navigation.spec.ts tests/dashboard.spec.ts tests/smoke.spec.ts --project=chromium
 ```
 
-`theme.spec.ts` covers the default light theme and saved dark preference, global search keyboard focus and dismissal, mobile navigation and overflow, and Chinese dashboard labels. Navigation tests expand the relevant sidebar sections before following links. Dashboard tab tests scope tab selectors to the main content so sidebar section buttons cannot be mistaken for tabs.
+`theme.spec.ts` covers the default light theme and saved dark preference, global search keyboard focus and dismissal, account-dialog autofocus and launcher focus restoration, mobile navigation and overflow, and Chinese dashboard labels. Navigation tests expand the relevant sidebar sections before following links. Dashboard tab tests scope tab selectors to the main content so sidebar section buttons cannot be mistaken for tabs.
 
 Also inspect representative charts, tables, forms, and dialogs in both themes and at a narrow viewport. Keep documented key bindings in sync with the [system keyboard shortcuts](../docs/user-guide.md#system-keyboard-shortcuts).
 
