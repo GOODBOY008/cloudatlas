@@ -30,6 +30,8 @@ on:
 env:
   # Playwright version must match e2e/package.json
   PLAYWRIGHT_VERSION: '1.63.0'
+  BACKEND_IMAGE: cloudatlas/backend:${{ github.sha }}
+  FRONTEND_IMAGE: cloudatlas/frontend:${{ github.sha }}
 
 jobs:
   # ─────────────────────────────────────────────────────────────────
@@ -127,13 +129,8 @@ jobs:
 
       - name: Start application stack
         run: |
-          cp .env.example .env 2>/dev/null || true
-          # Inject pre-built images into compose
-          export BACKEND_IMAGE="cloudatlas/backend:${{ github.sha }}"
-          export FRONTEND_IMAGE="cloudatlas/frontend:${{ github.sha }}"
-          docker compose -f docker-compose.yml up -d postgres migrate
-          # Wait for migrate to complete
-          docker compose -f docker-compose.yml up -d api frontend
+          docker compose -f docker-compose.e2e.yml up -d --build postgres migrate
+          docker compose -f docker-compose.e2e.yml up -d --no-build api frontend
 
       - name: Wait for backend health
         run: |
@@ -145,7 +142,7 @@ jobs:
             fi
             if [ "$i" -eq 24 ]; then
               echo "✗ Backend did not become healthy"
-              docker compose -f docker-compose.yml logs api
+              docker compose -f docker-compose.e2e.yml logs api
               exit 1
             fi
             sleep 5
@@ -183,7 +180,7 @@ jobs:
 
       - name: Collect Docker logs on failure
         if: failure()
-        run: docker compose -f docker-compose.yml logs --tail=200
+        run: docker compose -f docker-compose.e2e.yml logs --tail=200
 
   # ─────────────────────────────────────────────────────────────────
   # E2E — Full Regression (main merges + manual)
@@ -241,8 +238,8 @@ jobs:
 
       - name: Start application stack
         run: |
-          cp .env.example .env 2>/dev/null || true
-          docker compose -f docker-compose.yml up -d --build
+          docker compose -f docker-compose.e2e.yml up -d --build postgres migrate
+          docker compose -f docker-compose.e2e.yml up -d --no-build api frontend
 
       - name: Wait for backend health
         run: |
@@ -253,7 +250,7 @@ jobs:
               break
             fi
             if [ "$i" -eq 24 ]; then
-              docker compose -f docker-compose.yml logs api
+              docker compose -f docker-compose.e2e.yml logs api
               exit 1
             fi
             sleep 5
@@ -298,7 +295,7 @@ jobs:
 
       - name: Collect Docker logs on failure
         if: failure()
-        run: docker compose -f docker-compose.yml logs --tail=200
+        run: docker compose -f docker-compose.e2e.yml logs --tail=200
 
   # ─────────────────────────────────────────────────────────────────
   # Summary gate — required status check for branch protection

@@ -33,10 +33,10 @@ test.describe('async jobs', () => {
     const result = page.getByTestId('billing-result-box');
     await expect(progress.or(result)).toBeVisible({ timeout: 15_000 });
 
-    // The import settles into the result box with the documented numbers.
+    // Mock billing processes five resource groups per day for the default 30 days.
     await expect(result).toBeVisible({ timeout: 60_000 });
     await expect(result).toContainText('Import completed');
-    await expect(result).toContainText('raw rows inserted');
+    await expect(result).toContainText('150 daily resource groups processed (30 days, AWS)');
 
     // Recent import jobs list renders the finished job (the account also
     // appears in the history table above — take the first match).
@@ -62,6 +62,20 @@ test.describe('async jobs', () => {
     const row = page.getByRole('row', { name: new RegExp(`e2e-sync-${RUN}`) });
     await expect(row).toBeVisible({ timeout: 10_000 });
 
+    // Keep the real 202 job snapshot in the browser's active poll until the
+    // UI assertions finish: mock discovery may complete before Firefox paints.
+    const syncUrl = `**/api/v1/orgs/${ORG}/cloud-accounts/${accountId}/sync`;
+    const activeJobsUrl = `**/api/v1/orgs/${ORG}/jobs?active=true`;
+    let syncJobId = '';
+    await page.route(syncUrl, async (route) => {
+      const response = await route.fetch();
+      expect(response.status()).toBe(202);
+      const { data: job } = await response.json();
+      syncJobId = job.id;
+      await page.route(activeJobsUrl, (pollRoute) => pollRoute.fulfill({ json: { data: [job] } }));
+      await route.fulfill({ response });
+    });
+
     // Trigger the sync from the UI; the inline chip appears and the button
     // flips to the disabled "Syncing…" state (UI-side double-trigger block).
     await row.getByRole('button', { name: /^Sync$/ }).click();
@@ -69,9 +83,13 @@ test.describe('async jobs', () => {
     await expect(chip).toBeVisible({ timeout: 15_000 });
     await expect(row.getByRole('button', { name: /Syncing/ })).toBeDisabled({ timeout: 10_000 });
 
-    // The chip settles and the row returns to the idle state.
+    // Resume live polling and verify that the real discovery job completed.
+    await page.unroute(syncUrl);
+    await page.unroute(activeJobsUrl);
     await expect(chip).toBeHidden({ timeout: 60_000 });
     await expect(row.getByRole('button', { name: /^Sync$/ })).toBeEnabled({ timeout: 30_000 });
+    const completed = await api.get<{ data: { status: string } }>(`/api/v1/orgs/${ORG}/jobs/${syncJobId}`);
+    expect(completed.data.status).toBe('succeeded');
 
     // API-side: a duplicate POST while a job is active answers 409 with the
     // existing job pointer. Drive it via the API against the seed account.
