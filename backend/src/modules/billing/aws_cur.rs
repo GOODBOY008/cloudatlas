@@ -290,73 +290,25 @@ fn parse_cur_csv(text: &str) -> AppResult<Vec<CurLineItem>> {
 /// `raw_expenses` only — aggregation is a separate phase).
 /// Returns number of new expense rows inserted.
 ///
-/// `progress` is called every 500 rows with (rows_done, total); returning
+/// `progress` is called every 100 daily resource groups; returning
 /// `false` aborts the insert loop early (cooperative cancellation).
 pub async fn import_line_items(
     state: &AppState,
     org_id: Uuid,
     account_id: Uuid,
     items: Vec<CurLineItem>,
-    mut progress: Option<&mut (dyn FnMut(usize, usize) -> bool + Send)>,
+    progress: Option<&mut (dyn FnMut(usize, usize) -> bool + Send)>,
 ) -> AppResult<u32> {
-    use super::fx;
-
-    let org_cur = fx::org_currency(&state.db, org_id).await;
-    let fx_table = fx::load_rates(&state.db, org_id).await;
-    let mut inserted = 0u32;
-    let total = items.len();
-    let mut alive = true;
-
-    for (idx, item) in items.iter().enumerate() {
-        if !alive {
-            break;
+    let lines = items.into_iter().map(|item| {
+        let evidence = serde_json::json!(item);
+        super::ingest::BillingLine {
+            evidence, resource_id: item.resource_id, resource_name: item.resource_name,
+            resource_type: item.resource_type.unwrap_or_else(|| "other".into()),
+            region: item.region, service: item.service_name, date: item.usage_date,
+            amount: item.cost_usd, currency: item.currency, tags: item.tags,
         }
-        // Convert to the org display currency; the native cost/currency
-        // survive in cloud_specific for audit.
-        let (cost, _converted) = fx::convert_or_warn(
-            &fx_table,
-            item.cost_usd,
-            &item.currency,
-            &org_cur,
-            "aws_cur import",
-        );
-        let native = serde_json::json!({
-            "native_cost": item.cost_usd,
-            "native_currency": item.currency,
-            "tags": item.tags,
-        });
-        let result = sqlx::query(
-            r#"INSERT INTO raw_expenses
-               (organization_id, cloud_account_id, external_id, billing_period,
-                cloud_resource_id, resource_name, resource_type, cloud_region,
-                cost, currency, service_name, cloud_specific)
-               VALUES ($1, $2, $3, $4, $3, $5, $6::resource_type, $7, $8, $9, $10, $11)
-               ON CONFLICT (cloud_account_id, external_id, billing_period) DO NOTHING"#,
-        )
-        .bind(org_id)
-        .bind(account_id)
-        .bind(&item.resource_id)
-        .bind(item.usage_date)
-        .bind(&item.resource_name)
-        .bind(&item.resource_type)
-        .bind(&item.region)
-        .bind(cost)
-        .bind(&org_cur)
-        .bind(&item.service_name)
-        .bind(&native)
-        .execute(&state.db)
-        .await?;
-
-        inserted += result.rows_affected() as u32;
-
-        if let Some(hook) = progress.as_mut() {
-            if idx % 500 == 0 {
-                alive = hook(idx + 1, total);
-            }
-        }
-    }
-
-    Ok(inserted)
+    }).collect();
+    super::ingest::import_daily(state, org_id, account_id, lines, progress).await
 }
 
 /// Re-aggregate raw_expenses → expenses for the given account.
@@ -365,34 +317,7 @@ pub async fn aggregate_to_expenses(
     org_id: Uuid,
     account_id: Uuid,
 ) -> AppResult<()> {
-    sqlx::query(
-        r#"INSERT INTO expenses
-           (organization_id, cloud_account_id, cloud_resource_id, resource_name,
-            service_name, date, cloud_region, resource_type, cost, currency, tags)
-           SELECT
-               organization_id, cloud_account_id, cloud_resource_id,
-               MAX(resource_name) AS resource_name,
-               service_name, billing_period AS date,
-               MAX(cloud_region) AS cloud_region,
-               MAX(resource_type) AS resource_type,
-               SUM(cost) AS cost,
-               MAX(currency) AS currency,
-               '{}'::jsonb AS tags
-           FROM raw_expenses
-           WHERE organization_id = $1 AND cloud_account_id = $2
-           GROUP BY organization_id, cloud_account_id, cloud_resource_id, service_name, billing_period
-           ON CONFLICT (organization_id, cloud_account_id, cloud_resource_id, date)
-           DO UPDATE SET
-               cost = EXCLUDED.cost,
-               resource_name = EXCLUDED.resource_name,
-               cloud_region = EXCLUDED.cloud_region,
-               resource_type = EXCLUDED.resource_type"#,
-    )
-    .bind(org_id)
-    .bind(account_id)
-    .execute(&state.db)
-    .await?;
-    Ok(())
+    super::ingest::aggregate(state, org_id, account_id).await
 }
 
 /// Simulate fetching mock CUR data (used when CLOUD_MOCK_ENABLED=true)

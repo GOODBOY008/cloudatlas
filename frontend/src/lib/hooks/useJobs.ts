@@ -1,7 +1,13 @@
 import { useEffect, useRef } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { getJob, listJobs } from '../api'
 import { isJobTerminal, type AccountJob } from '../../types'
+
+/** Job effects span inventory, billing, dashboards, allocation and quality.
+ * Invalidate only this workspace; retain other workspaces' cached data. */
+function invalidateJobResults(queryClient: QueryClient, orgId: string) {
+  queryClient.invalidateQueries({ predicate: (query) => query.queryKey.includes(orgId) })
+}
 
 /**
  * Active jobs (pending + running) for the org — backs the layout indicator
@@ -12,7 +18,7 @@ import { isJobTerminal, type AccountJob } from '../../types'
  */
 export function useActiveJobs(orgId: string | undefined) {
   const queryClient = useQueryClient()
-  const prevIds = useRef<Set<string> | null>(null)
+  const prev = useRef<{ orgId: string | undefined; ids: Set<string> } | null>(null)
 
   const query = useQuery<AccountJob[], Error>({
     queryKey: ['jobs', 'active', orgId],
@@ -21,20 +27,14 @@ export function useActiveJobs(orgId: string | undefined) {
     refetchInterval: (q) => (q.state.data?.length ? 2000 : 15000),
   })
 
-  const currentIds = new Set((query.data ?? []).map((j) => j.id))
   useEffect(() => {
-    if (prevIds.current) {
-      for (const id of prevIds.current) {
-        if (!currentIds.has(id)) {
-          queryClient.invalidateQueries({ queryKey: ['jobs'] })
-          queryClient.invalidateQueries({ queryKey: ['cloud-accounts', orgId] })
-          queryClient.invalidateQueries({ queryKey: ['billing-history', orgId] })
-          queryClient.invalidateQueries({ queryKey: ['expenses', orgId] })
-          break
-        }
-      }
+    // An unresolved fetch is not evidence that jobs completed.
+    if (!query.data || !orgId) return
+    const ids = new Set(query.data.map((job) => job.id))
+    if (prev.current?.orgId === orgId && [...prev.current.ids].some((id) => !ids.has(id))) {
+      invalidateJobResults(queryClient, orgId)
     }
-    prevIds.current = currentIds
+    prev.current = { orgId, ids }
   }, [query.data, orgId, queryClient])
 
   return query
@@ -47,7 +47,7 @@ export function useActiveJobs(orgId: string | undefined) {
  */
 export function useJob(orgId: string | undefined, jobId: string | null) {
   const queryClient = useQueryClient()
-  const prevStatus = useRef<string | null>(null)
+  const prev = useRef<{ orgId: string; jobId: string; status: string } | null>(null)
 
   const query = useQuery<AccountJob, Error>({
     queryKey: ['jobs', 'detail', orgId, jobId],
@@ -58,14 +58,14 @@ export function useJob(orgId: string | undefined, jobId: string | null) {
 
   const status = query.data?.status ?? null
   useEffect(() => {
-    if (status && prevStatus.current && prevStatus.current !== status && isJobTerminal({ status })) {
-      queryClient.invalidateQueries({ queryKey: ['jobs'] })
-      queryClient.invalidateQueries({ queryKey: ['cloud-accounts', orgId] })
-      queryClient.invalidateQueries({ queryKey: ['billing-history', orgId] })
-      queryClient.invalidateQueries({ queryKey: ['expenses', orgId] })
+    if (!status || !orgId || !jobId) return
+    const previous = prev.current
+    if (isJobTerminal({ status }) && (previous?.orgId !== orgId || previous?.jobId !== jobId || previous?.status !== status)) {
+      // Includes a job that finished before its first detail poll.
+      invalidateJobResults(queryClient, orgId)
     }
-    prevStatus.current = status
-  }, [status, orgId, queryClient])
+    prev.current = { orgId, jobId, status }
+  }, [status, orgId, jobId, queryClient])
 
   return query
 }

@@ -48,7 +48,13 @@ pub struct OrganizationResponse {
     pub name: String,
     pub slug: String,
     pub description: Option<String>,
+    pub settings: OrganizationSettingsResponse,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct OrganizationSettingsResponse {
+    pub currency: String,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]

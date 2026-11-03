@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api from '../lib/api'
+import { setOrgCurrency, useOrgCurrency } from '../lib/format'
 import AiProviderSection from '../components/settings/AiProviderSection'
 import { useOrgStore } from '../store'
 
@@ -83,6 +84,7 @@ export default function Settings() {
       }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['org-details', orgId] })
+      setOrgCurrency((res.data.data.settings as { currency?: string } | undefined)?.currency ?? orgForm.currency)
       setOrgSaveMsg(t('settings.saved'))
       if (currentOrg && res.data?.data?.name) {
         setCurrentOrg({ ...currentOrg, name: res.data.data.name, slug: res.data.data.slug ?? currentOrg.slug })
@@ -338,7 +340,7 @@ function FxRatesSection() {
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id
   const [rates, setRates] = useState<FxRate[]>([])
-  const [orgCurrency, setOrgCurrency] = useState('USD')
+  const orgCurrency = useOrgCurrency()
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -350,7 +352,6 @@ function FxRatesSection() {
       .get<{ data: FxRate[]; org_currency: string }>(`/orgs/${orgId}/exchange-rates`)
       .then((res) => {
         setRates(res.data.data ?? [])
-        setOrgCurrency(res.data.org_currency ?? 'USD')
         setLoaded(true)
       })
       .catch(() => setError(t('settings.fxLoadFailed')))

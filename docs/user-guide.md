@@ -1,12 +1,13 @@
 # CloudAtlas User Guide
 
 > **CloudAtlas** — Unified FinOps + CMDB Platform  
-> Updated October 27, 2026 · Frontend design and navigation refresh
+> Updated November 3, 2026 · CMDB / FinOps data flow and in-app help
 
 ---
 
 ## Table of Contents
 
+- [In-app Help Center and Data Flow](#in-app-help-center-and-data-flow)
 1. [Introduction](#1-introduction)
 2. [Getting Started](#2-getting-started)
    - [System Requirements](#21-system-requirements)
@@ -1695,3 +1696,36 @@ docker compose run --rm cloudatlas-migrate
 *For architecture internals and database schema details, see the [Technical Design Document](./design.md).*  
 *For CI/CD setup, see [ci-cd.md](./ci-cd.md).*  
 *For API examples, see [api-examples.md](./api-examples.md).*
+
+## In-app Help Center and Data Flow
+
+Open **Help Center** in Administration, or the question-mark button in the header for help on the current page. `/help` provides searchable English and Chinese guides for onboarding, CMDB, FinOps, data flow, allocation and troubleshooting. Articles have shareable URLs, for example `/help?article=allocation`, and links back into the relevant tools. The content ships with the application and does not depend on an external documentation service.
+
+Open **Overview → Data Flow** (`/data-flow`) to inspect both ingestion paths:
+
+```mermaid
+flowchart LR
+  A[Cloud discovery] --> B[Resources + CIs, atomic per resource]
+  C[Provider billing] --> D[Resource/day source groups]
+  D --> E[Daily expenses]
+  B -->|organization + account + resource ID| E
+  E --> F[Pool and cost-center allocation]
+```
+
+- **CI linkage coverage**: active resources with a matching non-deleted CI / active resources. No inventory displays a dash.
+- **Unmatched expense rows**: daily expenses with no matching non-deleted CI. The complete identity prevents resources in different accounts from sharing costs.
+- **Pool-unallocated cost**: expenses without a valid, non-deleted pool. This is independent of CI linkage.
+- **Latest failed jobs**: failures among each account's most recent discovery and billing jobs. Timestamps and errors appear in the account table. A successful job can return zero records.
+- **Period and currency**: billing metrics include today and the preceding 29 days. Other-currency expenses are counted in a warning and excluded from monetary totals. The page refreshes every 15 seconds while visible.
+
+### Import and retry behavior
+
+Every input billing line contributes to its resource/day group; the provider details remain in `raw_expenses.cloud_specific.line_items`. Re-importing replaces the group's amount rather than appending duplicates, and aggregation retries even when no new source groups arrive. Processed counts represent daily resource groups, not provider line-item counts. Missing exchange rates fail the import before mislabeled costs are stored. AWS coverage depends on the selected CUR object.
+
+Discovery writes the CI and resource projection in one transaction. A failed projection is reported as a failed job, not an update. Re-discovery preserves additional CI metadata and managed lifecycle states. Discovery and billing serialize their cost projections per account using PostgreSQL transaction locks. When observed jobs finish, the UI invalidates affected workspace data, including CMDB, resources, dashboards and allocation reports.
+
+### Allocation rules and existing data
+
+Pool and cost-center views reconcile **independently** to total spend; never add the two views together. Cost-center ownership follows **Cost Center → Business Capability → same-named Service → CI → account-scoped bill**. Multiple paths to the same center count once. Conflicting centers leave the resource unallocated and surface its ambiguous cost for review. Deleted services and CIs do not participate.
+
+These changes do not automatically modify historical bills or cloud resources. If previous imports discarded additional daily line items, re-import the relevant original billing period after checking the workspace currency and exchange rates. Changing currency alone does not convert historical data. Source data that was never stored cannot be reconstructed locally.

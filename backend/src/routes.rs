@@ -215,6 +215,10 @@ pub fn build_router(state: AppState) -> Router {
             get(expense::handlers::ri_coverage),
         )
         .route(
+            "/api/v1/orgs/{org_id}/data-flow",
+            get(expense::reporting::data_flow),
+        )
+        .route(
             "/api/v1/orgs/{org_id}/showback",
             get(expense::handlers::showback_report),
         )
@@ -1248,6 +1252,7 @@ pub fn build_router(state: AppState) -> Router {
         // ── Expenses ─────────────────────────────────────────────────────────
         expense::handlers::list_expenses,
         expense::handlers::summary,
+        expense::reporting::data_flow,
         // ── CMDB ─────────────────────────────────────────────────────────────
         cmdb::handlers::list_cis,
         cmdb::handlers::create_ci,

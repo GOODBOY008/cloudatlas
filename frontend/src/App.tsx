@@ -57,6 +57,8 @@ const BIExport = lazy(() => import('./pages/BIExport'))
 const Integrations = lazy(() => import('./pages/Integrations'))
 const S3Duplicates = lazy(() => import('./pages/S3Duplicates'))
 const AICenter = lazy(() => import('./pages/AICenter'))
+const HelpCenter = lazy(() => import('./pages/HelpCenter'))
+const DataFlow = lazy(() => import('./pages/DataFlow'))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   return auth.isAuthenticated() ? <>{children}</> : <Navigate to="/login" replace />
@@ -100,6 +102,8 @@ export default function App() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/help" element={<HelpCenter />} />
+          <Route path="/data-flow" element={<DataFlow />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/showback" element={<Showback />} />
           <Route path="/tagging-coverage" element={<TaggingCoverage />} />

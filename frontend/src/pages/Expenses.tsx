@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api, { paginatedGet } from '../lib/api'
+import { fmtMoney, useOrgCurrency } from '../lib/format'
 import { usePagination } from '../lib/hooks/usePagination'
 import PaginationBar from '../components/PaginationBar'
 import {
@@ -218,7 +219,7 @@ function ResourceHistoryPanel({
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-surface rounded-lg p-3">
                 <p className="text-xs text-muted">{t('expenses.currentPeriod')}</p>
-                <p className="text-lg font-semibold text-primary">${data.summary.current_cost.toFixed(2)}</p>
+                <p className="text-lg font-semibold text-primary">{fmtMoney(data.summary.current_cost)}</p>
               </div>
               <div className="bg-surface rounded-lg p-3">
                 <p className="text-xs text-muted">{t('expenses.vsPrevious')}</p>
@@ -243,8 +244,8 @@ function ResourceHistoryPanel({
                       </linearGradient>
                     </defs>
                     <XAxis dataKey="date" tick={{ fill: 'rgb(var(--text-muted))', fontSize: 10 }} tickFormatter={(v: string) => v.slice(5)} />
-                    <YAxis tick={{ fill: 'rgb(var(--text-muted))', fontSize: 10 }} tickFormatter={(v: unknown) => `$${(v as number).toFixed(0)}`} />
-                    <Tooltip formatter={(v: unknown) => [`$${(v as number).toFixed(2)}`, t('expenses.chartCost')]} contentStyle={tooltipStyle} />
+                    <YAxis tick={{ fill: 'rgb(var(--text-muted))', fontSize: 10 }} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
+                    <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} />
                     <Area type="monotone" dataKey="cost" stroke="#299d87" fill="url(#rhGrad)" strokeWidth={1.5} dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -274,6 +275,7 @@ function ResourceHistoryPanel({
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function Expenses() {
+  useOrgCurrency()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id
   const { t } = useTranslation()
@@ -536,11 +538,11 @@ export default function Expenses() {
       <div className="bg-surface border border-edge rounded-xl p-4 mb-5 flex items-center justify-between gap-3">
         <div>
           <p className="text-xs text-muted">{t('expenses.periodComparison')}</p>
-          <p className="text-sm text-secondary">{t('expenses.previousPeriod')} <span className="text-primary font-semibold">${previousTotal.toFixed(2)}</span></p>
+          <p className="text-sm text-secondary">{t('expenses.previousPeriod')} <span className="text-primary font-semibold">{fmtMoney(previousTotal)}</span></p>
         </div>
         <div className="text-right">
           <p className={`text-sm font-semibold ${delta > 0 ? 'text-danger' : delta < 0 ? 'text-success' : 'text-secondary'}`}>
-            {delta > 0 ? '↑' : delta < 0 ? '↓' : '•'} ${Math.abs(delta).toFixed(2)}
+            {delta > 0 ? '↑' : delta < 0 ? '↓' : '•'} {fmtMoney(Math.abs(delta))}
           </p>
           <p className="text-xs text-muted">{t('expenses.vsPreviousPeriod', { pct: Math.abs(deltaPct).toFixed(1) })}</p>
         </div>
@@ -567,7 +569,7 @@ export default function Expenses() {
           <button onClick={clearFilters} className="px-3 py-2 text-sm text-secondary hover:text-primary transition-colors">{t('expenses.clearFilters')}</button>
         )}
         <div className="ml-auto text-sm text-secondary">
-          {t('expenses.total')} <span className="text-primary font-semibold">${totalCost.toFixed(2)}</span>
+          {t('expenses.total')} <span className="text-primary font-semibold">{fmtMoney(totalCost)}</span>
         </div>
       </div>
 
@@ -607,8 +609,8 @@ export default function Expenses() {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
                   <XAxis dataKey="date" tick={axisTickStyle} />
-                  <YAxis tick={axisTickStyle} />
-                  <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: 'rgb(var(--text-secondary))' }} />
+                  <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
+                  <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} labelStyle={{ color: 'rgb(var(--text-secondary))' }} />
                   <Area type="monotone" dataKey="cost" stroke="#299d87" fill="url(#costGradient)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -642,7 +644,7 @@ export default function Expenses() {
                       <td className="px-4 py-3 text-primary hover:text-accent">{e.resource_name ?? e.cloud_resource_id}</td>
                       <td className="px-4 py-3 text-secondary">{e.service_name}</td>
                       <td className="px-4 py-3 text-secondary">{e.cloud_region}</td>
-                      <td className="px-4 py-3 text-right font-mono text-success">{e.currency} {e.cost.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-success">{fmtMoney(e.cost, e.currency)}</td>
                     </tr>
                   ))
                 )}
@@ -675,7 +677,7 @@ export default function Expenses() {
                   <Pie data={byService} dataKey="total_cost" nameKey="name" cx="50%" cy="50%" outerRadius={110}>
                     {byService.map((_e, i) => <Cell key={`c-${i}`} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(v: unknown) => [`$${(v as number).toFixed(2)}`, t('expenses.chartCost')]} contentStyle={tooltipStyle} />
+                  <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} />
                   <Legend wrapperStyle={{ color: 'rgb(var(--text-muted))', fontSize: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -691,7 +693,7 @@ export default function Expenses() {
                             <span className="text-secondary">{s.name || t('status.unknown')}</span>
                           </span>
                         </td>
-                        <td className="py-2 text-right text-success font-mono">${s.total_cost.toFixed(2)}</td>
+                        <td className="py-2 text-right text-success font-mono">{fmtMoney(s.total_cost)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -714,9 +716,9 @@ export default function Expenses() {
             <ResponsiveContainer width="100%" height={Math.max(300, byRegion.length * 45)}>
               <BarChart data={byRegion} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" horizontal={false} />
-                <XAxis type="number" tick={axisTickStyle} tickFormatter={(v: unknown) => `$${(v as number).toFixed(0)}`} />
+                <XAxis type="number" tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
                 <YAxis type="category" dataKey="name" tick={axisTickStyle} width={130} />
-                <Tooltip formatter={(v: unknown) => [`$${(v as number).toFixed(2)}`, t('expenses.chartCost')]} contentStyle={tooltipStyle} />
+                <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} />
                 <Bar dataKey="total_cost" fill="#299d87" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -737,8 +739,8 @@ export default function Expenses() {
               <BarChart data={byCloud}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
                 <XAxis dataKey="name" tick={axisTickStyle} />
-                <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => `$${(v as number).toFixed(0)}`} />
-                <Tooltip formatter={(v: unknown) => [`$${(v as number).toFixed(2)}`, t('expenses.chartCost')]} contentStyle={tooltipStyle} />
+                <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
+                <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} />
                 <Bar dataKey="total_cost" fill="#7b87c2" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -758,9 +760,9 @@ export default function Expenses() {
             <ResponsiveContainer width="100%" height={Math.max(300, byPool.length * 45)}>
               <BarChart data={byPool} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" horizontal={false} />
-                <XAxis type="number" tick={axisTickStyle} tickFormatter={(v: unknown) => `$${(v as number).toFixed(0)}`} />
+                <XAxis type="number" tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
                 <YAxis type="category" dataKey="name" tick={axisTickStyle} width={140} />
-                <Tooltip formatter={(v: unknown) => [`$${(v as number).toFixed(2)}`, t('expenses.chartCost')]} contentStyle={tooltipStyle} />
+                <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} />
                 <Bar dataKey="total_cost" fill="#14b8a6" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -795,8 +797,8 @@ export default function Expenses() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
                 <XAxis dataKey="date" tick={axisTickStyle} tickFormatter={(v: string) => v.slice(5)} />
-                <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => `$${(v as number).toFixed(0)}`} />
-                <Tooltip formatter={(v: unknown) => [`$${(v as number).toFixed(2)}`, t('expenses.chartCost')]} contentStyle={tooltipStyle} />
+                <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
+                <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} />
                 <Area type="monotone" dataKey="cost" stroke="#299d87" fill="url(#trendGrad)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
@@ -820,8 +822,8 @@ export default function Expenses() {
                   <BarChart data={topResources.map((r) => ({ name: r.resource_name ?? r.cloud_resource_id.slice(-12), cost: r.total_cost, resource_id: r.cloud_resource_id }))}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
                     <XAxis dataKey="name" tick={axisTickStyle} interval={0} angle={-25} textAnchor="end" height={55} />
-                    <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => `$${(v as number).toFixed(0)}`} />
-                    <Tooltip formatter={(v: unknown) => [`$${(v as number).toFixed(2)}`, t('resources.colTotalCost')]} contentStyle={tooltipStyle} />
+                    <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
+                    <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('resources.colTotalCost')]} contentStyle={tooltipStyle} />
                     <Bar dataKey="cost" fill="#f59e0b" radius={[4, 4, 0, 0]}
                       onClick={(d) => setSelectedResource((d as { resource_id: string }).resource_id)}
                       style={{ cursor: 'pointer' }} />
@@ -848,7 +850,7 @@ export default function Expenses() {
                         </td>
                         <td className="px-3 py-2.5 text-secondary">{r.resource_type}</td>
                         <td className="px-3 py-2.5 text-secondary">{r.pool_name ?? <span className="text-muted italic">{t('resources.unassigned')}</span>}</td>
-                        <td className="px-3 py-2.5 text-right font-mono text-warning">${r.total_cost.toFixed(2)}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-warning">{fmtMoney(r.total_cost)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -872,7 +874,7 @@ export default function Expenses() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-surface border border-edge rounded-xl p-4">
                   <p className="text-xs text-muted">{t('expenses.projectedMonthly')}</p>
-                  <p className="text-2xl font-semibold text-primary mt-1">${forecastData.summary.projected_monthly.toFixed(2)}</p>
+                  <p className="text-2xl font-semibold text-primary mt-1">{fmtMoney(forecastData.summary.projected_monthly)}</p>
                 </div>
                 <div className="bg-surface border border-edge rounded-xl p-4">
                   <p className="text-xs text-muted">{t('expenses.trendDirection')}</p>
@@ -901,9 +903,9 @@ export default function Expenses() {
                   <ComposedChart data={forecastChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
                     <XAxis dataKey="date" tick={axisTickStyle} tickFormatter={(v: string) => v.slice(5)} interval={Math.floor(forecastChartData.length / 10)} />
-                    <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => `$${(v as number).toFixed(0)}`} />
+                    <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
                     <Tooltip
-                      formatter={(value: unknown, name: string) => [`$${(value as number).toFixed(2)}`, name === 'cost' ? t('expenses.chartActual') : name === 'predicted_cost' ? t('expenses.chartForecast') : name]}
+                      formatter={(value: unknown, name: string) => [fmtMoney(value as number), name === 'cost' ? t('expenses.chartActual') : name === 'predicted_cost' ? t('expenses.chartForecast') : name]}
                       contentStyle={tooltipStyle}
                     />
                     <ReferenceLine x={forecastData.history[forecastData.history.length - 1]?.date} stroke="rgb(var(--text-muted))" strokeDasharray="4 2" label={{ value: t('expenses.today'), fill: 'rgb(var(--text-muted))', fontSize: 10 }} />
@@ -929,9 +931,9 @@ export default function Expenses() {
                     {forecastData.forecast.slice(0, 14).map((f) => (
                       <tr key={f.date} className="border-b border-edge/50">
                         <td className="px-4 py-2.5 text-secondary">{f.date}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-warning">${f.predicted_cost.toFixed(2)}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-muted">${f.lower.toFixed(2)}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-muted">${f.upper.toFixed(2)}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-warning">{fmtMoney(f.predicted_cost)}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-muted">{fmtMoney(f.lower)}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-muted">{fmtMoney(f.upper)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1002,8 +1004,8 @@ export default function Expenses() {
                           <div className="text-xs text-muted font-mono truncate max-w-[140px]">{a.cloud_resource_id.slice(-16)}</div>
                         </td>
                         <td className="px-4 py-2.5 text-secondary">{a.resource_type}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-danger">${a.cost.toFixed(2)}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-secondary">${a.mean_cost.toFixed(2)}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-danger">{fmtMoney(a.cost)}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-secondary">{fmtMoney(a.mean_cost)}</td>
                         <td className={`px-4 py-2.5 text-right font-mono ${a.deviation_pct > 0 ? 'text-danger' : 'text-success'}`}>
                           {a.deviation_pct > 0 ? '+' : ''}{a.deviation_pct.toFixed(1)}%
                         </td>
@@ -1074,15 +1076,15 @@ export default function Expenses() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-surface border border-edge rounded-xl p-4">
                     <p className="text-xs text-muted">{t('expenses.onDemandCost30d')}</p>
-                    <p className="text-xl font-semibold text-primary mt-1">${d.on_demand_cost.toFixed(2)}</p>
+                    <p className="text-xl font-semibold text-primary mt-1">{fmtMoney(d.on_demand_cost)}</p>
                   </div>
                   <div className="bg-surface border border-edge rounded-xl p-4">
                     <p className="text-xs text-muted">{t('expenses.commitmentCost30d')}</p>
-                    <p className="text-xl font-semibold text-success mt-1">${d.commitment_cost.toFixed(2)}</p>
+                    <p className="text-xl font-semibold text-success mt-1">{fmtMoney(d.commitment_cost)}</p>
                   </div>
                   <div className="bg-surface border border-accent/60 rounded-xl p-4">
                     <p className="text-xs text-muted">{t('expenses.potentialSavings')}</p>
-                    <p className="text-xl font-semibold text-accent mt-1">${d.potential_savings.toFixed(2)}</p>
+                    <p className="text-xl font-semibold text-accent mt-1">{fmtMoney(d.potential_savings)}</p>
                     <p className="text-xs text-muted mt-1">{t('expenses.savingsHint')}</p>
                   </div>
                 </div>
@@ -1101,7 +1103,7 @@ export default function Expenses() {
                         <Cell fill="#ef4444" />
                         <Cell fill="#22c55e" />
                       </Pie>
-                      <Tooltip formatter={(v: unknown) => [`$${(v as number).toFixed(2)}`, '']} contentStyle={tooltipStyle} />
+                      <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), '']} contentStyle={tooltipStyle} />
                       <Legend wrapperStyle={{ color: 'rgb(var(--text-muted))', fontSize: 12 }} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -1136,7 +1138,7 @@ export default function Expenses() {
                       <span className="font-mono text-sm text-accent">{tag.tag_key}</span>
                       <span className="text-xs text-muted">{t('expenses.tagValueCount', { count: tag.values.length })}</span>
                     </div>
-                    <span className="text-sm font-semibold text-primary font-mono">${tag.total_cost.toFixed(2)}</span>
+                    <span className="text-sm font-semibold text-primary font-mono">{fmtMoney(tag.total_cost)}</span>
                   </button>
 
                   {isOpen && (
@@ -1147,7 +1149,7 @@ export default function Expenses() {
                             <Pie data={tag.values.slice(0, 7)} dataKey="cost" nameKey="tag_value" cx="50%" cy="50%" outerRadius={80}>
                               {tag.values.slice(0, 7).map((_v, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                             </Pie>
-                            <Tooltip formatter={(v: unknown) => [`$${(v as number).toFixed(2)}`, '']} contentStyle={tooltipStyle} />
+                            <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), '']} contentStyle={tooltipStyle} />
                           </PieChart>
                         </ResponsiveContainer>
                         <div className="flex-1 overflow-auto">
@@ -1168,7 +1170,7 @@ export default function Expenses() {
                                       <span className="text-secondary font-mono text-xs">{v.tag_value}</span>
                                     </span>
                                   </td>
-                                  <td className="py-1.5 text-right text-success font-mono text-xs">${v.cost.toFixed(2)}</td>
+                                  <td className="py-1.5 text-right text-success font-mono text-xs">{fmtMoney(v.cost)}</td>
                                   <td className="py-1.5 text-right text-muted text-xs">{v.pct.toFixed(1)}%</td>
                                 </tr>
                               ))}

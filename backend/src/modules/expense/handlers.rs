@@ -41,7 +41,7 @@ const EXPENSE_SELECT: &str = r#"
     FROM expenses
 "#;
 
-async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
+pub(super) async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
     let row = sqlx::query(
         "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
     )
@@ -916,134 +916,8 @@ pub async fn showback_report(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    // Total org spend in the last 30 days
-    let total_cost: f64 = sqlx::query_scalar(
-        r#"SELECT COALESCE(SUM(cost), 0)::float8
-           FROM expenses
-           WHERE organization_id = $1
-             AND date >= CURRENT_DATE - INTERVAL '30 days'"#,
-    )
-    .bind(org_id)
-    .fetch_one(&state.db)
-    .await
-    .unwrap_or(0.0);
-
-    // ── By pool ──────────────────────────────────────────────────────────────
-    let pool_rows = sqlx::query(
-        r#"SELECT
-               p.id           AS pool_id,
-               p.name         AS pool_name,
-               p.description  AS pool_description,
-               COALESCE(SUM(e.cost), 0)::float8 AS cost,
-               COUNT(DISTINCT e.cloud_resource_id) AS resource_count
-           FROM pools p
-           LEFT JOIN expenses e
-               ON  e.pool_id = p.id
-               AND e.organization_id = $1
-               AND e.date >= CURRENT_DATE - INTERVAL '30 days'
-           WHERE p.organization_id = $1
-             AND p.deleted_at IS NULL
-           GROUP BY p.id, p.name, p.description
-           ORDER BY cost DESC"#,
-    )
-    .bind(org_id)
-    .fetch_all(&state.db)
-    .await?;
-
-    let by_pool: Vec<Value> = pool_rows
-        .iter()
-        .map(|r| {
-            let cost: f64 = r.try_get("cost").unwrap_or(0.0);
-            let pct = if total_cost > 0.0 { cost / total_cost * 100.0 } else { 0.0 };
-            json!({
-                "pool_id":           r.try_get::<Uuid, _>("pool_id").ok(),
-                "pool_name":         r.try_get::<String, _>("pool_name").unwrap_or_default(),
-                "pool_description":  r.try_get::<Option<String>, _>("pool_description").unwrap_or(None),
-                "cost":              (cost * 100.0).round() / 100.0,
-                "resource_count":    r.try_get::<i64, _>("resource_count").unwrap_or(0),
-                "allocation_pct":    (pct * 10.0).round() / 10.0,
-            })
-        })
-        .collect();
-
-    // ── By cost center ────────────────────────────────────────────────────────
-    // Cost centers own business_capabilities → services → service_cis → CIs → expenses
-    let cc_rows = sqlx::query(
-        r#"SELECT
-               cc.id    AS cost_center_id,
-               cc.name  AS cost_center_name,
-               cc.code  AS cost_center_code,
-               COALESCE(SUM(e.cost), 0)::float8 AS cost,
-               COUNT(DISTINCT e.cloud_resource_id) AS resource_count
-           FROM cost_centers cc
-           LEFT JOIN business_capabilities bc ON bc.cost_center_id = cc.id
-               AND bc.organization_id = $1
-           LEFT JOIN services svc ON svc.name = bc.name
-               AND svc.organization_id = $1
-           LEFT JOIN service_cis sc ON sc.service_id = svc.id
-           LEFT JOIN cis c ON c.id = sc.ci_id AND c.organization_id = $1
-           LEFT JOIN expenses e
-               ON  e.cloud_resource_id = c.cloud_resource_id
-               AND e.organization_id = $1
-               AND e.date >= CURRENT_DATE - INTERVAL '30 days'
-           WHERE cc.organization_id = $1
-           GROUP BY cc.id, cc.name, cc.code
-           ORDER BY cost DESC"#,
-    )
-    .bind(org_id)
-    .fetch_all(&state.db)
-    .await?;
-
-    let by_cost_center: Vec<Value> = cc_rows
-        .iter()
-        .map(|r| {
-            let cost: f64 = r.try_get("cost").unwrap_or(0.0);
-            let pct = if total_cost > 0.0 {
-                cost / total_cost * 100.0
-            } else {
-                0.0
-            };
-            json!({
-                "cost_center_id":   r.try_get::<Uuid, _>("cost_center_id").ok(),
-                "cost_center_name": r.try_get::<String, _>("cost_center_name").unwrap_or_default(),
-                "cost_center_code": r.try_get::<String, _>("cost_center_code").unwrap_or_default(),
-                "cost":             (cost * 100.0).round() / 100.0,
-                "resource_count":   r.try_get::<i64, _>("resource_count").unwrap_or(0),
-                "allocation_pct":   (pct * 10.0).round() / 10.0,
-            })
-        })
-        .collect();
-
-    // ── Unallocated (expenses not assigned to any pool) ───────────────────────
-    let unallocated_cost: f64 = sqlx::query_scalar(
-        r#"SELECT COALESCE(SUM(cost), 0)::float8
-           FROM expenses
-           WHERE organization_id = $1
-             AND pool_id IS NULL
-             AND date >= CURRENT_DATE - INTERVAL '30 days'"#,
-    )
-    .bind(org_id)
-    .fetch_one(&state.db)
-    .await
-    .unwrap_or(0.0);
-
-    let unallocated_pct = if total_cost > 0.0 {
-        unallocated_cost / total_cost * 100.0
-    } else {
-        0.0
-    };
-
-    Ok(Json(json!({
-        "data": {
-            "period_days":       30,
-            "total_cost":        (total_cost * 100.0).round() / 100.0,
-            "currency":          "USD",
-            "unallocated_cost":  (unallocated_cost * 100.0).round() / 100.0,
-            "unallocated_pct":   (unallocated_pct * 10.0).round() / 10.0,
-            "by_pool":           by_pool,
-            "by_cost_center":    by_cost_center,
-        }
-    })))
+    let report = super::reporting::showback(&state.db, org_id).await?;
+    Ok(Json(json!({ "data": report })))
 }
 
 // ─── raw_expenses_by_resource ────────────────────────────────────────────────

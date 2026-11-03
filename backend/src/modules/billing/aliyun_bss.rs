@@ -138,7 +138,10 @@ impl AliyunBssClient {
     async fn call(&self, params: BTreeMap<String, String>) -> AppResult<Value> {
         let url = self.signed_url(params);
         let resp = self.http.get(&url).send().await.map_err(|e| {
-            crate::error::AppError::Internal(anyhow!("Aliyun BSS request failed: {e}"))
+            crate::error::AppError::Internal(anyhow!(
+                "Aliyun BSS request failed: {}",
+                e.without_url()
+            ))
         })?;
 
         let status = resp.status();
@@ -345,48 +348,14 @@ pub async fn fetch_recent_line_items(
         let billing_cycle = cursor.format("%Y-%m").to_string();
         let billing_date = cursor.format("%Y-%m-%d").to_string();
 
-        let mut page_num = 1usize;
-        let mut fetched = 0usize;
-        loop {
-            let mut params = BTreeMap::new();
-            params.insert("Action".into(), "DescribeInstanceBill".into());
-            params.insert("Version".into(), BSS_VERSION.into());
-            params.insert("BillingCycle".into(), billing_cycle.clone());
-            params.insert("BillingDate".into(), billing_date.clone());
-            params.insert("Granularity".into(), "DAILY".into());
-            params.insert("PageSize".into(), "100".into());
-            params.insert("PageNum".into(), page_num.to_string());
-
-            let body = client.call(params).await?;
-
-            let rows = body["Data"]["Items"]["Item"]
-                .as_array()
-                .or_else(|| body["Data"]["Items"].as_array())
-                .or_else(|| body["Items"]["Item"].as_array())
-                .or_else(|| body["Items"].as_array())
-                .cloned()
-                .unwrap_or_default();
-
-            for row in &rows {
-                if let Some(item) = parse_bss_row(row) {
-                    if item.bill_date >= start_date && item.bill_date <= end_date {
-                        all_items.push(item);
-                    }
+        let rows =
+            fetch_bss_pages(&billing_cycle, &billing_date, |params| client.call(params)).await?;
+        for row in &rows {
+            if let Some(item) = parse_bss_row(row) {
+                if item.bill_date >= start_date && item.bill_date <= end_date {
+                    all_items.push(item);
                 }
             }
-
-            // BSS may cap the effective page size below the requested value,
-            // so count actual rows rather than assuming page * page_size.
-            let total_count = body["Data"]["TotalCount"]
-                .as_u64()
-                .or_else(|| body["TotalCount"].as_u64())
-                .unwrap_or(rows.len() as u64);
-            fetched += rows.len();
-
-            if rows.is_empty() || fetched as u64 >= total_count {
-                break;
-            }
-            page_num += 1;
         }
 
         cursor += Duration::days(1);
@@ -395,83 +364,75 @@ pub async fn fetch_recent_line_items(
     Ok(all_items)
 }
 
+async fn fetch_bss_pages<F, Fut>(cycle: &str, date: &str, mut call: F) -> AppResult<Vec<Value>>
+where
+    F: FnMut(BTreeMap<String, String>) -> Fut,
+    Fut: std::future::Future<Output = AppResult<Value>>,
+{
+    let mut rows = Vec::new();
+    let mut token: Option<String> = None;
+    let mut seen_tokens = std::collections::HashSet::new();
+    loop {
+        let mut params = BTreeMap::new();
+        params.insert("Action".into(), "DescribeInstanceBill".into());
+        params.insert("Version".into(), BSS_VERSION.into());
+        params.insert("BillingCycle".into(), cycle.into());
+        params.insert("BillingDate".into(), date.into());
+        params.insert("Granularity".into(), "DAILY".into());
+        params.insert("MaxResults".into(), "100".into());
+        if let Some(ref value) = token {
+            params.insert("NextToken".into(), value.clone());
+        }
+
+        let body = call(params).await?;
+        if let Some(page) = body["Data"]["Items"]["Item"]
+            .as_array()
+            .or_else(|| body["Data"]["Items"].as_array())
+            .or_else(|| body["Items"]["Item"].as_array())
+            .or_else(|| body["Items"].as_array())
+        {
+            rows.extend(page.iter().cloned());
+        }
+
+        token = body["Data"]["NextToken"]
+            .as_str()
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned);
+        match &token {
+            None => break,
+            Some(value) if !seen_tokens.insert(value.clone()) => {
+                return Err(crate::error::AppError::Internal(anyhow!(
+                    "Aliyun BSS returned a repeated pagination token"
+                )));
+            }
+            Some(_) => {}
+        }
+    }
+    Ok(rows)
+}
+
 /// Import BSS line items for a cloud account (insert into `raw_expenses`
 /// only — aggregation is a separate phase).
 ///
-/// `progress` is called every 500 rows with (rows_done, total); returning
+/// `progress` is called every 100 daily resource groups; returning
 /// `false` aborts the insert loop early (cooperative cancellation).
 pub async fn import_line_items(
     state: &AppState,
     org_id: Uuid,
     account_id: Uuid,
     items: Vec<BssLineItem>,
-    mut progress: Option<&mut (dyn FnMut(usize, usize) -> bool + Send)>,
+    progress: Option<&mut (dyn FnMut(usize, usize) -> bool + Send)>,
 ) -> AppResult<u32> {
-    use super::fx;
-
-    let org_cur = fx::org_currency(&state.db, org_id).await;
-    let fx_table = fx::load_rates(&state.db, org_id).await;
-    let mut inserted = 0u32;
-    let total = items.len();
-    let mut alive = true;
-
-    for (idx, item) in items.iter().enumerate() {
-        if !alive {
-            break;
+    let lines = items.into_iter().map(|item| {
+        let evidence = serde_json::json!(item);
+        let resource_type = classify_bss_type(&item.product_code, item.product_name.as_deref()).to_string();
+        super::ingest::BillingLine {
+            evidence, resource_id: item.instance_id, resource_name: item.instance_name,
+            resource_type, region: item.region, service: item.product_code, date: item.bill_date,
+            amount: item.pretax_amount, currency: item.currency, tags: item.tags,
         }
-        let resource_type = classify_bss_type(&item.product_code, item.product_name.as_deref());
-
-        // Convert CNY (or whatever BSS reports) to the org display currency;
-        // the native cost/currency survive in cloud_specific for audit.
-        let (cost, _converted) = fx::convert_or_warn(
-            &fx_table,
-            item.pretax_amount,
-            &item.currency,
-            &org_cur,
-            "aliyun_bss import",
-        );
-        let native = serde_json::json!({
-            "native_cost": item.pretax_amount,
-            "native_currency": item.currency,
-            "product_code": item.product_code,
-            "product_name": item.product_name,
-            "billing_item": item.billing_item,
-            "subscription_type": item.subscription_type,
-            "zone": item.zone,
-            "tags": item.tags,
-        });
-        let result = sqlx::query(
-            r#"INSERT INTO raw_expenses
-               (organization_id, cloud_account_id, external_id, billing_period,
-                cloud_resource_id, resource_name, resource_type, cloud_region,
-                cost, currency, service_name, cloud_specific)
-               VALUES ($1, $2, $3, $4, $3, $5, $6::resource_type, $7, $8, $9, $10, $11)
-               ON CONFLICT (cloud_account_id, external_id, billing_period) DO NOTHING"#,
-        )
-        .bind(org_id)
-        .bind(account_id)
-        .bind(&item.instance_id)
-        .bind(item.bill_date)
-        .bind(&item.instance_name)
-        .bind(resource_type)
-        .bind(&item.region)
-        .bind(cost)
-        .bind(&org_cur)
-        .bind(&item.product_code)
-        .bind(&native)
-        .execute(&state.db)
-        .await?;
-
-        inserted += result.rows_affected() as u32;
-
-        if let Some(hook) = progress.as_mut() {
-            if idx % 500 == 0 {
-                alive = hook(idx + 1, total);
-            }
-        }
-    }
-
-    Ok(inserted)
+    }).collect();
+    super::ingest::import_daily(state, org_id, account_id, lines, progress).await
 }
 
 /// Re-aggregate raw_expenses → expenses for the given account.
@@ -480,34 +441,7 @@ pub async fn aggregate_to_expenses(
     org_id: Uuid,
     account_id: Uuid,
 ) -> AppResult<()> {
-    sqlx::query(
-        r#"INSERT INTO expenses
-           (organization_id, cloud_account_id, cloud_resource_id, resource_name,
-            service_name, date, cloud_region, resource_type, cost, currency, tags)
-           SELECT
-               organization_id, cloud_account_id, cloud_resource_id,
-               MAX(resource_name) AS resource_name,
-               service_name, billing_period AS date,
-               MAX(cloud_region) AS cloud_region,
-               MAX(resource_type) AS resource_type,
-               SUM(cost) AS cost,
-               MAX(currency) AS currency,
-               '{}'::jsonb AS tags
-           FROM raw_expenses
-           WHERE organization_id = $1 AND cloud_account_id = $2
-           GROUP BY organization_id, cloud_account_id, cloud_resource_id, service_name, billing_period
-           ON CONFLICT (organization_id, cloud_account_id, cloud_resource_id, date)
-           DO UPDATE SET
-               cost = EXCLUDED.cost,
-               resource_name = EXCLUDED.resource_name,
-               cloud_region = EXCLUDED.cloud_region,
-               resource_type = EXCLUDED.resource_type"#,
-    )
-    .bind(org_id)
-    .bind(account_id)
-    .execute(&state.db)
-    .await?;
-    Ok(())
+    super::ingest::aggregate(state, org_id, account_id).await
 }
 
 /// Generate mock Aliyun billing data for development/testing
@@ -559,6 +493,35 @@ fn seed_factor(seed: i64) -> f64 {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[tokio::test]
+    async fn follows_bss_tokens_until_exhausted() {
+        let requests = std::cell::RefCell::new(Vec::new());
+        let rows = fetch_bss_pages("2026-08", "2026-08-15", |params| {
+            let token = params.get("NextToken").cloned();
+            requests.borrow_mut().push(params);
+            std::future::ready(Ok(match token.as_deref() {
+                None => json!({"Data": {"Items": [{"InstanceID": "first"}], "TotalCount": 1, "NextToken": "next"}}),
+                Some("next") => json!({"Data": {"Items": [{"InstanceID": "second"}], "NextToken": ""}}),
+                _ => panic!("unexpected token"),
+            }))
+        }).await.unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[1]["InstanceID"], "second");
+        let requests = requests.borrow();
+        assert_eq!(requests[0]["MaxResults"], "100");
+        assert!(!requests[0].contains_key("NextToken"));
+        assert_eq!(requests[1]["NextToken"], "next");
+    }
+
+    #[tokio::test]
+    async fn rejects_repeated_bss_pagination_tokens() {
+        let result = fetch_bss_pages("2026-08", "2026-08-15", |_| {
+            std::future::ready(Ok(json!({"Data": {"Items": [], "NextToken": "same"}})))
+        })
+        .await;
+        assert!(result.is_err());
+    }
 
     #[test]
     fn test_classify_bss_type_known_codes() {

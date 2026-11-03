@@ -586,9 +586,8 @@ pub async fn cis_export_csv(
                   c.tags, c.meta, c.created_at
            FROM cis c WHERE {}
            ORDER BY c.created_at DESC
-           LIMIT {}"#,
-        conditions.join(" AND "),
-        bind_idx
+           LIMIT ${bind_idx}"#,
+        conditions.join(" AND ")
     );
 
     let mut query = sqlx::query(sqlx::AssertSqlSafe(&*sql)).bind(org_id);

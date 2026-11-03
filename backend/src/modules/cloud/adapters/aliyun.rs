@@ -21,7 +21,6 @@ const RDS_ENDPOINT: &str = "rds.aliyuncs.com";
 const RDS_VERSION: &str = "2014-08-15";
 const SLB_ENDPOINT: &str = "slb.aliyuncs.com";
 const SLB_VERSION: &str = "2014-05-15";
-const VPC_ENDPOINT: &str = "vpc.aliyuncs.com";
 const VPC_VERSION: &str = "2016-04-28";
 // ALB/NLB use REGIONAL endpoints (`alb.<region>.aliyuncs.com`) — the global
 // hosts do not resolve. Versions stay here for the `discover_resources` calls.
@@ -255,6 +254,52 @@ fn parse_alb_instances(body: &Value, region_id: &str) -> Vec<DiscoveredResource>
 
 fn parse_nlb_instances(body: &Value, region_id: &str) -> Vec<DiscoveredResource> {
     parse_flat_lb_instances(body, region_id)
+}
+
+fn load_balancer_list_params(
+    version: &str,
+    region_id: &str,
+    next_token: Option<&str>,
+) -> BTreeMap<String, String> {
+    let mut params = BTreeMap::new();
+    params.insert("Action".into(), "ListLoadBalancers".into());
+    params.insert("Version".into(), version.into());
+    params.insert("RegionId".into(), region_id.into());
+    params.insert("MaxResults".into(), "100".into());
+    if let Some(token) = next_token {
+        params.insert("NextToken".into(), token.into());
+    }
+    params
+}
+
+async fn collect_load_balancer_pages<F, Fut>(
+    region_id: &str,
+    parser: fn(&Value, &str) -> Vec<DiscoveredResource>,
+    mut fetch_page: F,
+) -> AppResult<Vec<DiscoveredResource>>
+where
+    F: FnMut(Option<String>) -> Fut,
+    Fut: std::future::Future<Output = AppResult<Value>>,
+{
+    let mut resources = Vec::new();
+    let mut next_token: Option<String> = None;
+    let mut seen_tokens = std::collections::HashSet::new();
+    loop {
+        let body = fetch_page(next_token).await?;
+        resources.extend(parser(&body, region_id));
+        match body["NextToken"].as_str().filter(|token| !token.is_empty()) {
+            Some(token) if seen_tokens.insert(token.to_owned()) => {
+                next_token = Some(token.to_owned());
+            }
+            Some(_) => {
+                return Err(AppError::Internal(anyhow!(
+                    "Aliyun returned a repeated load balancer pagination token"
+                )));
+            }
+            None => break,
+        }
+    }
+    Ok(resources)
 }
 
 /// ALB and NLB return `"LoadBalancers": [ … ]` (flat array), unlike classic
@@ -505,12 +550,10 @@ impl AliyunAdapter {
     /// Execute a signed RPC call and return the JSON body.
     async fn call(&self, endpoint: &str, params: BTreeMap<String, String>) -> AppResult<Value> {
         let url = self.signed_url(endpoint, params);
-        let resp = self
-            .http
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| AppError::Internal(anyhow!("Aliyun HTTP request: {e}")))?;
+        let resp =
+            self.http.get(&url).send().await.map_err(|e| {
+                AppError::Internal(anyhow!("Aliyun HTTP request: {}", e.without_url()))
+            })?;
 
         let status = resp.status();
         let body: Value = resp
@@ -720,6 +763,21 @@ impl AliyunAdapter {
         Ok(resources)
     }
 
+    /// ALB and NLB use cursor pagination, unlike the page-number ECS APIs.
+    async fn discover_load_balancers(
+        &self,
+        endpoint: &str,
+        version: &str,
+        region_id: &str,
+        parser: fn(&Value, &str) -> Vec<DiscoveredResource>,
+    ) -> AppResult<Vec<DiscoveredResource>> {
+        collect_load_balancer_pages(region_id, parser, |next_token| {
+            let params = load_balancer_list_params(version, region_id, next_token.as_deref());
+            async move { self.call(endpoint, params).await }
+        })
+        .await
+    }
+
     /// RPC params for an ECS instance action (StartInstance / StopInstance).
     fn ecs_action_params(
         action: &str,
@@ -747,7 +805,9 @@ impl AliyunAdapter {
             p.insert("PageSize".into(), "50".into());
             p.insert("PageNumber".into(), page.to_string());
 
-            let body = self.call(ECS_ENDPOINT, p).await?;
+            let body = self
+                .call(&format!("ecs.{region_id}.aliyuncs.com"), p)
+                .await?;
             resources.extend(parse_ecs_instances(&body, region_id));
 
             let total = body["TotalCount"].as_u64().unwrap_or(0);
@@ -770,7 +830,9 @@ impl AliyunAdapter {
             p.insert("PageSize".into(), "50".into());
             p.insert("PageNumber".into(), page.to_string());
 
-            let body = self.call(ECS_ENDPOINT, p).await?;
+            let body = self
+                .call(&format!("ecs.{region_id}.aliyuncs.com"), p)
+                .await?;
             resources.extend(parse_ecs_disks(&body, region_id));
 
             let total = body["TotalCount"].as_u64().unwrap_or(0);
@@ -908,7 +970,7 @@ impl CloudAdapter for AliyunAdapter {
             // ECS snapshots
             match self
                 .discover_rpc_page(
-                    ECS_ENDPOINT,
+                    &format!("ecs.{region_id}.aliyuncs.com"),
                     ECS_VERSION,
                     "DescribeSnapshots",
                     region_id,
@@ -924,7 +986,7 @@ impl CloudAdapter for AliyunAdapter {
             // VPC EIPs
             match self
                 .discover_rpc_page(
-                    VPC_ENDPOINT,
+                    &format!("vpc.{region_id}.aliyuncs.com"),
                     VPC_VERSION,
                     "DescribeEipAddresses",
                     region_id,
@@ -940,12 +1002,10 @@ impl CloudAdapter for AliyunAdapter {
             // ALB load balancers (regional endpoint — the global `alb.aliyuncs.com`
             // host does not resolve)
             match self
-                .discover_rpc_page(
+                .discover_load_balancers(
                     &format!("alb.{region_id}.aliyuncs.com"),
                     ALB_VERSION,
-                    "DescribeLoadBalancers",
                     region_id,
-                    "50",
                     parse_alb_instances,
                 )
                 .await
@@ -956,12 +1016,10 @@ impl CloudAdapter for AliyunAdapter {
 
             // NLB load balancers (regional endpoint)
             match self
-                .discover_rpc_page(
+                .discover_load_balancers(
                     &format!("nlb.{region_id}.aliyuncs.com"),
                     NLB_VERSION,
-                    "DescribeLoadBalancers",
                     region_id,
-                    "50",
                     parse_nlb_instances,
                 )
                 .await
@@ -1176,6 +1234,40 @@ mod tests {
         assert_eq!(alb[0].tags["env"], "prod");
         let nlb = parse_nlb_instances(&body, "cn-hangzhou");
         assert_eq!(nlb[0].cloud_resource_id, "alb-bp1alb");
+    }
+
+    #[tokio::test]
+    async fn load_balancer_discovery_follows_next_token() {
+        let mut pages = std::collections::VecDeque::from([
+            json!({"LoadBalancers": [{"LoadBalancerId": "alb-first"}], "NextToken": "second-page"}),
+            json!({"LoadBalancers": [{"LoadBalancerId": "alb-second"}]}),
+        ]);
+        let mut requested_tokens = Vec::new();
+        let resources = collect_load_balancer_pages("cn-hongkong", parse_alb_instances, |token| {
+            let params = load_balancer_list_params(ALB_VERSION, "cn-hongkong", token.as_deref());
+            assert_eq!(
+                params.get("Action").map(String::as_str),
+                Some("ListLoadBalancers")
+            );
+            assert_eq!(params.get("MaxResults").map(String::as_str), Some("100"));
+            assert!(!params.contains_key("PageNumber"));
+            requested_tokens.push(params.get("NextToken").cloned());
+            std::future::ready(Ok(pages.pop_front().expect("unexpected page request")))
+        })
+        .await
+        .expect("load balancer pages should be collected");
+        assert_eq!(requested_tokens, vec![None, Some("second-page".to_owned())]);
+        assert_eq!(resources.len(), 2);
+        assert_eq!(resources[1].cloud_resource_id, "alb-second");
+    }
+
+    #[tokio::test]
+    async fn load_balancer_discovery_rejects_repeated_cursor() {
+        let result = collect_load_balancer_pages("cn-hongkong", parse_nlb_instances, |_| {
+            std::future::ready(Ok(json!({"LoadBalancers": [], "NextToken": "same"})))
+        })
+        .await;
+        assert!(result.is_err());
     }
 
     #[test]

@@ -3295,7 +3295,7 @@ pub async fn run_dynamic_group_sql(
            FROM cis c
            WHERE {}
            ORDER BY c.name, c.id
-           LIMIT ${} OFFSET {}"#,
+           LIMIT ${} OFFSET ${}"#,
         where_parts.join(" AND "),
         limit_idx,
         offset_idx

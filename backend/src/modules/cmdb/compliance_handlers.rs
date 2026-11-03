@@ -866,11 +866,12 @@ pub async fn create_baseline(
         .ok_or_else(|| AppError::NotFound("CI not found".into()))?;
 
     let row = sqlx::query(
-        r#"INSERT INTO ci_baselines (ci_id, desired_state, name, created_by)
-           VALUES ($1, $2, $3, $4)
+        r#"INSERT INTO ci_baselines (ci_id, organization_id, desired_state, name, created_by)
+           VALUES ($1, $2, $3, COALESCE($4, 'baseline-' || $1::text), $5)
            RETURNING id, created_at"#,
     )
     .bind(req.ci_id)
+    .bind(org_id)
     .bind(&req.snapshot)
     .bind(&req.label)
     .bind(claims.user_id()?)
@@ -932,8 +933,8 @@ pub async fn list_drift(
                 "ci_name": r.get::<String, _>("ci_name"),
                 "baseline_id": r.get::<Uuid, _>("baseline_id"),
                 "field_path": r.get::<String, _>("field_path"),
-                "old_value": r.get::<Option<serde_json::Value>, _>("old_value"),
-                "new_value": r.get::<Option<serde_json::Value>, _>("new_value"),
+                "old_value": r.get::<Option<String>, _>("old_value"),
+                "new_value": r.get::<Option<String>, _>("new_value"),
                 "detected_at": r.get::<chrono::DateTime<chrono::Utc>, _>("detected_at"),
                 "acknowledged_at": r.get::<Option<chrono::DateTime<chrono::Utc>>, _>("acknowledged_at"),
             })

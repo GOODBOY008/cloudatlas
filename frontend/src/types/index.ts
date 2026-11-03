@@ -213,6 +213,47 @@ export interface ShowbackReport {
   unallocated_pct: number
   by_pool: ShowbackPoolBucket[]
   by_cost_center: ShowbackCostCenterBucket[]
+  cost_center_unallocated_cost: number
+  ambiguous_cost: number
+  ambiguous_resources: number
+  excluded_currency_rows: number
+}
+
+export interface DataFlowJob {
+  id: string
+  status: AccountJob['status']
+  phase: string | null
+  created_at: string
+  completed_at: string | null
+  error_message: string | null
+}
+
+export interface DataFlowAccount {
+  id: string
+  name: string
+  provider: string
+  is_active: boolean
+  resources: number
+  linked_resources: number
+  cis: number
+  raw_rows: number
+  expense_rows: number
+  last_import_at: string | null
+  latest_expense_date: string | null
+  currency_mismatch_rows: number
+  unmatched_rows: number
+  total_cost: number
+  unmatched_cost: number
+  unallocated_cost: number
+  discovery_job: DataFlowJob | null
+  billing_job: DataFlowJob | null
+}
+
+export interface DataFlowReport {
+  accounts: DataFlowAccount[]
+  currency: string
+  period_days: number
+  as_of: string
 }
 
 export interface TagCoveragePolicy {
