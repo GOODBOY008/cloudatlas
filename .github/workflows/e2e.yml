@@ -26,9 +26,6 @@ on:
           - chromium
           - firefox
           - all
-  # Run nightly full regression at 02:00 UTC
-  schedule:
-    - cron: '0 2 * * *'
 
 env:
   # Playwright version must match e2e/package.json
@@ -95,8 +92,6 @@ jobs:
     name: E2E Smoke Tests
     runs-on: ubuntu-latest
     needs: build-images
-    # Skip smoke on nightly schedule (full regression covers it)
-    if: github.event_name != 'schedule'
 
     defaults:
       run:
@@ -191,15 +186,14 @@ jobs:
         run: docker compose -f docker-compose.yml logs --tail=200
 
   # ─────────────────────────────────────────────────────────────────
-  # E2E — Full Regression (nightly + main merges + manual)
+  # E2E — Full Regression (main merges + manual)
   # ─────────────────────────────────────────────────────────────────
   e2e-regression:
     name: E2E Regression (${{ matrix.browser }})
     runs-on: ubuntu-latest
     needs: build-images
-    # On PRs, only run smoke (above). Full regression on main push + schedule + manual.
+    # On PRs, only run smoke (above). Full regression on main push + manual.
     if: >
-      github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && github.ref == 'refs/heads/main')
 
