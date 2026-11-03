@@ -41,7 +41,11 @@ const EXPENSE_SELECT: &str = r#"
     FROM expenses
 "#;
 
-pub(super) async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
+pub(super) async fn ensure_org_member(
+    db: &sqlx::PgPool,
+    org_id: Uuid,
+    user_id: Uuid,
+) -> AppResult<()> {
     let row = sqlx::query(
         "SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2",
     )

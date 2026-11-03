@@ -299,15 +299,24 @@ pub async fn import_line_items(
     items: Vec<CurLineItem>,
     progress: Option<&mut (dyn FnMut(usize, usize) -> bool + Send)>,
 ) -> AppResult<u32> {
-    let lines = items.into_iter().map(|item| {
-        let evidence = serde_json::json!(item);
-        super::ingest::BillingLine {
-            evidence, resource_id: item.resource_id, resource_name: item.resource_name,
-            resource_type: item.resource_type.unwrap_or_else(|| "other".into()),
-            region: item.region, service: item.service_name, date: item.usage_date,
-            amount: item.cost_usd, currency: item.currency, tags: item.tags,
-        }
-    }).collect();
+    let lines = items
+        .into_iter()
+        .map(|item| {
+            let evidence = serde_json::json!(item);
+            super::ingest::BillingLine {
+                evidence,
+                resource_id: item.resource_id,
+                resource_name: item.resource_name,
+                resource_type: item.resource_type.unwrap_or_else(|| "other".into()),
+                region: item.region,
+                service: item.service_name,
+                date: item.usage_date,
+                amount: item.cost_usd,
+                currency: item.currency,
+                tags: item.tags,
+            }
+        })
+        .collect();
     super::ingest::import_daily(state, org_id, account_id, lines, progress).await
 }
 

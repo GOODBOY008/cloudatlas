@@ -154,7 +154,8 @@ async fn upsert_discovered_resource(
     let mut tx = db.begin().await?;
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
         .bind(format!("cloudatlas:asset-cost:{account_id}"))
-        .execute(&mut *tx).await?;
+        .execute(&mut *tx)
+        .await?;
 
     let result = sqlx::query_scalar::<_, bool>(
         r#"
@@ -924,7 +925,8 @@ pub(crate) async fn run_sync(
     }
 
     let status = if failed == 0 { "succeeded" } else { "failed" };
-    let error = (failed > 0).then(|| format!("Failed to persist {failed} discovered resources; retry discovery"));
+    let error = (failed > 0)
+        .then(|| format!("Failed to persist {failed} discovered resources; retry discovery"));
     jobs::finalize_job(
         &db,
         &job,
@@ -1078,11 +1080,21 @@ mod tests {
     }
     #[tokio::test]
     async fn discovery_rolls_back_failed_mirrors_and_keeps_managed_lifecycle() {
-        let Ok(url) = std::env::var("TEST_DATABASE_URL") else { return };
+        let Ok(url) = std::env::var("TEST_DATABASE_URL") else {
+            return;
+        };
         let db = sqlx::PgPool::connect(&url).await.expect("test database");
-        sqlx::migrate!("./migrations").run(&db).await.expect("migrations");
-        let org: Uuid = sqlx::query_scalar("INSERT INTO organizations (name, slug) VALUES ('Atomic discovery', $1) RETURNING id")
-            .bind(Uuid::new_v4().to_string()).fetch_one(&db).await.unwrap();
+        sqlx::migrate!("./migrations")
+            .run(&db)
+            .await
+            .expect("migrations");
+        let org: Uuid = sqlx::query_scalar(
+            "INSERT INTO organizations (name, slug) VALUES ('Atomic discovery', $1) RETURNING id",
+        )
+        .bind(Uuid::new_v4().to_string())
+        .fetch_one(&db)
+        .await
+        .unwrap();
         let account: Uuid = sqlx::query_scalar("INSERT INTO cloud_accounts (organization_id, name, provider, credentials_enc) VALUES ($1,'Atomic','mock','test') RETURNING id")
             .bind(org).fetch_one(&db).await.unwrap();
         // Inject a failure only into this fixture's FinOps mirror. The CI write
@@ -1093,39 +1105,94 @@ mod tests {
             BEGIN IF NEW.organization_id = '{org}'::uuid THEN RAISE EXCEPTION 'test mirror failure'; END IF; RETURN NEW; END $$;
             CREATE TRIGGER {trigger_name} BEFORE INSERT OR UPDATE ON resources FOR EACH ROW EXECUTE FUNCTION {trigger_name}();
         "#))).execute(&db).await.unwrap();
-        let res = DiscoveredResource { cloud_resource_id: "atomic".into(), resource_name: "Atomic".into(),
-            resource_type: "instance".into(), region: None, tags: json!({}), meta: json!({"cpu":2}) };
-        let failed = upsert_discovered_resource(&db,org,account,"mock",&res,Utc::now()).await;
+        let res = DiscoveredResource {
+            cloud_resource_id: "atomic".into(),
+            resource_name: "Atomic".into(),
+            resource_type: "instance".into(),
+            region: None,
+            tags: json!({}),
+            meta: json!({"cpu":2}),
+        };
+        let failed = upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now()).await;
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM cis WHERE organization_id=$1")
-            .bind(org).fetch_one(&db).await.unwrap();
-        let job = crate::modules::jobs::insert_job(&db,org,account,"discovery",json!({}),"tester").await.unwrap();
-        run_sync(db.clone(),job.id,account,org,"mock".into(),String::new(),json!({}),true,"0".repeat(64)).await;
-        let job = crate::modules::jobs::get_job_row(&db,org,job.id).await.unwrap();
-        sqlx::raw_sql(sqlx::AssertSqlSafe(&*format!("DROP TRIGGER {trigger_name} ON resources; DROP FUNCTION {trigger_name}();")))
-            .execute(&db).await.unwrap();
+            .bind(org)
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        let job =
+            crate::modules::jobs::insert_job(&db, org, account, "discovery", json!({}), "tester")
+                .await
+                .unwrap();
+        run_sync(
+            db.clone(),
+            job.id,
+            account,
+            org,
+            "mock".into(),
+            String::new(),
+            json!({}),
+            true,
+            "0".repeat(64),
+        )
+        .await;
+        let job = crate::modules::jobs::get_job_row(&db, org, job.id)
+            .await
+            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(&*format!(
+            "DROP TRIGGER {trigger_name} ON resources; DROP FUNCTION {trigger_name}();"
+        )))
+        .execute(&db)
+        .await
+        .unwrap();
         assert!(failed.is_err());
-        assert_eq!(count,0,"failed resource mirror must roll back its CI");
-        assert_eq!(job.status,"failed");
-        assert_eq!(job.resources_updated,Some(0));
+        assert_eq!(count, 0, "failed resource mirror must roll back its CI");
+        assert_eq!(job.status, "failed");
+        assert_eq!(job.resources_updated, Some(0));
         assert!(job.result["resources_failed"].as_i64().unwrap() > 0);
-        let account_status: String = sqlx::query_scalar("SELECT last_sync_status::text FROM cloud_accounts WHERE id=$1")
-            .bind(account).fetch_one(&db).await.unwrap();
-        assert_eq!(account_status,"failed");
+        let account_status: String =
+            sqlx::query_scalar("SELECT last_sync_status::text FROM cloud_accounts WHERE id=$1")
+                .bind(account)
+                .fetch_one(&db)
+                .await
+                .unwrap();
+        assert_eq!(account_status, "failed");
         sqlx::query("INSERT INTO expenses (organization_id,cloud_account_id,cloud_resource_id,date,cost) VALUES ($1,$2,'atomic',CURRENT_DATE,12)")
             .bind(org).bind(account).execute(&db).await.unwrap();
-        assert!(upsert_discovered_resource(&db,org,account,"mock",&res,Utc::now()).await.unwrap());
+        assert!(
+            upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now())
+                .await
+                .unwrap()
+        );
         sqlx::query("UPDATE cis SET lifecycle_state='retired', meta=meta || '{\"owner_note\":\"keep\"}'::jsonb WHERE organization_id=$1")
             .bind(org).execute(&db).await.unwrap();
-        assert!(!upsert_discovered_resource(&db,org,account,"mock",&res,Utc::now()).await.unwrap());
-        let state: (String, Value) = sqlx::query_as("SELECT lifecycle_state::text,meta FROM cis WHERE organization_id=$1")
-            .bind(org).fetch_one(&db).await.unwrap();
-        assert_eq!(state.0,"retired");
-        assert_eq!(state.1["owner_note"],"keep");
-        let cost: f64 = sqlx::query_scalar("SELECT total_cost::float8 FROM resources WHERE organization_id=$1")
-            .bind(org).fetch_one(&db).await.unwrap();
-        assert_eq!(cost,12.0,"discovery after billing also projects existing costs");
-        sqlx::query("DELETE FROM organizations WHERE id=$1").bind(org).execute(&db).await.unwrap();
+        assert!(
+            !upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now())
+                .await
+                .unwrap()
+        );
+        let state: (String, Value) =
+            sqlx::query_as("SELECT lifecycle_state::text,meta FROM cis WHERE organization_id=$1")
+                .bind(org)
+                .fetch_one(&db)
+                .await
+                .unwrap();
+        assert_eq!(state.0, "retired");
+        assert_eq!(state.1["owner_note"], "keep");
+        let cost: f64 =
+            sqlx::query_scalar("SELECT total_cost::float8 FROM resources WHERE organization_id=$1")
+                .bind(org)
+                .fetch_one(&db)
+                .await
+                .unwrap();
+        assert_eq!(
+            cost, 12.0,
+            "discovery after billing also projects existing costs"
+        );
+        sqlx::query("DELETE FROM organizations WHERE id=$1")
+            .bind(org)
+            .execute(&db)
+            .await
+            .unwrap();
         db.close().await;
     }
-
 }

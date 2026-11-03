@@ -423,15 +423,26 @@ pub async fn import_line_items(
     items: Vec<BssLineItem>,
     progress: Option<&mut (dyn FnMut(usize, usize) -> bool + Send)>,
 ) -> AppResult<u32> {
-    let lines = items.into_iter().map(|item| {
-        let evidence = serde_json::json!(item);
-        let resource_type = classify_bss_type(&item.product_code, item.product_name.as_deref()).to_string();
-        super::ingest::BillingLine {
-            evidence, resource_id: item.instance_id, resource_name: item.instance_name,
-            resource_type, region: item.region, service: item.product_code, date: item.bill_date,
-            amount: item.pretax_amount, currency: item.currency, tags: item.tags,
-        }
-    }).collect();
+    let lines = items
+        .into_iter()
+        .map(|item| {
+            let evidence = serde_json::json!(item);
+            let resource_type =
+                classify_bss_type(&item.product_code, item.product_name.as_deref()).to_string();
+            super::ingest::BillingLine {
+                evidence,
+                resource_id: item.instance_id,
+                resource_name: item.instance_name,
+                resource_type,
+                region: item.region,
+                service: item.product_code,
+                date: item.bill_date,
+                amount: item.pretax_amount,
+                currency: item.currency,
+                tags: item.tags,
+            }
+        })
+        .collect();
     super::ingest::import_daily(state, org_id, account_id, lines, progress).await
 }
 
