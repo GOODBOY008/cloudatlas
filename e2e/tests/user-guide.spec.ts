@@ -47,7 +47,7 @@ test.describe.serial('User Quick-Start Tutorial @user-guide', () => {
   // ─────────────────────────────────────────────────
   // UG-02 — Cost Explorer: Tab Browsing
   // ─────────────────────────────────────────────────
-  test('UG-02 — Cost Explorer: overview and tab switching', async ({ expensesPage, page }) => {
+  test('UG-02 — Cost Explorer: overview and tab switching', async ({ expensesPage }) => {
     await expensesPage.navigate();
 
     // Main content renders with meaningful data
@@ -55,9 +55,9 @@ test.describe.serial('User Quick-Start Tutorial @user-guide', () => {
     expect((initialText ?? '').length).toBeGreaterThan(100);
 
     // Tab buttons are visible
-    await expect(page.getByRole('button', { name: 'Overview' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'By Service' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Trend' })).toBeVisible();
+    await expect(expensesPage.main.getByRole('button', { name: 'Overview', exact: true })).toBeVisible();
+    await expect(expensesPage.main.getByRole('button', { name: 'By Service', exact: true })).toBeVisible();
+    await expect(expensesPage.main.getByRole('button', { name: 'Trend', exact: true })).toBeVisible();
 
     // Switch to "By Service" tab — content should update
     await expensesPage.clickTab('By Service');

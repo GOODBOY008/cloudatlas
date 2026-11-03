@@ -392,11 +392,9 @@ async fn phase_aggregate(
     org_id: Uuid,
     account_id: Uuid,
     job_id: Uuid,
-    inserted: u32,
+    _inserted: u32,
 ) -> AppResult<()> {
-    if inserted == 0 {
-        return Ok(());
-    }
+    // A retry must repair an earlier failed aggregation even with no new raw rows.
     if !jobs::report_progress(&state.db, job_id, "aggregating", None, None).await {
         return Ok(());
     }
@@ -460,7 +458,7 @@ mod tests {
 
     async fn fixture(db: &sqlx::PgPool) -> (Uuid, Uuid) {
         let org: Uuid = sqlx::query_scalar(
-            "INSERT INTO organizations (name, slug) VALUES ('billing-worker-test', $1) RETURNING id",
+            r#"INSERT INTO organizations (name, slug, settings) VALUES ('billing-worker-test', $1, '{"currency":"CNY"}') RETURNING id"#,
         )
         .bind(format!("bwt-{}", Uuid::new_v4().simple()))
         .fetch_one(db)

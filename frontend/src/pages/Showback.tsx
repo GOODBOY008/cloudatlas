@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
+import { fmtMoney } from '../lib/format'
 import api from '../lib/api'
 import { useOrgStore } from '../store/orgStore'
 import type { ShowbackReport } from '../types'
@@ -31,12 +33,14 @@ function BucketRow({
   cost,
   resourceCount,
   pct,
+  currency,
 }: {
   name: string
   subtitle?: string | null
   cost: number
   resourceCount: number
   pct: number
+  currency: string
 }) {
   const { t } = useTranslation()
   return (
@@ -47,7 +51,7 @@ function BucketRow({
           {subtitle && <p className="text-xs text-muted mt-0.5 line-clamp-2">{subtitle}</p>}
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-sm font-semibold text-primary">${cost.toFixed(2)}</p>
+          <p className="text-sm font-semibold text-primary">{fmtMoney(cost, currency)}</p>
           <p className="text-xs text-muted">{t('showback.resourcesCount', { count: resourceCount })}</p>
         </div>
       </div>
@@ -80,6 +84,9 @@ export default function Showback() {
     return <div className="text-center text-muted py-12">{t('showback.noOrg')}</div>
   }
 
+  if (isLoading) return <div className="space-y-4" role="status" aria-label={t('common.loading')}><div className="skeleton h-12" /><div className="skeleton h-48" /></div>
+  if (isError && !data) return <div className="panel p-5" role="alert"><p className="text-danger">{t('showback.loadFailed')}</p><button className="btn-secondary mt-4" onClick={() => refetch()}>{t('showback.refresh')}</button></div>
+
   const report = data ?? {
     period_days: 30,
     total_cost: 0,
@@ -88,9 +95,13 @@ export default function Showback() {
     unallocated_pct: 0,
     by_pool: [],
     by_cost_center: [],
+    cost_center_unallocated_cost: 0,
+    ambiguous_cost: 0,
+    ambiguous_resources: 0,
+    excluded_currency_rows: 0,
   }
 
-  const allocated_pct = Math.max(0, 100 - report.unallocated_pct)
+  const allocated_pct = report.total_cost > 0 ? Math.max(0, 100 - report.unallocated_pct) : 0
 
   return (
     <div>
@@ -119,7 +130,7 @@ export default function Showback() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <StatCard
           label={t('showback.totalSpend')}
-          value={`$${report.total_cost.toFixed(2)}`}
+          value={fmtMoney(report.total_cost, report.currency)}
           detail={t('showback.periodDays', { days: report.period_days })}
           accent="bg-gradient-to-r from-success to-info"
         />
@@ -131,7 +142,7 @@ export default function Showback() {
         />
         <StatCard
           label={t('showback.unallocatedCost')}
-          value={`$${report.unallocated_cost.toFixed(2)}`}
+          value={fmtMoney(report.unallocated_cost, report.currency)}
           detail={t('showback.unallocatedDetail', { pct: report.unallocated_pct.toFixed(1) })}
           accent="bg-gradient-to-r from-amber-500 to-warning"
         />
@@ -143,6 +154,12 @@ export default function Showback() {
         />
       </div>
 
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-edge bg-subtle p-4 text-sm">
+        <p className="text-secondary">{t('showback.centerUnallocated', { cost: fmtMoney(report.cost_center_unallocated_cost, report.currency) })}</p>
+        <Link to="/help?article=allocation" className="text-link">{t('showback.rules')}</Link>
+      </div>
+      {report.ambiguous_resources > 0 && <div role="alert" className="mb-4 rounded-lg bg-warning/10 p-4 text-sm text-warning">{t('showback.ambiguous', { count: report.ambiguous_resources, cost: fmtMoney(report.ambiguous_cost, report.currency) })}</div>}
+      {report.excluded_currency_rows > 0 && <div role="alert" className="mb-4 rounded-lg bg-warning/10 p-4 text-sm text-warning">{t('flow.currencyWarning', { count: report.excluded_currency_rows, currency: report.currency })}</div>}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <section className="bg-surface border border-edge rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
@@ -169,6 +186,7 @@ export default function Showback() {
                   cost={bucket.cost}
                   resourceCount={bucket.resource_count}
                   pct={bucket.allocation_pct}
+                  currency={report.currency}
                 />
               ))}
             </div>
@@ -200,6 +218,7 @@ export default function Showback() {
                   cost={bucket.cost}
                   resourceCount={bucket.resource_count}
                   pct={bucket.allocation_pct}
+                  currency={report.currency}
                 />
               ))}
             </div>

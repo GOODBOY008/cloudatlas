@@ -2,6 +2,8 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
+  CircleHelp,
+  Activity,
   ChevronDown,
   ChevronRight,
   Check,
@@ -62,7 +64,7 @@ import CopilotFab from './copilot/CopilotFab'
 import NotificationBell from './NotificationBell'
 import BackgroundJobsIndicator from './BackgroundJobsIndicator'
 import GlobalSearch from './GlobalSearch'
-import { setOrgCurrency } from '../lib/format'
+import { setOrgCurrency, useOrgCurrency } from '../lib/format'
 import { auth } from '../lib/auth'
 import api from '../lib/api'
 import { setStoredLanguage, syncHtmlLang } from '../i18n'
@@ -70,6 +72,7 @@ import { useOrgStore } from '../store/orgStore'
 import { useCopilotStore } from '../store/copilotStore'
 import { useThemeStore } from '../store/themeStore'
 import Brand from './Brand'
+import { helpForPath } from '../lib/help'
 import { useDialogFocus } from '../lib/hooks/useDialogFocus'
 import type { Organization } from '../types'
 
@@ -77,6 +80,7 @@ type NavItem = { to: string; labelKey: string; icon: LucideIcon }
 
 const overviewNavItems: NavItem[] = [
   { to: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { to: '/data-flow', labelKey: 'nav.dataFlow', icon: Activity },
   { to: '/recommendations', labelKey: 'nav.recommendations', icon: Lightbulb },
   { to: '/checklist', labelKey: 'nav.checklist', icon: ListChecks },
   { to: '/ai-center', labelKey: 'nav.aiCenter', icon: Sparkles },
@@ -163,6 +167,7 @@ const administrationNavItems: NavItem[] = [
   { to: '/integrations', labelKey: 'nav.integrations', icon: Puzzle },
   { to: '/rules', labelKey: 'nav.rules', icon: SlidersHorizontal },
   { to: '/settings', labelKey: 'nav.settings', icon: Settings },
+  { to: '/help', labelKey: 'nav.help', icon: CircleHelp },
 ]
 
 const navSections = [
@@ -230,6 +235,7 @@ function NavSection({
 }
 
 export default function Layout() {
+  useOrgCurrency()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { t, i18n } = useTranslation()
@@ -471,6 +477,7 @@ export default function Layout() {
               </kbd>
             </button>
             <span className="mx-1 hidden h-5 w-px bg-edge sm:block" />
+            <NavLink to={`/help?article=${helpForPath(pathname)}`} className="icon-button" title={t('help.context')} aria-label={t('help.context')}><CircleHelp size={18} /></NavLink>
             <NotificationBell />
             <span className="hidden sm:contents">
               <BackgroundJobsIndicator />

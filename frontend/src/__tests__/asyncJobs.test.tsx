@@ -306,3 +306,36 @@ describe('async jobs i18n keys', () => {
     expect(zhVal).not.toBe(enVal) // zh authored in parallel, not copied EN copy
   })
 })
+
+// Completed background work must refresh both sides of the CMDB/FinOps flow.
+describe('job-result cache reconciliation', () => {
+  it('invalidates every affected workspace query even when the first poll is terminal', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const keys = ['cmdb', 'resources', 'dashboard', 'expenses-summary-current', 'showback', 'data-flow']
+    for (const key of keys) {
+      qc.setQueryData([key, org.id], { cached: true })
+      qc.setQueryData([key, 'other-org'], { cached: true })
+    }
+    mocks.getJob.mockResolvedValue(runningJob({ status: 'succeeded' }))
+    renderHook(() => useJob(org.id, 'job-1'), { wrapper: ({ children }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider> })
+    await waitFor(() => expect(qc.getQueryState(['cmdb', org.id])?.isInvalidated).toBe(true))
+    for (const key of keys) {
+      expect(qc.getQueryState([key, org.id])?.isInvalidated).toBe(true)
+      expect(qc.getQueryState([key, 'other-org'])?.isInvalidated).toBe(false)
+    }
+  })
+
+  it('does not mistake a workspace switch for completion of another workspace job', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    qc.setQueryData(['cmdb', 'other-org'], { cached: true })
+    mocks.listJobs.mockImplementation((orgId: string) => Promise.resolve(orgId === org.id ? [runningJob()] : []))
+    const { result, rerender } = renderHook(({ orgId }) => useActiveJobs(orgId), {
+      initialProps: { orgId: org.id },
+      wrapper: ({ children }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>,
+    })
+    await waitFor(() => expect(result.current.data).toHaveLength(1))
+    rerender({ orgId: 'other-org' })
+    await waitFor(() => expect(result.current.data).toHaveLength(0))
+    expect(qc.getQueryState(['cmdb', 'other-org'])?.isInvalidated).toBe(false)
+  })
+})

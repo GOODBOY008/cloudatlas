@@ -1,16 +1,29 @@
+import { useSyncExternalStore } from 'react'
+
 /**
  * Currency-aware money formatting (product gap D2).
  * Defaults to the org currency; falls back to USD.
  */
 
 let orgCurrency = 'USD'
+const listeners = new Set<() => void>()
 
 export function setOrgCurrency(currency: string) {
-  orgCurrency = currency || 'USD'
+  const next = currency || 'USD'
+  if (orgCurrency === next) return
+  orgCurrency = next
+  listeners.forEach((listener) => listener())
 }
 
 export function getOrgCurrency() {
   return orgCurrency
+}
+
+export function useOrgCurrency() {
+  return useSyncExternalStore((listener) => {
+    listeners.add(listener)
+    return () => listeners.delete(listener)
+  }, getOrgCurrency, getOrgCurrency)
 }
 
 /** Format a number as money in the org currency. */

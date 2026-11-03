@@ -10,7 +10,10 @@ use sqlx::Row;
 use uuid::Uuid;
 
 use super::{
-    dto::{CreateOrgRequest, MemberResponse, OrganizationResponse, UpdateOrgRequest},
+    dto::{
+        CreateOrgRequest, MemberResponse, OrganizationResponse, OrganizationSettingsResponse,
+        UpdateOrgRequest,
+    },
     models::Organization,
     service::{make_slug, Claims},
 };
@@ -377,7 +380,50 @@ fn org_to_response(org: Organization) -> OrganizationResponse {
         name: org.name,
         slug: org.slug,
         description: org.description,
+        settings: OrganizationSettingsResponse {
+            currency: org
+                .settings
+                .get("currency")
+                .and_then(Value::as_str)
+                .unwrap_or("USD")
+                .to_owned(),
+        },
         created_at: org.created_at,
+    }
+}
+
+#[cfg(test)]
+mod currency_response_tests {
+    use super::*;
+
+    fn organization(settings: Value) -> Organization {
+        let now = Utc::now();
+        Organization {
+            id: Uuid::new_v4(),
+            name: "Example".to_owned(),
+            slug: "example".to_owned(),
+            description: None,
+            settings,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    #[test]
+    fn exposes_currency_without_exposing_other_settings() {
+        let response = org_to_response(organization(
+            json!({"currency": "CNY", "private": "hidden"}),
+        ));
+        let value = serde_json::to_value(response).unwrap();
+        assert_eq!(value["settings"], json!({"currency": "CNY"}));
+    }
+
+    #[test]
+    fn missing_currency_defaults_to_usd() {
+        assert_eq!(
+            org_to_response(organization(json!({}))).settings.currency,
+            "USD"
+        );
     }
 }
 

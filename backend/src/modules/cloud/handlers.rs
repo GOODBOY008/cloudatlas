@@ -150,8 +150,14 @@ async fn upsert_discovered_resource(
 ) -> AppResult<bool> {
     let ci_id = Uuid::new_v4();
     let ci_type_id = resource_type_to_ci_type_id(&res.resource_type);
+    // A discovered asset is visible to CMDB and FinOps together, or not at all.
+    let mut tx = db.begin().await?;
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
+        .bind(format!("cloudatlas:asset-cost:{account_id}"))
+        .execute(&mut *tx)
+        .await?;
 
-    let result = sqlx::query(
+    let result = sqlx::query_scalar::<_, bool>(
         r#"
         INSERT INTO cis
             (id, organization_id, ci_type_id, cloud_account_id,
@@ -168,11 +174,11 @@ async fn upsert_discovered_resource(
             name          = EXCLUDED.name,
             display_name  = EXCLUDED.display_name,
             cloud_region  = EXCLUDED.cloud_region,
-            meta          = EXCLUDED.meta,
+            meta          = cis.meta || EXCLUDED.meta,
             tags          = EXCLUDED.tags,
-            lifecycle_state = 'active',
             discovered_at = EXCLUDED.discovered_at,
             updated_at    = EXCLUDED.updated_at
+        RETURNING id = $1
         "#,
     )
     .bind(ci_id)
@@ -186,20 +192,13 @@ async fn upsert_discovered_resource(
     .bind(&res.meta)
     .bind(&res.tags)
     .bind(now)
-    .execute(db)
-    .await;
-
-    let created = match result {
-        Ok(r) => r.rows_affected() == 1,
-        Err(e) => {
-            tracing::warn!(resource_id = %res.cloud_resource_id, error = %e, "CI upsert failed");
-            return Ok(false);
-        }
-    };
+    .fetch_one(&mut *tx)
+    .await?;
+    let created = result;
 
     // FinOps mirror: same discovery result into the `resources` table so cost
     // pages / assignment rules / tag policies have data (AGENTS.md §15).
-    let resource_insert = sqlx::query(
+    sqlx::query(
         r#"
         INSERT INTO resources
             (organization_id, cloud_account_id, cloud_resource_id,
@@ -217,7 +216,14 @@ async fn upsert_discovered_resource(
              $5, $6, $7,
              $8, $9, NULL, NULL,
              $10, $10, TRUE,
-             0, 0, '[]'::jsonb, '[]'::jsonb,
+             (SELECT COALESCE(SUM(cost), 0) FROM expenses
+              WHERE organization_id = $1 AND cloud_account_id = $2 AND cloud_resource_id = $3
+                AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')),
+             (SELECT COALESCE(SUM(cost), 0) FROM expenses
+              WHERE organization_id = $1 AND cloud_account_id = $2 AND cloud_resource_id = $3
+                AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+                AND date BETWEEN CURRENT_DATE - 29 AND CURRENT_DATE),
+             '[]'::jsonb, '[]'::jsonb,
              $10, $10)
         ON CONFLICT (organization_id, cloud_account_id, cloud_resource_id)
         DO UPDATE SET
@@ -228,6 +234,8 @@ async fn upsert_discovered_resource(
             meta          = EXCLUDED.meta,
             active        = TRUE,
             last_seen     = EXCLUDED.last_seen,
+            total_cost    = EXCLUDED.total_cost,
+            last_month_cost = EXCLUDED.last_month_cost,
             updated_at    = EXCLUDED.updated_at
         "#,
     )
@@ -241,12 +249,9 @@ async fn upsert_discovered_resource(
     .bind(&res.tags)
     .bind(&res.meta)
     .bind(now)
-    .execute(db)
-    .await;
-
-    if let Err(e) = resource_insert {
-        tracing::warn!(resource_id = %res.cloud_resource_id, error = %e, "resources upsert failed");
-    }
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
 
     Ok(created)
 }
@@ -740,9 +745,10 @@ pub(crate) async fn run_sync(
         }
     };
 
-    let discovered = resources.len() as i32;
+    let mut discovered = resources.len() as i32;
     let mut created = 0i32;
     let mut updated = 0i32;
+    let mut failed = 0i32;
 
     // ── Phase: upserting — n/total, write every 20 resources ─────────────
     for (idx, res) in resources.iter().enumerate() {
@@ -758,7 +764,7 @@ pub(crate) async fn run_sync(
             Ok(false) => updated += 1,
             Err(e) => {
                 tracing::warn!(resource_id = %res.cloud_resource_id, error = %e, "discovered resource upsert failed");
-                updated += 1;
+                failed += 1;
             }
         }
     }
@@ -842,8 +848,9 @@ pub(crate) async fn run_sync(
                             // kubernetes account's discover_resources).
                             match k8s_adapter.discover_resources(None).await {
                                 Ok(pods) => {
+                                    discovered += pods.len() as i32;
                                     for pod in pods {
-                                        if let Err(e) = upsert_discovered_resource(
+                                        match upsert_discovered_resource(
                                             &db,
                                             org_id,
                                             account_id,
@@ -853,12 +860,17 @@ pub(crate) async fn run_sync(
                                         )
                                         .await
                                         {
-                                            tracing::warn!(
-                                                cluster = %res.resource_name,
-                                                resource_id = %pod.cloud_resource_id,
-                                                error = %e,
-                                                "ACK pod upsert failed"
-                                            );
+                                            Ok(true) => created += 1,
+                                            Ok(false) => updated += 1,
+                                            Err(e) => {
+                                                failed += 1;
+                                                tracing::warn!(
+                                                    cluster = %res.resource_name,
+                                                    resource_id = %pod.cloud_resource_id,
+                                                    error = %e,
+                                                    "ACK pod upsert failed"
+                                                );
+                                            }
                                         }
                                     }
                                 }
@@ -912,12 +924,15 @@ pub(crate) async fn run_sync(
         return;
     }
 
+    let status = if failed == 0 { "succeeded" } else { "failed" };
+    let error = (failed > 0)
+        .then(|| format!("Failed to persist {failed} discovered resources; retry discovery"));
     jobs::finalize_job(
         &db,
         &job,
-        "succeeded",
-        None,
-        json!({}),
+        status,
+        error.as_deref(),
+        json!({ "resources_failed": failed }),
         Some((discovered, created, updated)),
     )
     .await;
@@ -926,18 +941,26 @@ pub(crate) async fn run_sync(
     let _ = sqlx::query(
         r#"
         UPDATE cloud_accounts
-        SET last_sync_at     = $1,
-            last_sync_status = 'succeeded',
+        SET last_sync_at     = CASE WHEN $3 = 'succeeded' THEN $1 ELSE last_sync_at END,
+            last_sync_status = $3::sync_status,
             resource_count   = (
-                SELECT COUNT(*)::int FROM cis
-                WHERE cloud_account_id = $2 AND deleted_at IS NULL
+                SELECT COUNT(*)::int FROM resources
+                WHERE cloud_account_id = $2 AND active = true
             ),
             updated_at = $1
         WHERE id = $2
+          AND EXISTS (SELECT 1 FROM sync_jobs WHERE id = $4 AND status::text = $3)
+          AND NOT EXISTS (
+              SELECT 1 FROM sync_jobs newer
+              WHERE newer.cloud_account_id = $2 AND newer.job_kind = 'discovery'
+                AND newer.created_at > (SELECT created_at FROM sync_jobs WHERE id = $4)
+          )
         "#,
     )
     .bind(Utc::now())
     .bind(account_id)
+    .bind(status)
+    .bind(job_id)
     .execute(&db)
     .await;
 
@@ -1054,5 +1077,122 @@ mod tests {
             service_name_for_type("k8s_cluster", "alibaba"),
             "Aliyun ACK"
         );
+    }
+    #[tokio::test]
+    async fn discovery_rolls_back_failed_mirrors_and_keeps_managed_lifecycle() {
+        let Ok(url) = std::env::var("TEST_DATABASE_URL") else {
+            return;
+        };
+        let db = sqlx::PgPool::connect(&url).await.expect("test database");
+        sqlx::migrate!("./migrations")
+            .run(&db)
+            .await
+            .expect("migrations");
+        let org: Uuid = sqlx::query_scalar(
+            "INSERT INTO organizations (name, slug) VALUES ('Atomic discovery', $1) RETURNING id",
+        )
+        .bind(Uuid::new_v4().to_string())
+        .fetch_one(&db)
+        .await
+        .unwrap();
+        let account: Uuid = sqlx::query_scalar("INSERT INTO cloud_accounts (organization_id, name, provider, credentials_enc) VALUES ($1,'Atomic','mock','test') RETURNING id")
+            .bind(org).fetch_one(&db).await.unwrap();
+        // Inject a failure only into this fixture's FinOps mirror. The CI write
+        // succeeds first, so a surviving CI would reveal a broken transaction.
+        let trigger_name = format!("reject_mirror_{}", org.simple());
+        sqlx::raw_sql(sqlx::AssertSqlSafe(&*format!(r#"
+            CREATE FUNCTION {trigger_name}() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN IF NEW.organization_id = '{org}'::uuid THEN RAISE EXCEPTION 'test mirror failure'; END IF; RETURN NEW; END $$;
+            CREATE TRIGGER {trigger_name} BEFORE INSERT OR UPDATE ON resources FOR EACH ROW EXECUTE FUNCTION {trigger_name}();
+        "#))).execute(&db).await.unwrap();
+        let res = DiscoveredResource {
+            cloud_resource_id: "atomic".into(),
+            resource_name: "Atomic".into(),
+            resource_type: "instance".into(),
+            region: None,
+            tags: json!({}),
+            meta: json!({"cpu":2}),
+        };
+        let failed = upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now()).await;
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM cis WHERE organization_id=$1")
+            .bind(org)
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        let job =
+            crate::modules::jobs::insert_job(&db, org, account, "discovery", json!({}), "tester")
+                .await
+                .unwrap();
+        run_sync(
+            db.clone(),
+            job.id,
+            account,
+            org,
+            "mock".into(),
+            String::new(),
+            json!({}),
+            true,
+            "0".repeat(64),
+        )
+        .await;
+        let job = crate::modules::jobs::get_job_row(&db, org, job.id)
+            .await
+            .unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(&*format!(
+            "DROP TRIGGER {trigger_name} ON resources; DROP FUNCTION {trigger_name}();"
+        )))
+        .execute(&db)
+        .await
+        .unwrap();
+        assert!(failed.is_err());
+        assert_eq!(count, 0, "failed resource mirror must roll back its CI");
+        assert_eq!(job.status, "failed");
+        assert_eq!(job.resources_updated, Some(0));
+        assert!(job.result["resources_failed"].as_i64().unwrap() > 0);
+        let account_status: String =
+            sqlx::query_scalar("SELECT last_sync_status::text FROM cloud_accounts WHERE id=$1")
+                .bind(account)
+                .fetch_one(&db)
+                .await
+                .unwrap();
+        assert_eq!(account_status, "failed");
+        sqlx::query("INSERT INTO expenses (organization_id,cloud_account_id,cloud_resource_id,date,cost) VALUES ($1,$2,'atomic',CURRENT_DATE,12)")
+            .bind(org).bind(account).execute(&db).await.unwrap();
+        assert!(
+            upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now())
+                .await
+                .unwrap()
+        );
+        sqlx::query("UPDATE cis SET lifecycle_state='retired', meta=meta || '{\"owner_note\":\"keep\"}'::jsonb WHERE organization_id=$1")
+            .bind(org).execute(&db).await.unwrap();
+        assert!(
+            !upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now())
+                .await
+                .unwrap()
+        );
+        let state: (String, Value) =
+            sqlx::query_as("SELECT lifecycle_state::text,meta FROM cis WHERE organization_id=$1")
+                .bind(org)
+                .fetch_one(&db)
+                .await
+                .unwrap();
+        assert_eq!(state.0, "retired");
+        assert_eq!(state.1["owner_note"], "keep");
+        let cost: f64 =
+            sqlx::query_scalar("SELECT total_cost::float8 FROM resources WHERE organization_id=$1")
+                .bind(org)
+                .fetch_one(&db)
+                .await
+                .unwrap();
+        assert_eq!(
+            cost, 12.0,
+            "discovery after billing also projects existing costs"
+        );
+        sqlx::query("DELETE FROM organizations WHERE id=$1")
+            .bind(org)
+            .execute(&db)
+            .await
+            .unwrap();
+        db.close().await;
     }
 }

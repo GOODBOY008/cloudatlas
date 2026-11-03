@@ -1,8 +1,8 @@
 //! Currency FX helpers: per-org static exchange-rate table with USD-pivot
 //! resolution. Rates are admin-editable (`exchange_rates` table); conversion
 //! happens at ingest so all stored `expenses.cost` values are in the org
-//! display currency. Missing rates never fail an import — the caller stores
-//! the amount unconverted and logs a warning (D5).
+//! display currency. Daily ingestion rejects missing rates before writing;
+//! legacy consumers of `convert_or_warn` retain the explicit fallback signal.
 
 use sqlx::{PgPool, Row};
 use std::collections::HashMap;
@@ -47,7 +47,7 @@ impl FxTable {
 }
 
 /// Load the org's rate table. Any DB error degrades to an empty table
-/// (imports then store unconverted amounts with warnings, per D5).
+/// (daily ingestion rejects cross-currency conversions without a valid rate).
 pub async fn load_rates(db: &PgPool, org_id: Uuid) -> FxTable {
     let mut table = FxTable::default();
     let rows = sqlx::query(

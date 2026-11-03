@@ -103,6 +103,8 @@ The UI is fully bilingual — **English / 中文** — with a slate-and-teal des
 | 🔑 **JWT Auth** | Access + refresh token pair (HS256) with Argon2id password hashing |
 | 📅 **Scheduler** | Background cloud sync, billing import, alert checks, webhook delivery |
 | 🔔 **Webhooks & Integrations** | Event-driven notifications with configurable retry; Slack etc. integration cards with test delivery |
+| 📚 **In-app Help Center** | Searchable bilingual guides, contextual help, and CMDB / FinOps data-flow explanations |
+| 🔎 **Data Flow** | Per-account CI linkage, billing freshness, unmatched costs and latest task status |
 | 📖 **OpenAPI** | Auto-generated Swagger UI at `/swagger-ui/` |
 | 🐳 **Docker-first** | `docker compose up` and you're running |
 | 🌙 **Dark / Light Mode** | Persistent slate-and-teal themes, shared semantic colors, locally bundled styles and fonts |
