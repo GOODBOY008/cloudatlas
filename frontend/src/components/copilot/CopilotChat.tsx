@@ -30,12 +30,14 @@ interface HistoryMessage {
   created_at: string
 }
 
-/**
- * The copilot conversation UI (spec §4.2/§4.3) — no positioning logic; the
- * CopilotPanel shells wrap it (docked aside on desktop, bottom sheet on mobile).
- * `rightSlot` renders extra header actions (the shell's close button).
- */
-export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
+interface CopilotChatProps {
+  presentation?: 'floating' | 'sheet' | 'hidden'
+  titleSlot?: ReactNode
+  rightSlot?: ReactNode
+  tools?: ReactNode
+}
+
+export default function CopilotChat({ presentation = 'floating', titleSlot, rightSlot, tools }: CopilotChatProps) {
   const { t } = useTranslation()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id
@@ -52,7 +54,9 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const backRef = useRef<HTMLButtonElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const historyRequests = useRef<AbortController | null>(null)
   const conversationVersion = useRef(0)
   const stickToBottom = useRef(true)
 
@@ -66,6 +70,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
     abortRef.current?.abort()
     abortRef.current = null
     setBusy(false)
+    setInput('')
     setMessages([])
     setError('')
     setActiveConvId(null)
@@ -84,30 +89,34 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
   }, [location.pathname])
 
   useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
+    if (presentation !== 'hidden') (inputRef.current ?? backRef.current)?.focus({ preventScroll: true })
+  }, [presentation, view])
 
   useEffect(() => {
-    let current = true
+    const controller = new AbortController()
+    historyRequests.current = controller
     if (orgId) {
       api
-        .get<{ data: Conversation[] }>(`/orgs/${orgId}/ai/conversations`)
-        .then((res) => { if (current) setConversations(res.data.data ?? []) })
+        .get<{ data: Conversation[] }>(`/orgs/${orgId}/ai/conversations`, { signal: controller.signal })
+        .then((res) => { if (!controller.signal.aborted) setConversations(res.data.data ?? []) })
         .catch(() => {/* history is optional */})
     }
-    return () => { current = false }
+    return () => {
+      controller.abort()
+      historyRequests.current = null
+    }
   }, [orgId])
 
   // Autoscroll only while the user is at the bottom (spec §4.3 scroll pause).
   useEffect(() => {
-    if (stickToBottom.current) {
-      listRef.current?.scrollTo?.({ top: listRef.current.scrollHeight, behavior: 'smooth' })
+    if (presentation !== 'hidden' && stickToBottom.current && listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight
     }
-  }, [messages, busy])
+  }, [messages, busy, presentation])
 
   function onListScroll() {
     const el = listRef.current
-    if (!el) return
+    if (!el || presentation === 'hidden') return
     stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
   }
 
@@ -134,7 +143,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
       // restore chronological order for the transcript.
       const { data: res } = await api.get<{ data: HistoryMessage[] }>(
         `/orgs/${orgId}/ai/conversations/${conv.id}/messages`,
-        { params: { per_page: 200 } },
+        { params: { per_page: 200 }, signal: historyRequests.current?.signal },
       )
       if (version !== conversationVersion.current || useOrgStore.getState().currentOrg?.id !== orgId) return
       setMessages(
@@ -152,7 +161,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
     if (!orgId) return
     const version = conversationVersion.current
     try {
-      await api.delete(`/orgs/${orgId}/ai/conversations/${convId}`)
+      await api.delete(`/orgs/${orgId}/ai/conversations/${convId}`, { signal: historyRequests.current?.signal })
       if (version !== conversationVersion.current || useOrgStore.getState().currentOrg?.id !== orgId) return
       setConversations((list) => list.filter((c) => c.id !== convId))
       if (activeConvId === convId) startNewChat()
@@ -259,7 +268,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
         abortRef.current = null
         // Refresh the conversation list (new titles/counts); history is optional.
         api
-          .get<{ data: Conversation[] }>(`/orgs/${orgId}/ai/conversations`)
+          .get<{ data: Conversation[] }>(`/orgs/${orgId}/ai/conversations`, { signal: historyRequests.current?.signal })
           .then((res) => { if (isCurrent()) setConversations(res.data.data ?? []) })
           .catch(() => {})
       }
@@ -281,16 +290,17 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
-      {/* Header (close button supplied by the shell) */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
-        <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-accent" />
-          <h3 className="font-semibold text-primary">{t('copilot.title')}</h3>
+      <div className="copilot-header">
+        <h2 className="min-w-0 flex-1 font-semibold text-primary" aria-label={t('copilot.title')}>
+          {titleSlot || <span className="flex items-center gap-2"><Sparkles size={17} className="text-accent" />{t('copilot.title')}</span>}
+        </h2>
+        <div className="flex items-center gap-0.5">
           {view === 'chat' && (
             <button
               onClick={() => setView('history')}
               title={t('copilot.history')}
-              className="ml-1 w-7 h-7 flex items-center justify-center rounded-lg text-secondary hover:bg-subtle hover:text-primary transition-colors"
+              aria-label={t('copilot.history')}
+              className="icon-button"
             >
               <MessageSquare size={15} />
             </button>
@@ -299,19 +309,22 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
             <button
               onClick={startNewChat}
               title={t('copilot.newChat')}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-secondary hover:bg-subtle hover:text-primary transition-colors"
+              aria-label={t('copilot.newChat')}
+              className="icon-button"
             >
               <Plus size={15} />
             </button>
           )}
+          {rightSlot}
         </div>
-        {rightSlot}
       </div>
+      {tools}
 
       {view === 'history' ? (
         <>
           <div className="flex items-center gap-2 px-5 py-3 border-b border-edge">
             <button
+              ref={backRef}
               onClick={() => setView('chat')}
               className="flex items-center gap-1 text-xs text-secondary hover:text-primary transition-colors"
             >
@@ -328,22 +341,19 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
             {conversations.map((c) => (
               <div
                 key={c.id}
-                className="group flex items-center gap-2 bg-subtle rounded-lg px-3 py-2 hover:bg-emphasis transition-colors cursor-pointer"
-                onClick={() => resumeConversation(c)}
+                className="flex items-center gap-2 bg-subtle rounded-lg px-3 py-2 hover:bg-emphasis transition-colors"
               >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-primary truncate">{c.title ?? t('copilot.title')}</p>
-                  <p className="text-xs text-secondary">
+                <button type="button" className="flex-1 min-w-0 text-left" onClick={() => resumeConversation(c)}>
+                  <span className="block text-sm text-primary truncate">{c.title ?? t('copilot.title')}</span>
+                  <span className="block text-xs text-secondary">
                     {c.message_count} · {new Date(c.updated_at).toLocaleDateString()}
-                  </p>
-                </div>
+                  </span>
+                </button>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    deleteConversation(c.id)
-                  }}
+                  type="button"
+                  onClick={() => deleteConversation(c.id)}
                   title={t('copilot.deleteConversation')}
-                  className="opacity-0 group-hover:opacity-100 text-secondary hover:text-danger transition-opacity"
+                  className="icon-button hover:text-danger"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -357,17 +367,25 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
           <div
             ref={listRef}
             onScroll={onListScroll}
-            className="flex-1 overflow-y-auto p-4 space-y-4"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 space-y-4"
           >
             {messages.length === 0 && (
-              <div className="text-sm text-secondary leading-relaxed">
-                {t('copilot.greeting')}
+              <div className="space-y-4">
+                <p className="text-sm text-secondary leading-relaxed">{t('copilot.greeting')}</p>
+                {!busy && <div className="flex flex-wrap gap-2">
+                  {chipKeys.map((key) => (
+                    <button key={key} onClick={() => send(t(key))}
+                      className="rounded-md border border-edge px-2.5 py-1.5 text-left text-xs text-secondary hover:border-accent hover:text-accent">
+                      {t(key)}
+                    </button>
+                  ))}
+                </div>}
               </div>
             )}
             {messages.map((m, i) => (
               <div key={i} className={`group flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                 <div
-                  className={`max-w-[85%] rounded-xl px-4 py-2.5 text-sm ${
+                  className={`min-w-0 max-w-[90%] break-words rounded-lg px-3 py-2 text-sm ${
                     m.role === 'user'
                       ? 'bg-accent text-on-accent'
                       : 'bg-subtle text-primary'
@@ -417,25 +435,10 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
             </div>
           )}
 
-          {/* Suggested prompts (page-aware) */}
-          {messages.length === 0 && !busy && (
-            <div className="px-4 pb-2 flex flex-wrap gap-2">
-              {chipKeys.map((key) => (
-                <button
-                  key={key}
-                  onClick={() => send(t(key))}
-                  className="px-3 py-1.5 bg-subtle hover:bg-emphasis text-xs text-secondary rounded-full transition-colors"
-                >
-                  {t(key)}
-                </button>
-              ))}
-            </div>
-          )}
-
           {/* Page-context pill */}
           {labelKey && contextAttached && (
             <div className="px-4 pb-2">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent-soft bg-accent-soft/60 border border-accent text-[11px] text-accent">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent-soft border border-edge text-[11px] text-accent">
                 <FileText size={11} />
                 <span aria-label={t('copilot.context')}>{t(labelKey)}</span>
                 <button
@@ -451,13 +454,14 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
           )}
 
           {/* Input */}
-          <form onSubmit={handleSubmit} className="flex gap-2 p-4 border-t border-edge">
+          <form onSubmit={handleSubmit} className="copilot-composer">
             <input
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={t('copilot.placeholder')}
-              className="flex-1 bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-muted"
+              aria-label={t('copilot.placeholder')}
+              className="min-w-0 flex-1 bg-surface border border-strong rounded-md px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-muted"
             />
             {busy ? (
               <button

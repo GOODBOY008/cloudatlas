@@ -19,7 +19,7 @@
 | 表格 | 细分隔线、浅底表头、可聚焦且有名称的滚动区域；宽表保留可读列宽 | `table-scroll`, `PaginationBar` |
 | 指标 | 数字优先、弱化图标与装饰；取消彩虹渐变指标条 | Dashboard 指标带、共享 `MetricCard` |
 | 弹窗/抽屉 | 26 处旧弹窗与 5 类详情抽屉复用原生对话框；约束焦点、Escape 关闭、关闭后恢复 | 已有 `NativeDialog` + 统一外壳 |
-| Copilot | 桌面为非模态侧栏，可继续操作页面；手机为模态面板 | `CopilotPanel`, `CopilotFab` |
+| Copilot | 右下角统一入口。桌面为可移动和缩放的非模态悬浮窗，默认 400 × 560 px。窄屏为模态底部面板。收起时继续接收回复 | `CopilotPanel`, `CopilotFab` |
 
 标签、帮助、导航和路由名称继续由 `app/routeCatalog.ts` 管理。主题仍用 `cloudatlas-theme`；工作区仍由 `orgStore` 协调，不添加额外的 localStorage 写入路径。
 
@@ -66,7 +66,7 @@
 - `css`：用共享语义变量和组件类保持主题一致，遵循 “Use CSS custom properties on `:root`”；避免各页再次复制颜色。
 - `responsive-design`：外壳、抽屉和模态框使用动态视口单位，遵循 “Use dynamic viewport units”；筛选区基于内容容器适配。
 - `responsive-table`：保留表头语义和横向滚动，为滚动区域添加名称及键盘入口，遵循 “Give the wrapper a `role="region"` attribute”。
-- `dialog`：复用 `showModal()` 的原生行为，遵循 “DON'T add `role="dialog"`, `aria-modal`, a focus trap”；不把桌面 Copilot 变成阻塞页面的模态框。
+- 手机 Copilot 使用原生 `showModal()` 管理焦点与遮罩。桌面悬浮窗使用 `show()`，允许继续操作页面，并让搜索和业务对话框显示在上层。
 
 ## 路由验收矩阵
 

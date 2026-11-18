@@ -46,7 +46,8 @@ afterEach(() => {
 describe('session data isolation', () => {
   it('clears cached data, workspace, auth state and open copilot on logout, preserving appearance', () => {
     useOrgStore.getState().setOrganizations([org])
-    useCopilotStore.getState().setWidth(480)
+    const layout = { width: 480, height: 520, left: 30, top: 60 }
+    useCopilotStore.getState().setLayout(layout)
     useCopilotStore.getState().setOpen(true)
     setOrgCurrency('CNY')
     queryClient.setQueryData(['expenses', org.id], { total_cost: 999 })
@@ -59,7 +60,7 @@ describe('session data isolation', () => {
     expect(useOrgStore.getState().organizations).toEqual([])
     expect(useAuthStore.getState().isAuthenticated()).toBe(false)
     expect(useCopilotStore.getState().open).toBe(false)
-    expect(useCopilotStore.getState().width).toBe(480)
+    expect(useCopilotStore.getState().layout).toEqual(layout)
     expect(getOrgCurrency()).toBe('USD')
     expect(localStorage.getItem('ca_access_token')).toBeNull()
     expect(JSON.parse(localStorage.getItem('cloudatlas-org')!).state.currentOrg).toBeNull()

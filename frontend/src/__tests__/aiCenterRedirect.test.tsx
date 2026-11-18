@@ -31,7 +31,8 @@ describe('AICenter assistant redirect', () => {
 
   it('shows the redirect card instead of the legacy chat', () => {
     renderPage()
-    expect(screen.getByText('The assistant has moved')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'CloudAtlas Copilot' })).toBeInTheDocument()
+    expect(screen.getByText(/bottom-right corner of any workspace page/)).toBeInTheDocument()
     expect(screen.queryByPlaceholderText(/Ask CloudAtlas Copilot/i)).not.toBeInTheDocument()
   })
 

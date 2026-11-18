@@ -1,30 +1,38 @@
-import { useLayoutEffect, useRef, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 
 interface NativeDialogProps {
   children: ReactNode
+  id?: string
   className?: string
+  style?: CSSProperties
+  open?: boolean
+  modal?: boolean
   label?: string
   labelledBy?: string
   onClose: () => void
 }
 
-/** Mount only while open, so the browser can restore focus before removal. */
-export function NativeDialog({ children, className, label, labelledBy, onClose }: NativeDialogProps) {
+/** By default, mounting opens a modal. Controlled callers may retain their contents while closed. */
+export function NativeDialog({ children, id, className, style, open = true, modal = true, label, labelledBy, onClose }: NativeDialogProps) {
   const ref = useRef<HTMLDialogElement>(null)
   const pressedBackdrop = useRef(false)
 
   useLayoutEffect(() => {
     const dialog = ref.current
-    if (!dialog) return
-    dialog.showModal()
+    if (!dialog || !open) return
+    if (modal) dialog.showModal()
+    else dialog.show()
     return () => {
+      pressedBackdrop.current = false
       if (dialog.open) dialog.close()
     }
-  }, [])
+  }, [open, modal])
 
   return (
     <dialog
       ref={ref}
+      id={id}
+      style={style}
       className={`native-dialog ${className ?? ''}`}
       aria-label={label}
       aria-labelledby={labelledBy}
@@ -32,7 +40,7 @@ export function NativeDialog({ children, className, label, labelledBy, onClose }
         if (!event.currentTarget.open) onClose()
       }}
       onPointerDown={(event) => {
-        pressedBackdrop.current = event.isPrimary && event.button === 0 && event.target === event.currentTarget
+        pressedBackdrop.current = modal && event.isPrimary && event.button === 0 && event.target === event.currentTarget
       }}
       onPointerUp={(event) => {
         if (pressedBackdrop.current && document.elementFromPoint(event.clientX, event.clientY) === event.currentTarget) {

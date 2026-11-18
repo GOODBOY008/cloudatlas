@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { CircleHelp, ChevronDown, ChevronRight, Check, Search, Sun, Moon, Menu, X, LogOut, Sparkles } from 'lucide-react'
+import { CircleHelp, ChevronDown, ChevronRight, Check, Search, Sun, Moon, Menu, X, LogOut } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import CopilotPanel from './CopilotPanel'
 import CopilotFab from './copilot/CopilotFab'
@@ -12,7 +12,6 @@ import { auth } from '../lib/auth'
 import api from '../lib/api'
 import { changeAppLanguage, WORKSPACE_NAMESPACE } from '../i18n'
 import { useOrgStore } from '../store/orgStore'
-import { useCopilotStore } from '../store/copilotStore'
 import { useThemeStore } from '../store/themeStore'
 import Brand from './Brand'
 import { helpForPath } from '../lib/help'
@@ -88,7 +87,6 @@ export default function Layout() {
     useOrgStore()
   const [orgMenuOpen, setOrgMenuOpen] = useState(false)
   const { theme, toggleTheme } = useThemeStore()
-  const toggleCopilot = useCopilotStore((s) => s.toggle)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
@@ -257,19 +255,6 @@ export default function Layout() {
           />
         ))}
       </nav>
-      <div className="sidebar-assistant">
-        <button
-          className="nav-link w-full"
-          onClick={() => {
-            setMobileNavOpen(false)
-            toggleCopilot()
-          }}
-        >
-          <Sparkles size={16} className="text-accent" />
-          <span className="flex-1 text-left">{t('design.copilotHeading')}</span>
-          <ChevronRight size={14} />
-        </button>
-      </div>
       <div className="border-t border-edge px-3 py-2">
         <button type="button" className="nav-link w-full" onClick={handleLogout} disabled={signingOut}>
           <LogOut size={16} />
@@ -414,7 +399,7 @@ export default function Layout() {
         </div>
       )}
       <CopilotFab />
-      <CopilotPanel />
+      <CopilotPanel key={currentOrg?.id ?? 'no-workspace'} />
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   )

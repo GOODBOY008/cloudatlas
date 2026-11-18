@@ -108,7 +108,6 @@
   .nav-link.active { @apply bg-accent-soft font-medium text-accent; }
   .nav-link.active::before { content: ''; @apply absolute inset-y-2 left-0 w-0.5 bg-accent; }
   .nav-link svg { @apply shrink-0; stroke-width: 1.6; }
-  .sidebar-assistant { @apply border-t border-edge px-3 py-2; }
   .app-header { @apply flex h-14 shrink-0 items-center justify-between gap-3 border-b border-edge bg-surface px-5 lg:px-7; }
   .icon-button { @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-secondary; }
   .icon-button:hover:not(:disabled) { @apply bg-subtle text-primary; }
@@ -161,6 +160,28 @@
   .map-summary-divider { @apply hidden h-8 w-px bg-emphasis sm:block; }
   .app-footer { @apply mx-auto mt-8 flex max-w-[1600px] flex-wrap items-center justify-between gap-2 border-t border-edge pb-3 pt-4 text-[11px] text-muted; }
   .native-dialog { @apply p-0; }
+  .copilot-launcher {
+    @apply fixed z-40 flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent shadow-popover hover:bg-accent-hover;
+    right: max(1.25rem, env(safe-area-inset-right));
+    bottom: max(1.25rem, env(safe-area-inset-bottom));
+  }
+  .copilot-window[open] {
+    @apply fixed z-40 m-0 flex max-h-none max-w-none flex-col overflow-hidden rounded-xl border border-strong bg-surface text-primary shadow-popover;
+    inset: auto;
+  }
+  .copilot-window-body { @apply relative flex min-h-0 flex-1 flex-col; }
+  .copilot-sheet {
+    @apply flex h-[75dvh] max-h-full w-full flex-col overflow-hidden rounded-t-2xl border-t border-edge bg-surface text-primary shadow-popover;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .copilot-header { @apply flex shrink-0 items-center gap-2 border-b border-edge px-4 py-2; }
+  .copilot-move-grip { @apply flex min-h-8 w-full cursor-grab items-center gap-2 rounded text-left active:cursor-grabbing; }
+  .copilot-resize-grip { @apply absolute left-0 top-0 z-10 flex h-6 w-6 cursor-nwse-resize items-start justify-start rounded-tl-xl p-0.5 text-muted hover:text-accent; }
+  .copilot-window .copilot-header { @apply pl-6; }
+  .copilot-move-grip, .copilot-resize-grip { touch-action: none; -webkit-user-select: none; user-select: none; }
+  .copilot-controls { @apply shrink-0 space-y-1 border-b border-edge bg-subtle px-4 py-2 text-xs text-secondary; }
+  .copilot-composer { @apply flex shrink-0 gap-2 border-t border-edge p-3; }
+  .copilot-sheet .copilot-composer input { font-size: 16px; }
   .drawer-panel { @apply flex h-full w-full min-w-0 flex-col overflow-y-auto border-l border-edge bg-surface; }
   .dialog-panel { @apply max-h-[90dvh] overflow-y-auto rounded-lg border border-edge bg-surface shadow-popover; }
   .dialog-heading { @apply flex items-center justify-between gap-3 border-b border-edge px-5 py-3; }

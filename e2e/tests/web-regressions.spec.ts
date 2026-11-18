@@ -67,6 +67,70 @@ test.describe('Cost Map reporting', () => {
   });
 });
 
+test('desktop Copilot floats, remembers drag and resize, and stays beneath search', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/dashboard');
+  const main = page.getByRole('main');
+  const launcher = page.getByRole('button', { name: 'Open Copilot', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Copilot' });
+  await expect(launcher).toBeVisible();
+  const mainBefore = await main.boundingBox();
+  await launcher.click();
+  await expect(dialog.getByRole('textbox')).toBeFocused();
+  expect(await main.boundingBox()).toEqual(mainBefore);
+  expect(await dialog.boundingBox()).toMatchObject({ width: 400, height: 560 });
+  const before = (await dialog.boundingBox())!;
+  const title = dialog.getByRole('button', { name: /Move Copilot with arrow keys/ });
+  const grip = dialog.getByRole('button', { name: /Resize window with arrow keys/ });
+  for (const [handle, dx, dy] of [[title, -160, -48], [grip, -32, -32]] as const) {
+    const box = (await handle.boundingBox())!;
+    const x = box.x + box.width / 2, y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + dx, y + dy, { steps: 5 });
+    await page.mouse.up();
+  }
+  const saved = { x: before.x - 192, y: before.y - 80, width: 432, height: 592 };
+  await expect.poll(() => dialog.boundingBox()).toEqual(saved);
+  await expect(dialog.getByRole('group', { name: 'Window position and size' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Search' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Search' })).toHaveCount(0);
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('textbox').fill('draft');
+  await dialog.getByRole('button', { name: 'Send', exact: true }).focus();
+  await page.keyboard.press('Tab');
+  expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(false);
+  await page.reload();
+  await expect(dialog).toHaveCount(0);
+  await launcher.click();
+  await expect.poll(() => dialog.boundingBox()).toEqual(saved);
+  await page.setViewportSize({ width: 1024, height: 420 });
+  await expect.poll(async () => {
+    const box = (await dialog.boundingBox())!;
+    return box.x >= 0 && box.y >= 0 && box.x + box.width <= 1024 && box.y + box.height <= 420;
+  }).toBe(true);
+});
+
+test('Copilot retains a draft across the desktop breakpoint and a mobile dismissal', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/dashboard');
+  const launcher = page.getByRole('button', { name: 'Open Copilot', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Copilot' });
+  await launcher.click();
+  await dialog.getByRole('textbox').fill('keep this draft');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('dialog:modal')).toHaveCount(1);
+  await expect(dialog.getByRole('textbox')).toHaveValue('keep this draft');
+  await page.keyboard.press('Escape');
+  await expect(launcher).toBeFocused();
+  await launcher.click();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(page.locator('dialog:modal')).toHaveCount(0);
+  await expect(dialog.getByRole('textbox')).toHaveValue('keep this draft');
+});
+
 test('mobile Copilot keeps focus in the modal and returns it to the launcher', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/dashboard');
@@ -88,7 +152,7 @@ test('mobile Copilot keeps focus in the modal and returns it to the launcher', a
   await expect(launcher).toBeFocused();
 });
 
-test('resource details open from a keyboard button and restore focus on close', async ({ page }) => {
+test('resource details restore keyboard focus and take precedence over desktop Copilot', async ({ page }) => {
   const resource = {
     id: 'keyboard-resource', cloud_resource_id: 'keyboard-resource-cloud-id',
     name: 'Keyboard test resource', resource_type: 'instance', provider: 'aws',
@@ -102,12 +166,17 @@ test('resource details open from a keyboard button and restore focus on close', 
   await page.route('**/api/v1/orgs/*/resources/keyboard-resource', (route) => route.fulfill({ json: { data: resource } }));
   await page.route('**/api/v1/orgs/*/resources/keyboard-resource/*', (route) => route.fulfill({ json: { data: [] } }));
   await page.goto('/resources');
+  await page.getByRole('button', { name: 'Open Copilot' }).click();
+  const copilot = page.getByRole('dialog', { name: 'Copilot', exact: true });
+  await expect(copilot).toBeVisible();
   const button = page.getByRole('button', { name: resource.name });
   await button.press('Enter');
   const drawer = page.getByRole('dialog', { name: resource.name });
   await expect(drawer.getByRole('button', { name: 'Close' })).toBeFocused();
   await page.keyboard.press('Escape');
-  await expect(page.locator('dialog')).toHaveCount(0);
+  // Native dismissal hides the drawer before its queued close event unmounts it.
+  await expect(page.locator('dialog:not(#copilot-window)')).toHaveCount(0);
+  await expect(copilot).toBeVisible();
   await expect(button).toBeFocused();
   await page.keyboard.press('Space');
   await expect(drawer).toBeVisible();

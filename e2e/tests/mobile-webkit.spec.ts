@@ -18,7 +18,7 @@ test('sign in, find a page in Chinese, and close Copilot on iPhone WebKit @smoke
   await launcher.tap();
   const dialog = page.getByRole('dialog', { name: 'Copilot' });
   await expect(page.locator('dialog:modal')).toHaveCount(1);
-  await dialog.getByRole('button', { name: 'Close', exact: true }).tap();
+  await dialog.getByRole('button', { name: 'Minimize Copilot', exact: true }).tap();
   await expect(dialog).toHaveCount(0);
   await expect(launcher).toBeFocused();
 

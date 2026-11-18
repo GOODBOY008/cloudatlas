@@ -110,7 +110,7 @@ Click a sidebar section heading to expand or collapse its pages. Overview and Co
 
 The workspace card beneath the CloudAtlas logo shows the current organization. If you belong to multiple organizations, click it to switch workspaces.
 
-The top-right header contains **Search**, notifications, the language switch, and the sun/moon theme toggle. Open the assistant through **Ask Copilot** at the bottom of the sidebar or the floating launcher on mobile. See [System Keyboard Shortcuts](#system-keyboard-shortcuts) for keyboard access.
+The top-right header contains **Search**, notifications, the language switch, and the sun/moon theme toggle. Open Copilot from the blue button in the bottom-right corner of any workspace page. See [System Keyboard Shortcuts](#system-keyboard-shortcuts) for keyboard access.
 
 ---
 
@@ -1524,7 +1524,8 @@ CloudAtlas ships with a full **English / 中文** translation of every page. To 
 ### Global search & Copilot
 
 - Click **Search** in the header, or press **⌘K / Ctrl+K**, to open global search. Quick navigation appears immediately. Search feature pages in English or Chinese; enter at least two characters to also search configuration items, resources, recommendations, services, and pools in the selected workspace. Use **↑ / ↓** to choose and **Enter** to open a result. Page navigation remains available when workspace search fails; use **Retry search** to retry the data request.
-- Click **Ask Copilot** in the sidebar, use the floating launcher on mobile, or press **⌘I / Ctrl+I**. On desktop, Copilot docks on the right; drag its left edge to resize it. Below 1024 px, it opens as a bottom sheet.
+- Click the bottom-right **Open Copilot** button or press **⌘I / Ctrl+I**. On desktop, Copilot floats above the page. Drag its title to move it and its upper-left corner to resize it. Click the title for position and size controls or **Reset layout**. The browser remembers your preferred layout. Below 1024 px, Copilot opens as a bottom sheet.
+- Minimize Copilot to keep working while a reply is generating. Reopen it to see the reply and your draft. Navigating to another page keeps the conversation and updates the context for your next question. Switching workspaces or signing out clears the active chat and draft.
 - Copilot streams answers, offers page-aware suggestions and an optional page-context attachment, and supports stopping and copying replies. Press **Enter** in its message field to send. AI availability depends on your deployment configuration; see [AI Center](#64-ai-center).
 
 ### System keyboard shortcuts
@@ -1541,7 +1542,7 @@ These are CloudAtlas application shortcuts. Global search and Copilot shortcuts 
 | Activate a focused link or button | **Enter** | **Enter** | Includes opening the selected search result |
 | Activate a focused button | **Space** | **Space** | Includes sidebar section toggles and theme/language controls |
 | Send a Copilot message | **Enter** | **Enter** | Focus the message field; a non-empty message is required |
-| Widen / narrow Copilot | **← / →** | **← / →** | Focus the desktop panel's left divider with Tab; changes width by 16 px within its allowed range |
+| Move or resize Copilot | **Arrow keys** | **Arrow keys** | Focus the title to move or the upper-left grip to resize in 16 px steps. Press Enter on either for clickable controls and **Reset layout** |
 | Jump past navigation | **Tab**, then **Enter** | **Tab**, then **Enter** | From the start of the page, activate the revealed **Skip to content** link |
 
 Global search, mobile navigation, and shared dialogs keep Tab focus inside the overlay while open and restore focus to the previously focused control when closed. The theme and language switches are buttons; they do not have dedicated global key combinations.
