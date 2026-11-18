@@ -144,10 +144,12 @@ describe('CopilotChat', () => {
     renderChat('/settings')
     await act(async () => { screen.getByText(/How much did we spend this month/i).click() })
     expect(await screen.findByText('old workspace reply')).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'private old draft' } })
     await act(async () => {
       useOrgStore.getState().setCurrentOrg({ id: 'org-002', name: 'Next workspace', slug: 'next' })
     })
     expect((fetchMock.mock.calls[0][1].signal as AbortSignal).aborted).toBe(true)
+    expect(screen.getByRole('textbox')).toHaveValue('')
     await act(async () => {
       streamController.enqueue(encoder.encode('data: {"delta":"private old workspace data"}\n\n'))
       streamController.close()
@@ -185,9 +187,11 @@ describe('CopilotChat', () => {
     let resolve!: (value: unknown) => void
     vi.mocked(api.get).mockReturnValueOnce(new Promise(res => { resolve = res }))
     renderChat('/settings')
+    const oldSignal = vi.mocked(api.get).mock.calls[0][1]?.signal
     await act(async () => {
       useOrgStore.getState().setCurrentOrg({ id: 'org-002', name: 'Next workspace', slug: 'next' })
     })
+    expect(oldSignal?.aborted).toBe(true)
     await act(async () => resolve({ data: { data: [{ id: 'old', title: 'Private old chat', message_count: 1, updated_at: '' }] } }))
     fireEvent.click(screen.getByTitle('History'))
     expect(screen.queryByText('Private old chat')).not.toBeInTheDocument()

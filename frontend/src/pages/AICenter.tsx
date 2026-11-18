@@ -181,7 +181,10 @@ export default function AICenter() {
             </h3>
             <p className="text-sm text-secondary mb-5">{t('copilot.redirectBody')}</p>
             <button
-              onClick={() => useCopilotStore.getState().setOpen(true)}
+              onClick={(event) => {
+                event.currentTarget.focus()
+                useCopilotStore.getState().setOpen(true)
+              }}
               className="btn-primary"
             >
               <Sparkles size={15} />

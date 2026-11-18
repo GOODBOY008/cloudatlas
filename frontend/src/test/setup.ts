@@ -8,6 +8,9 @@ i18n.addResourceBundle('en', WORKSPACE_NAMESPACE, en)
 i18n.addResourceBundle('zh', WORKSPACE_NAMESPACE, zh)
 
 // jsdom lacks the dialog methods. Browser tests cover top-layer focus and Escape.
+if (!HTMLDialogElement.prototype.show) {
+  HTMLDialogElement.prototype.show = function () { this.open = true }
+}
 if (!HTMLDialogElement.prototype.showModal) {
   HTMLDialogElement.prototype.showModal = function () { this.open = true }
   HTMLDialogElement.prototype.close = function () {

@@ -29,6 +29,7 @@ export default function GlobalSearch({ open, onOpenChange: setOpen }: {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        if (document.querySelector('#copilot-window:modal')) return
         event.preventDefault()
         setOpen((value) => !value)
       }
