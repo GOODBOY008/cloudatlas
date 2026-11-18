@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import i18n, { getStoredLanguage, setStoredLanguage, isSupportedLanguage } from '../i18n'
-import en from '../i18n/locales/en'
-import zh from '../i18n/locales/zh'
+import en, { workspace as enWorkspace } from '../i18n/locales/en'
+import zh, { workspace as zhWorkspace } from '../i18n/locales/zh'
+import enShell from '../i18n/locales/enShell'
+import zhShell from '../i18n/locales/zhShell'
 
 describe('i18n', () => {
   beforeEach(() => {
@@ -22,6 +24,12 @@ describe('i18n', () => {
     for (const [key, value] of Object.entries(zh)) {
       expect(value.trim().length, `zh:${key}`).toBeGreaterThan(0)
     }
+  })
+
+  it('keeps the shell and workspace catalogs disjoint in both languages', () => {
+    expect(Object.keys(enShell).sort()).toEqual(Object.keys(zhShell).sort())
+    expect(Object.keys(enShell).filter(key => key in enWorkspace)).toEqual([])
+    expect(Object.keys(zhShell).filter(key => key in zhWorkspace)).toEqual([])
   })
 
   it('resolves English by default', () => {

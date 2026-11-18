@@ -193,7 +193,7 @@ pub async fn delete_association_kind(
     ensure_org_member(&state.db, org_id, claims.user_id()?).await?;
 
     let existing = sqlx::query(
-        "SELECT is_builtin FROM ci_association_kinds WHERE id = $1 AND (organization_id = $2 OR organization_id IS NULL)",
+        "SELECT name, is_builtin FROM ci_association_kinds WHERE id = $1 AND (organization_id = $2 OR organization_id IS NULL)",
     )
     .bind(kind_id)
     .bind(org_id)
@@ -265,7 +265,13 @@ pub async fn create_object_association(
     let row = sqlx::query(
         r#"INSERT INTO ci_object_associations
            (organization_id, src_ci_type_id, association_kind_id, dst_ci_type_id, cardinality, description)
-           VALUES ($1, $2, $3, $4, $5::association_cardinality, $6)
+           SELECT $1, src.id, kind.id, dst.id, $5::association_cardinality, $6
+           FROM ci_types src, ci_types dst, ci_association_kinds kind
+           WHERE src.id = $2 AND (src.organization_id = $1 OR src.organization_id IS NULL)
+               AND src.deleted_at IS NULL
+               AND dst.id = $4 AND (dst.organization_id = $1 OR dst.organization_id IS NULL)
+               AND dst.deleted_at IS NULL
+               AND kind.id = $3 AND (kind.organization_id = $1 OR kind.organization_id IS NULL)
            RETURNING id, src_ci_type_id, association_kind_id, dst_ci_type_id,
                      cardinality::text AS cardinality, description, created_at"#,
     )
@@ -275,8 +281,9 @@ pub async fn create_object_association(
     .bind(body.dst_ci_type_id)
     .bind(cardinality)
     .bind(&body.description)
-    .fetch_one(&state.db)
-    .await?;
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::Validation("CI types and association kind must be available in this workspace".into()))?;
 
     let obj_assoc_id: Uuid = row.get("id");
 

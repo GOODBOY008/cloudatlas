@@ -42,6 +42,8 @@ tmp/
 .codegraph/
 .qoder/
 .playwright-mcp/
+.playwright-cli/
+output/playwright/
 .root-info.md
 gui-test-screenshots/
 
@@ -53,4 +55,6 @@ docker-compose.override.yml
 # Playwright output dirs
 test-results/
 playwright-report/
-/docs/
+/docs/*
+!/docs/product-architecture-review.md
+!/docs/ui-design-system.md

@@ -1,34 +1,28 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import axios from 'axios'
 import api from '../lib/api'
 import { auth } from '../lib/auth'
+import { LOGIN_RETURN_PATH_KEY, loginRedirect } from '../lib/loginRedirect'
 import AuthShell from '../components/AuthShell'
 import { ArrowRight, Eye, EyeOff } from 'lucide-react'
 import type { AuthResponse, ApiResponse } from '../types'
 
 export default function Login() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const location = useLocation()
+  const returnTo = loginRedirect((location.state as { from?: unknown } | null)?.from)
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [totpCode, setTotpCode] = useState('')
+  const [requiresTotp, setRequiresTotp] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [ssoEnabled, setSsoEnabled] = useState(false)
   const [forgotSent, setForgotSent] = useState(false)
-
-  // OIDC callback: /login?token=…&refresh=…
-  useEffect(() => {
-    const token = searchParams.get('token')
-    const refresh = searchParams.get('refresh')
-    if (token && refresh) {
-      auth.setTokens(token, refresh)
-      navigate('/dashboard', { replace: true })
-    }
-  }, [searchParams, navigate])
 
   // SSO availability
   useEffect(() => {
@@ -50,13 +44,25 @@ export default function Login() {
         {
           email,
           password,
-          totp_code: totpCode || undefined,
+          totp_code: totpCode.trim() || undefined,
         },
       )
       auth.setTokens(res.data.access_token, res.data.refresh_token)
-      navigate('/dashboard')
-    } catch {
-      setError(t('login.invalidCredentials'))
+      sessionStorage.removeItem(LOGIN_RETURN_PATH_KEY)
+      navigate(returnTo, { replace: true })
+    } catch (failure: unknown) {
+      const response = axios.isAxiosError<{ error?: { code?: string; message?: string } }>(failure)
+        ? failure.response : undefined
+      // The server only sends this challenge after verifying the password.
+      // Map its exact contract to UI state; never render arbitrary server text.
+      if (response?.status === 401 && response.data.error?.code === 'UNAUTHORIZED'
+        && response.data.error.message === 'Two-factor code is required or invalid') {
+        setRequiresTotp(true)
+        setError(t(totpCode ? 'login.totpInvalid' : 'login.totpRequired'))
+      } else {
+        setError(t(response?.status === 401 ? 'login.invalidCredentials'
+          : response?.status === 429 ? 'login.tooManyAttempts' : 'login.error'))
+      }
     } finally {
       setLoading(false)
     }
@@ -73,6 +79,7 @@ export default function Login() {
   }
 
   function loginWithSso() {
+    sessionStorage.setItem(LOGIN_RETURN_PATH_KEY, returnTo)
     window.location.href = '/api/v1/auth/oidc/start'
   }
 
@@ -105,7 +112,7 @@ export default function Login() {
             autoComplete="username"
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); setRequiresTotp(false); setTotpCode('') }}
             className="auth-input"
             placeholder={t('login.emailPlaceholder')}
           />
@@ -146,9 +153,7 @@ export default function Login() {
             </button>
           </div>
         </div>
-        {totpCode !== '' ||
-        error.includes('Two-factor') ||
-        error.includes('two-factor') ? (
+        {requiresTotp && (
           <div>
             <label htmlFor="login-totp" className="auth-label">
               {t('login.totpCode')}
@@ -159,11 +164,15 @@ export default function Login() {
               onChange={(e) => setTotpCode(e.target.value)}
               inputMode="numeric"
               autoComplete="one-time-code"
+              autoFocus
+              required
+              pattern="[0-9]{6}"
+              maxLength={6}
               className="auth-input"
               placeholder="000000"
             />
           </div>
-        ) : null}
+        )}
         {forgotSent && (
           <div
             role="status"

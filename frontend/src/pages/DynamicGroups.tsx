@@ -1,3 +1,4 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -78,15 +79,15 @@ function GroupResultPanel({
   })
 
   return (
-    <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} aria-hidden="true" />
-      <div className="fixed right-0 top-0 h-full w-[480px] bg-surface border-l border-edge z-50 overflow-y-auto">
+    <NativeDialog className="justify-end" label={groupName} onClose={onClose}>
+
+      <div className="drawer-panel max-w-[480px]">
         <div className="flex items-start justify-between p-5 border-b border-edge sticky top-0 bg-surface">
           <div>
             <h2 className="text-lg font-semibold text-primary">{groupName}</h2>
             <p className="text-xs text-muted mt-0.5">{t('dynamicGroups.executionResults')}</p>
           </div>
-          <button onClick={onClose} className="text-secondary hover:text-primary text-xl leading-none mt-0.5">✕</button>
+          <button onClick={onClose} aria-label={t('common.close')} className="icon-button">✕</button>
         </div>
 
         <div className="p-5">
@@ -103,7 +104,7 @@ function GroupResultPanel({
                 <p className="text-muted text-sm">{t('dynamicGroups.noCisMatched')}</p>
               ) : (
                 <div className="bg-subtle/50 rounded-lg overflow-hidden">
-                  <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+                  <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                     <thead>
                       <tr className="text-muted text-xs border-b border-strong">
                         <th className="px-3 py-2 text-left">{t('cmdb.colCi')}</th>
@@ -134,7 +135,7 @@ function GroupResultPanel({
           )}
         </div>
       </div>
-    </>
+    </NativeDialog>
   )
 }
 
@@ -215,15 +216,15 @@ export default function DynamicGroups() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      <div className="page-header">
         <div>
           <h1 className="page-title">{t('dynamicGroups.title')}</h1>
           <p className="text-sm text-secondary mt-1">{t('dynamicGroups.subtitle')}</p>
         </div>
         <button
           onClick={() => setShowForm(v => !v)}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg transition-colors"
+          className="btn-primary"
         >
           {showForm ? t('common.cancel') : t('dynamicGroups.newGroup')}
         </button>
@@ -320,7 +321,7 @@ export default function DynamicGroups() {
             <button
               type="submit"
               disabled={createMutation.isPending}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm rounded-lg transition-colors"
+              className="btn-primary"
             >
               {createMutation.isPending ? t('dynamicGroups.creating') : t('dynamicGroups.createGroup')}
             </button>
@@ -363,7 +364,7 @@ export default function DynamicGroups() {
                       setEditGroupName(g.name)
                       setEditGroupDescription(g.description ?? '')
                     }}
-                    className="px-3 py-1.5 bg-emphasis hover:bg-emphasis text-primary text-xs rounded transition-colors"
+                    className="btn-secondary"
                   >
                     {t('common.edit')}
                   </button>
@@ -441,7 +442,7 @@ export default function DynamicGroups() {
               <button
                 type="submit"
                 disabled={updateMutation.isPending}
-                className="px-4 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm rounded-lg transition-colors"
+                className="btn-primary"
               >
                 {updateMutation.isPending ? t('dynamicGroups.saving') : t('common.save')}
               </button>

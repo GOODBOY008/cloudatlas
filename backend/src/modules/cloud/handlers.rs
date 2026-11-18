@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::{
     crypto,
     error::{AppError, AppResult},
-    modules::auth::service::Claims,
+    modules::{auth::service::Claims, k8s::pipeline as k8s},
     state::AppState,
 };
 
@@ -18,7 +18,7 @@ use super::{
     adapters::{
         create_adapter,
         kubernetes::{parse_kubeconfig, KubernetesAdapter},
-        CloudAdapter, DiscoveredResource,
+        AnyAdapter, CloudAdapter, DiscoveredResource,
     },
     credentials::{credentials_have_content, encrypted_has_credentials, validate_credentials},
     dto::{
@@ -94,6 +94,8 @@ fn resource_type_to_ci_type_id(resource_type: &str) -> Uuid {
         "bucket" => uuid::uuid!("20000000-0000-0000-0000-000000000005"),
         "load_balancer" => uuid::uuid!("20000000-0000-0000-0000-000000000006"),
         "ip_address" => uuid::uuid!("20000000-0000-0000-0000-000000000007"),
+        "k8s_cluster" => k8s::K8S_TYPE_CLUSTER,
+        "k8s_pod" => k8s::K8S_TYPE_POD,
         _ => uuid::uuid!("20000000-0000-0000-0000-000000000001"),
     }
 }
@@ -147,9 +149,23 @@ async fn upsert_discovered_resource(
     provider: &str,
     res: &DiscoveredResource,
     now: chrono::DateTime<Utc>,
+    cluster_name: Option<&str>,
 ) -> AppResult<bool> {
     let ci_id = Uuid::new_v4();
     let ci_type_id = resource_type_to_ci_type_id(&res.resource_type);
+    let canonical_id = match res.resource_type.as_str() {
+        "k8s_cluster" => Some(k8s::cluster_ci_resource_id(&res.resource_name)),
+        "k8s_pod" => cluster_name.map(|cluster| {
+            let namespace = res.meta["namespace"].as_str().unwrap_or("default");
+            k8s::pod_ci_resource_id(cluster, namespace, &res.resource_name)
+        }),
+        _ => None,
+    };
+    let resource_id = canonical_id.as_deref().unwrap_or(&res.cloud_resource_id);
+    let mut ci_meta = res.meta.clone();
+    if canonical_id.is_some() {
+        ci_meta["provider_resource_id"] = json!(res.cloud_resource_id);
+    }
     // A discovered asset is visible to CMDB and FinOps together, or not at all.
     let mut tx = db.begin().await?;
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
@@ -171,6 +187,8 @@ async fn upsert_discovered_resource(
              'active', $11, $11, $11)
         ON CONFLICT (organization_id, cloud_account_id, cloud_resource_id)
         DO UPDATE SET
+            ci_type_id     = CASE WHEN $12 THEN EXCLUDED.ci_type_id ELSE cis.ci_type_id END,
+            cloud_provider = CASE WHEN $12 THEN EXCLUDED.cloud_provider ELSE cis.cloud_provider END,
             name          = EXCLUDED.name,
             display_name  = EXCLUDED.display_name,
             cloud_region  = EXCLUDED.cloud_region,
@@ -185,13 +203,14 @@ async fn upsert_discovered_resource(
     .bind(org_id)
     .bind(ci_type_id)
     .bind(account_id)
-    .bind(&res.cloud_resource_id)
+    .bind(resource_id)
     .bind(ci_provider_for(provider))
     .bind(res.region.as_deref())
     .bind(&res.resource_name)
-    .bind(&res.meta)
+    .bind(&ci_meta)
     .bind(&res.tags)
     .bind(now)
+    .bind(canonical_id.is_some())
     .fetch_one(&mut *tx)
     .await?;
     let created = result;
@@ -251,9 +270,42 @@ async fn upsert_discovered_resource(
     .bind(now)
     .execute(&mut *tx)
     .await?;
+
     tx.commit().await?;
 
     Ok(created)
+}
+
+// Earlier discoveries stored Kubernetes provider IDs as cloud-instance CIs.
+async fn archive_legacy_kubernetes_cis(
+    db: &sqlx::PgPool,
+    org_id: Uuid,
+    account_id: Uuid,
+) -> AppResult<u64> {
+    let result = sqlx::query(
+        r#"UPDATE cis legacy SET deleted_at = NOW()
+           FROM resources r
+           WHERE legacy.organization_id = $1 AND legacy.cloud_account_id = $2
+             AND legacy.deleted_at IS NULL AND legacy.discovered_at IS NOT NULL
+             AND legacy.lifecycle_state = 'active' AND legacy.parent_ci_id IS NULL
+             AND legacy.pool_id IS NULL
+             AND legacy.ci_type_id = '20000000-0000-0000-0000-000000000001'
+             AND r.organization_id = legacy.organization_id
+             AND r.cloud_account_id = legacy.cloud_account_id
+             AND r.cloud_resource_id = legacy.cloud_resource_id
+             AND r.resource_type IN ('k8s_cluster', 'k8s_pod')
+             AND NOT EXISTS (SELECT 1 FROM ci_instance_associations a
+               WHERE a.src_ci_id = legacy.id OR a.dst_ci_id = legacy.id)
+             AND NOT EXISTS (SELECT 1 FROM service_cis sc WHERE sc.ci_id = legacy.id)
+             AND NOT EXISTS (SELECT 1 FROM cis child WHERE child.parent_ci_id = legacy.id)
+             AND NOT EXISTS (SELECT 1 FROM ci_baselines b WHERE b.ci_id = legacy.id)
+             AND NOT EXISTS (SELECT 1 FROM ci_audit_logs l WHERE l.ci_id = legacy.id AND l.user_id IS NOT NULL)"#,
+    )
+    .bind(org_id)
+    .bind(account_id)
+    .execute(db)
+    .await?;
+    Ok(result.rows_affected())
 }
 
 // ─── list_accounts ────────────────────────────────────────────────────────────
@@ -736,7 +788,15 @@ pub(crate) async fn run_sync(
         }
     };
 
-    let resources = match adapter.discover_resources(None).await {
+    let inventory = if let Some(aliyun) = adapter.as_aliyun() {
+        Ok(aliyun.discover_with_issues(None).await)
+    } else {
+        adapter
+            .discover_resources(None)
+            .await
+            .map(|resources| (resources, Vec::new()))
+    };
+    let (resources, mut incomplete_sources) = match inventory {
         Ok(r) => r,
         Err(e) => {
             tracing::error!(job_id = %job_id, error = %e, "Sync discovery failed");
@@ -749,6 +809,12 @@ pub(crate) async fn run_sync(
     let mut created = 0i32;
     let mut updated = 0i32;
     let mut failed = 0i32;
+    let kubernetes_cluster = match &adapter {
+        AnyAdapter::Kubernetes(kubernetes) => {
+            Some(k8s::configured_cluster_name(kubernetes, &config))
+        }
+        _ => None,
+    };
 
     // ── Phase: upserting — n/total, write every 20 resources ─────────────
     for (idx, res) in resources.iter().enumerate() {
@@ -759,7 +825,17 @@ pub(crate) async fn run_sync(
             return;
         }
         let now = Utc::now();
-        match upsert_discovered_resource(&db, org_id, account_id, &provider, res, now).await {
+        match upsert_discovered_resource(
+            &db,
+            org_id,
+            account_id,
+            &provider,
+            res,
+            now,
+            kubernetes_cluster.as_deref(),
+        )
+        .await
+        {
             Ok(true) => created += 1,
             Ok(false) => updated += 1,
             Err(e) => {
@@ -770,13 +846,14 @@ pub(crate) async fn run_sync(
     }
 
     // K8s rightsizing pipeline: clusters/workloads/usage samples for
-    // kubernetes accounts (spec 2026-08-17). Failures don't fail the job.
+    // kubernetes accounts (spec 2026-08-17).
     if provider == "kubernetes" {
         if let Err(e) =
             crate::modules::k8s::pipeline::sync_account(&db, org_id, account_id, &adapter, &config)
                 .await
         {
             tracing::warn!(account_id = %account_id, error = %e, "k8s pipeline sync failed");
+            incomplete_sources.push("Kubernetes workloads".into());
         }
     }
 
@@ -784,7 +861,7 @@ pub(crate) async fn run_sync(
     // cluster tables and rightsizing views can see them. We additionally reach
     // each cluster's apiserver via its kubeconfig to sync pods (as resources)
     // and workloads (into the k8s rightsizing tables) — matching the behavior
-    // of a direct `kubernetes` account. Failures don't fail the sync job.
+    // of a direct `kubernetes` account.
     if provider == "alibaba" {
         let clusters: Vec<&crate::modules::cloud::adapters::DiscoveredResource> = resources
             .iter()
@@ -830,11 +907,13 @@ pub(crate) async fn run_sync(
             .await;
             if let Err(e) = upsert {
                 tracing::warn!(resource_id = %res.cloud_resource_id, error = %e, "k8s_clusters upsert failed");
+                incomplete_sources.push(format!("ACK cluster inventory ({})", res.resource_name));
             }
 
             // Discover workloads inside the ACK cluster via its kubeconfig.
             let Some(cluster_id) = res.meta["cluster_id"].as_str().map(str::to_string) else {
                 tracing::warn!(cluster = %res.resource_name, "ACK cluster missing cluster_id, skipping workload sync");
+                incomplete_sources.push(format!("ACK cluster ID ({})", res.resource_name));
                 continue;
             };
             let Some(aliyun) = adapter.as_aliyun() else {
@@ -857,6 +936,7 @@ pub(crate) async fn run_sync(
                                             &provider,
                                             &pod,
                                             Utc::now(),
+                                            Some(&res.resource_name),
                                         )
                                         .await
                                         {
@@ -874,11 +954,15 @@ pub(crate) async fn run_sync(
                                         }
                                     }
                                 }
-                                Err(e) => tracing::warn!(
-                                    cluster = %res.resource_name,
-                                    error = ?e,
-                                    "ACK pod discovery failed"
-                                ),
+                                Err(e) => {
+                                    tracing::warn!(
+                                        cluster = %res.resource_name,
+                                        error = ?e,
+                                        "ACK pod discovery failed"
+                                    );
+                                    incomplete_sources
+                                        .push(format!("ACK Pods ({})", res.resource_name));
+                                }
                             }
                             // Workloads → k8s rightsizing tables.
                             if let Err(e) = crate::modules::k8s::pipeline::sync_cluster(
@@ -896,25 +980,36 @@ pub(crate) async fn run_sync(
                                     error = ?e,
                                     "ACK workload sync failed"
                                 );
+                                incomplete_sources
+                                    .push(format!("ACK workloads ({})", res.resource_name));
                             }
                         }
-                        Err(e) => tracing::warn!(
+                        Err(e) => {
+                            tracing::warn!(
+                                cluster = %res.resource_name,
+                                error = %e,
+                                "ACK kubeconfig adapter build failed"
+                            );
+                            incomplete_sources.push(format!("ACK adapter ({})", res.resource_name));
+                        }
+                    },
+                    Err(e) => {
+                        tracing::warn!(
                             cluster = %res.resource_name,
                             error = %e,
-                            "ACK kubeconfig adapter build failed"
-                        ),
-                    },
-                    Err(e) => tracing::warn!(
+                            "ACK kubeconfig parse failed"
+                        );
+                        incomplete_sources.push(format!("ACK kubeconfig ({})", res.resource_name));
+                    }
+                },
+                Err(e) => {
+                    tracing::warn!(
                         cluster = %res.resource_name,
                         error = %e,
-                        "ACK kubeconfig parse failed"
-                    ),
-                },
-                Err(e) => tracing::warn!(
-                    cluster = %res.resource_name,
-                    error = %e,
-                    "ACK kubeconfig fetch failed"
-                ),
+                        "ACK kubeconfig fetch failed"
+                    );
+                    incomplete_sources.push(format!("ACK kubeconfig ({})", res.resource_name));
+                }
             }
         }
     }
@@ -924,15 +1019,43 @@ pub(crate) async fn run_sync(
         return;
     }
 
-    let status = if failed == 0 { "succeeded" } else { "failed" };
-    let error = (failed > 0)
-        .then(|| format!("Failed to persist {failed} discovered resources; retry discovery"));
+    let synced_kubernetes = kubernetes_cluster.is_some()
+        || (provider == "alibaba"
+            && resources
+                .iter()
+                .any(|res| res.resource_type == "k8s_cluster"));
+    let mut archived_kubernetes_cis = 0;
+    if synced_kubernetes && failed == 0 && incomplete_sources.is_empty() {
+        match archive_legacy_kubernetes_cis(&db, org_id, account_id).await {
+            Ok(archived) => archived_kubernetes_cis = archived,
+            Err(error) => {
+                tracing::warn!(%account_id, %error, "Failed to archive legacy Kubernetes CIs");
+                incomplete_sources.push("Kubernetes CI reconciliation".into());
+            }
+        }
+    }
+
+    let complete = failed == 0 && incomplete_sources.is_empty();
+    let status = if complete { "succeeded" } else { "failed" };
+    let error = if incomplete_sources.is_empty() {
+        (failed > 0)
+            .then(|| format!("Failed to persist {failed} discovered resources; retry discovery"))
+    } else {
+        Some(format!(
+            "Discovery incomplete. Failed sources: {}. Failed resource writes: {failed}.",
+            incomplete_sources.join(", ")
+        ))
+    };
     jobs::finalize_job(
         &db,
         &job,
         status,
         error.as_deref(),
-        json!({ "resources_failed": failed }),
+        json!({
+            "resources_failed": failed,
+            "incomplete_sources": incomplete_sources,
+            "archived_kubernetes_cis": archived_kubernetes_cis,
+        }),
         Some((discovered, created, updated)),
     )
     .await;
@@ -1113,7 +1236,8 @@ mod tests {
             tags: json!({}),
             meta: json!({"cpu":2}),
         };
-        let failed = upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now()).await;
+        let failed =
+            upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now(), None).await;
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM cis WHERE organization_id=$1")
             .bind(org)
             .fetch_one(&db)
@@ -1159,14 +1283,14 @@ mod tests {
         sqlx::query("INSERT INTO expenses (organization_id,cloud_account_id,cloud_resource_id,date,cost) VALUES ($1,$2,'atomic',CURRENT_DATE,12)")
             .bind(org).bind(account).execute(&db).await.unwrap();
         assert!(
-            upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now())
+            upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now(), None)
                 .await
                 .unwrap()
         );
         sqlx::query("UPDATE cis SET lifecycle_state='retired', meta=meta || '{\"owner_note\":\"keep\"}'::jsonb WHERE organization_id=$1")
             .bind(org).execute(&db).await.unwrap();
         assert!(
-            !upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now())
+            !upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now(), None)
                 .await
                 .unwrap()
         );

@@ -177,7 +177,7 @@ export default function ServiceTemplates() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="page-header">
         <div>
           <h1 className="page-title">{t('serviceTemplates.title')}</h1>
           <p className="text-sm text-secondary mt-0.5">
@@ -186,7 +186,7 @@ export default function ServiceTemplates() {
         </div>
         <button
           onClick={() => { resetTemplateForm(); setShowTemplateForm(true) }}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg"
+          className="btn-primary"
         >
           {t('serviceTemplates.newTemplate')}
         </button>
@@ -260,20 +260,20 @@ export default function ServiceTemplates() {
             <button
               disabled={tBusy || !tName.trim() || !tDisplay.trim()}
               onClick={() => editTemplateId ? updateTemplate.mutate() : createTemplate.mutate()}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm font-medium rounded-lg"
+              className="btn-primary"
             >
               {tBusy ? t('serviceTemplates.saving') : editTemplateId ? t('serviceTemplates.update') : t('serviceTemplates.create')}
             </button>
-            <button onClick={resetTemplateForm} className="px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg">
+            <button onClick={resetTemplateForm} className="btn-secondary">
               {t('common.cancel')}
             </button>
           </div>
         </div>
       )}
 
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row">
         {/* Template List */}
-        <div className="w-64 shrink-0 space-y-2">
+        <div className="w-full shrink-0 space-y-2 lg:w-64">
           {isLoading ? (
             <p className="text-muted text-sm">{t('common.loading')}</p>
           ) : templates.length === 0 ? (
@@ -336,7 +336,7 @@ export default function ServiceTemplates() {
               <h2 className="text-sm font-semibold text-primary">{selectedTemplate.display_name}</h2>
               <button
                 onClick={() => setShowItemForm(true)}
-                className="text-xs px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent rounded-lg"
+                className="btn-primary"
               >
                 {t('serviceTemplates.addCiType')}
               </button>
@@ -410,13 +410,13 @@ export default function ServiceTemplates() {
                   <button
                     disabled={addItem.isPending || !iCITypeId}
                     onClick={() => addItem.mutate()}
-                    className="px-3 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-xs rounded-lg"
+                    className="btn-primary"
                   >
                     {addItem.isPending ? t('serviceTemplates.adding') : t('serviceTemplates.add')}
                   </button>
                   <button
                     onClick={() => { setShowItemForm(false); setIError('') }}
-                    className="px-3 py-1.5 bg-emphasis hover:bg-emphasis text-primary text-xs rounded-lg"
+                    className="btn-secondary"
                   >{t('common.cancel')}</button>
                 </div>
               </div>
@@ -424,7 +424,7 @@ export default function ServiceTemplates() {
 
             {/* Items Table */}
             {templateDetail?.items && templateDetail.items.length > 0 ? (
-              <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-muted border-b border-edge">
                     <th className="text-left py-2">{t('serviceTemplates.ciType')}</th>
@@ -464,7 +464,7 @@ export default function ServiceTemplates() {
             )}
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-muted text-sm">
+          <div className="empty-state panel min-w-0 flex-1">
             {t('serviceTemplates.selectTemplate')}
           </div>
         )}

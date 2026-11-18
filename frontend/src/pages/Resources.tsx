@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { chartColors, chartAxis, chartGrid } from '../lib/chartTheme'
+import { useMoneyFormatter } from '../lib/format'
+import { useId, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +9,7 @@ import { usePagination } from '../lib/hooks/usePagination'
 import PaginationBar from '../components/PaginationBar'
 import { useOrgStore } from '../store/orgStore'
 import { ProviderBadge } from '../components/shared/ProviderBadge'
+import { NativeDialog } from '../components/shared/NativeDialog'
 import { providerLabel } from '../lib/providers'
 
 interface ResourceRecommendation {
@@ -45,10 +48,6 @@ interface RawExpense {
 
 const RESOURCE_TYPES = ['instance', 'volume', 'snapshot', 'bucket', 'rds_instance', 'load_balancer', 'ip_address', 'k8s_pod', 'k8s_cluster']
 
-function fmt(v: number) {
-  return `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
 function typeColor(t: string) {
   const m: Record<string, string> = {
     instance: 'bg-info/10 text-info',
@@ -65,7 +64,9 @@ function typeColor(t: string) {
 }
 
 function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource; orgId: string; onClose: () => void }) {
+  const fmt = useMoneyFormatter()
   const { t } = useTranslation()
+  const titleId = useId()
   const qc = useQueryClient()
   const [editingTags, setEditingTags] = useState(false)
   const [tagDraft, setTagDraft] = useState<Array<{ key: string; value: string }>>([])
@@ -170,15 +171,14 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
   const r = detail ?? resource
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <aside className="relative z-50 w-[560px] bg-surface border-l border-strong flex flex-col overflow-y-auto">
+    <NativeDialog className="justify-end backdrop:bg-black/60" labelledBy={titleId} onClose={onClose}>
+      <div className="drawer-panel max-w-[560px]">
         <div className="flex items-center justify-between px-6 py-4 border-b border-strong">
           <div>
-            <h2 className="text-lg font-semibold text-primary truncate">{r.name || r.cloud_resource_id}</h2>
+            <h2 id={titleId} className="text-lg font-semibold text-primary truncate">{r.name || r.cloud_resource_id}</h2>
             <p className="text-xs text-secondary">{r.cloud_resource_id}</p>
           </div>
-          <button onClick={onClose} className="text-secondary hover:text-primary text-xl">✕</button>
+          <button type="button" aria-label={t('common.close')} onClick={onClose} className="icon-button">✕</button>
         </div>
 
         <div className="p-6 space-y-6">
@@ -226,7 +226,7 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-primary">{rec.title}</p>
                       <span className="text-xs font-medium text-success">
-                        ${rec.potential_savings.toLocaleString(undefined, { maximumFractionDigits: 2 })}/mo
+                        {fmt(rec.potential_savings)}/mo
                       </span>
                     </div>
                     <p className="text-xs text-muted mt-1">
@@ -246,15 +246,15 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="rCost" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#299d87" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#299d87" stopOpacity={0} />
+                      <stop offset="5%" stopColor={chartColors.blue} stopOpacity={0.14} />
+                      <stop offset="95%" stopColor={chartColors.blue} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
-                  <YAxis tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
+                  <CartesianGrid {...chartGrid}  vertical={false} />
+                  <XAxis {...chartAxis} dataKey="date" tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
+                  <YAxis {...chartAxis} tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
                   <Tooltip formatter={(v: number) => fmt(v)} />
-                  <Area type="monotone" dataKey="cost" stroke="#299d87" fill="url(#rCost)" dot={false} />
+                  <Area isAnimationActive={false} type="linear" dataKey="cost" stroke={chartColors.blue} fill="url(#rCost)" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -337,14 +337,14 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
                     onClick={handleSaveTags}
                     disabled={patchTags.isPending}
                     data-testid="resource-tags-save"
-                    className="flex-1 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent text-xs rounded transition-colors"
+                    className="btn-primary flex-1"
                   >
                     {patchTags.isPending ? t('cmdb.savingTags') : t('common.save')}
                   </button>
                   <button
                     onClick={cancelTagEdit}
                     disabled={patchTags.isPending}
-                    className="px-3 py-1.5 bg-emphasis hover:bg-emphasis disabled:opacity-40 text-primary text-xs rounded transition-colors"
+                    className="btn-secondary"
                   >
                     {t('common.cancel')}
                   </button>
@@ -360,12 +360,13 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
             )}
           </div>
         </div>
-      </aside>
-    </div>
+      </div>
+    </NativeDialog>
   )
 }
 
 export default function Resources() {
+  const fmt = useMoneyFormatter()
   const { t } = useTranslation()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id ?? ''
@@ -391,7 +392,7 @@ export default function Resources() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="page-header">
         <div>
           <h1 className="page-title">{t('resources.title')}</h1>
           <p className="text-sm text-secondary mt-1">{t('resources.subtitle')}</p>
@@ -429,7 +430,7 @@ export default function Resources() {
       {/* Table */}
       <div className="bg-surface rounded-xl border border-strong overflow-hidden">
         <div className="overflow-x-auto">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead>
               <tr className="border-b border-strong">
                 {[t('resources.colNameId'), t('common.type'), t('cmdb.provider'), t('cmdb.region'), t('resources.colService'), t('resources.colPool'), t('resources.colTotalCost'), t('resources.colLastMonth'), t('common.status')].map(h => (
@@ -443,9 +444,18 @@ export default function Resources() {
               ) : resources.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-10 text-center text-muted">{t('resources.noResources')}</td></tr>
               ) : resources.map(r => (
-                <tr key={r.id} onClick={() => setSelected(r)} className="hover:bg-subtle cursor-pointer transition-colors">
+                <tr
+                  key={r.id}
+                  className="hover:bg-subtle cursor-pointer transition-colors"
+                  onClick={(event) => {
+                    event.currentTarget.querySelector('button')?.focus()
+                    setSelected(r)
+                  }}
+                >
                   <td className="px-4 py-3">
-                    <div className="font-medium text-primary">{r.name || r.cloud_resource_id.slice(0, 24)}</div>
+                    <button type="button" className="text-link text-left font-medium" aria-haspopup="dialog">
+                      {r.name || r.cloud_resource_id.slice(0, 24)}
+                    </button>
                     <div className="text-xs text-muted font-mono">{r.cloud_resource_id.slice(0, 32)}</div>
                   </td>
                   <td className="px-4 py-3">

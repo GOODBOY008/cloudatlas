@@ -1,3 +1,6 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
+import { chartColors, chartAxis, chartGrid } from '../lib/chartTheme'
+import { useMoneyFormatter, useOrgCurrency } from '../lib/format'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
@@ -9,7 +12,6 @@ interface BudgetRow { pool_id: string | null; pool_name: string; pool_type: stri
 interface Alert { id: string; name: string; threshold: number; alert_type: string; is_active: boolean; last_triggered_at: string | null }
 interface Constraint { id: string; name: string; constraint_type: string; limit_value: number | null; is_active: boolean; last_triggered_at: string | null }
 
-function fmt(v: number | null | undefined) { return v != null ? `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—' }
 
 function StatusBadge({ status }: { status: string }) {
   const { t } = useTranslation()
@@ -23,6 +25,9 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function QuotasBudgets() {
+  const formatMoney = useMoneyFormatter()
+  const currency = useOrgCurrency()
+  const fmt = (value: number | null | undefined) => value == null ? '—' : formatMoney(value)
   const { t } = useTranslation()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id ?? ''
@@ -79,14 +84,14 @@ export default function QuotasBudgets() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="page-header">
         <div>
           <h1 className="page-title">{t('quotas.title')}</h1>
           <p className="text-sm text-secondary mt-1">{t('quotas.subtitle')}</p>
         </div>
         <div className="flex gap-3">
           <button onClick={() => evaluateAlerts.mutate()} disabled={evaluateAlerts.isPending}
-            className="px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg transition-colors disabled:opacity-50">
+            className="btn-secondary">
             {t('quotas.evaluateAlerts')}
           </button>
         </div>
@@ -102,7 +107,7 @@ export default function QuotasBudgets() {
         ].map(c => (
           <div key={c.label} className="bg-surface rounded-xl border border-strong p-5">
             <p className="text-xs text-secondary uppercase tracking-wider">{c.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${c.color}`}>{c.value}</p>
+            <p className={`text-2xl font-semibold mt-1 ${c.color}`}>{c.value}</p>
           </div>
         ))}
       </div>
@@ -113,13 +118,13 @@ export default function QuotasBudgets() {
           <h2 className="text-sm font-semibold text-primary mb-4">{t('quotas.budgetUtilizationByPool')}</h2>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={matrix.slice(0, 10).map(b => ({ name: b.pool_name?.slice(0, 14), pct: Math.round(b.utilization_pct ?? ((b.budget ?? 0) > 0 ? (b.actual / (b.budget ?? 1)) * 100 : 0)), status: b.status }))}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
-              <YAxis tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} unit="%" domain={[0, 120]} />
+              <CartesianGrid {...chartGrid}  vertical={false} />
+              <XAxis {...chartAxis} dataKey="name" tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
+              <YAxis {...chartAxis} tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} unit="%" domain={[0, 120]} />
               <Tooltip formatter={(v: number) => `${v}%`} />
-              <Bar dataKey="pct" radius={[4, 4, 0, 0]}>
+              <Bar isAnimationActive={false} maxBarSize={32} dataKey="pct" radius={[4, 4, 0, 0]}>
                 {matrix.slice(0, 10).map((b, i) => (
-                  <Cell key={i} fill={b.status === 'over_budget' ? '#ef4444' : b.status === 'warning' ? '#f59e0b' : '#10b981'} />
+                  <Cell key={i} fill={b.status === 'over_budget' ? chartColors.danger : b.status === 'warning' ? chartColors.orange : chartColors.green} />
                 ))}
               </Bar>
             </BarChart>
@@ -128,14 +133,14 @@ export default function QuotasBudgets() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-strong">
+      <div className="page-tabs ">
         {([
           { key: 'budgets', label: t('quotas.poolBudgetsCount', { count: matrix.length }) },
           { key: 'alerts', label: t('quotas.alertRulesCount', { count: (alerts ?? []).length }) },
           { key: 'quotas', label: t('quotas.quotasCount', { count: (quotas ?? []).length }) },
         ] as const).map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === tab.key ? 'border-accent text-primary' : 'border-transparent text-secondary hover:text-primary'}`}>
+          <button aria-pressed={activeTab === tab.key} key={tab.key} onClick={() => setActiveTab(tab.key as any)}
+            className="page-tab">
             {tab.label}
           </button>
         ))}
@@ -143,7 +148,7 @@ export default function QuotasBudgets() {
 
       {activeTab === 'budgets' && (
         <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead><tr className="border-b border-strong">
               {[t('quotas.colPool'), t('quotas.colBudget'), t('quotas.colActualSpend'), t('quotas.colUtilization'), t('common.status')].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{h}</th>
@@ -180,10 +185,10 @@ export default function QuotasBudgets() {
       {activeTab === 'alerts' && (
         <>
           <div className="flex justify-end">
-            <button onClick={() => setShowAlertForm(true)} className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg">{t('quotas.addAlertRule')}</button>
+            <button onClick={() => setShowAlertForm(true)} className="btn-primary">{t('quotas.addAlertRule')}</button>
           </div>
           <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-            <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
               <thead><tr className="border-b border-strong">
                 {[t('common.name'), t('common.type'), t('quotas.colThreshold'), t('common.status'), t('quotas.colLastTriggered'), t('common.actions')].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{h}</th>
@@ -217,10 +222,10 @@ export default function QuotasBudgets() {
       {activeTab === 'quotas' && (
         <>
           <div className="flex justify-end">
-            <button onClick={() => setShowQuotaForm(true)} className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg">{t('quotas.addQuota')}</button>
+            <button onClick={() => setShowQuotaForm(true)} className="btn-primary">{t('quotas.addQuota')}</button>
           </div>
           <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-            <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
               <thead><tr className="border-b border-strong">
                 {[t('common.name'), t('common.type'), t('quotas.colLimit'), t('common.status'), t('quotas.colLastTriggered')].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{h}</th>
@@ -250,13 +255,13 @@ export default function QuotasBudgets() {
 
       {/* Alert form modal */}
       {showAlertForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setShowAlertForm(false)} />
-          <div className="relative bg-surface rounded-xl border border-strong p-6 w-full max-w-md space-y-4">
+        <NativeDialog className="items-center justify-center p-4" label={t('quotas.newAlertRule')} onClose={() => setShowAlertForm(false)}>
+
+          <div className="dialog-panel relative p-6 w-full max-w-md space-y-4">
             <h3 className="text-lg font-semibold text-primary">{t('quotas.newAlertRule')}</h3>
             {[
               { label: t('common.name'), field: 'name', type: 'text' },
-              { label: t('quotas.thresholdAmount'), field: 'threshold', type: 'number' },
+              { label: t('quotas.thresholdAmount', { currency }), field: 'threshold', type: 'number' },
             ].map(({ label, field, type }) => (
               <div key={field}>
                 <label className="text-xs text-secondary mb-1 block">{label}</label>
@@ -265,22 +270,22 @@ export default function QuotasBudgets() {
               </div>
             ))}
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowAlertForm(false)} className="flex-1 px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg">{t('common.cancel')}</button>
+              <button onClick={() => setShowAlertForm(false)} className="btn-secondary flex-1">{t('common.cancel')}</button>
               <button onClick={() => createAlert.mutate({ name: alertForm.name, threshold: parseFloat(alertForm.threshold), alert_type: 'budget' })}
                 disabled={!alertForm.name || !alertForm.threshold || createAlert.isPending}
-                className="flex-1 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg disabled:opacity-50">
+                className="btn-primary flex-1">
                 {t('quotas.create')}
               </button>
             </div>
           </div>
-        </div>
+        </NativeDialog>
       )}
 
       {/* Quota form modal */}
       {showQuotaForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setShowQuotaForm(false)} />
-          <div className="relative bg-surface rounded-xl border border-strong p-6 w-full max-w-md space-y-4">
+        <NativeDialog className="items-center justify-center p-4" label={t('quotas.newQuota')} onClose={() => setShowQuotaForm(false)}>
+
+          <div className="dialog-panel relative p-6 w-full max-w-md space-y-4">
             <h3 className="text-lg font-semibold text-primary">{t('quotas.newQuota')}</h3>
             <div>
               <label className="text-xs text-secondary mb-1 block">{t('common.name')}</label>
@@ -301,15 +306,15 @@ export default function QuotasBudgets() {
                 className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowQuotaForm(false)} className="flex-1 px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg">{t('common.cancel')}</button>
+              <button onClick={() => setShowQuotaForm(false)} className="btn-secondary flex-1">{t('common.cancel')}</button>
               <button onClick={() => createQuota.mutate({ name: quotaForm.name, constraint_type: quotaForm.constraint_type, limit_value: parseFloat(quotaForm.limit_value) })}
                 disabled={!quotaForm.name || !quotaForm.limit_value || createQuota.isPending}
-                className="flex-1 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg disabled:opacity-50">
+                className="btn-primary flex-1">
                 {t('quotas.create')}
               </button>
             </div>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

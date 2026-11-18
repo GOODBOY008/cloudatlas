@@ -1,3 +1,6 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
+import { chartColors, chartAxis, chartGrid, chartTooltipStyle } from '../lib/chartTheme'
+import { useMoneyFormatter, useOrgCurrency } from '../lib/format'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -42,14 +45,15 @@ interface PoolTopResource {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function BudgetBar({ spend, budget }: { spend: number; budget: number }) {
+  const fmt = useMoneyFormatter()
   const { t } = useTranslation()
   const pct = budget > 0 ? Math.min((spend / budget) * 100, 100) : 0
   const color = pct >= 90 ? 'bg-danger-solid' : pct >= 70 ? 'bg-warning-solid' : 'bg-accent'
   return (
     <div className="mt-2">
       <div className="flex justify-between text-xs text-secondary mb-1">
-        <span>{t('pools.spent', { amount: spend.toLocaleString(undefined, { maximumFractionDigits: 0 }) })}</span>
-        <span>{t('pools.pctOfBudget', { pct: pct.toFixed(0), budget: budget.toLocaleString() })}</span>
+        <span>{t('pools.spent', { amount: fmt(spend) })}</span>
+        <span>{t('pools.pctOfBudget', { pct: pct.toFixed(0), budget: fmt(budget) })}</span>
       </div>
       <div className="h-1.5 bg-emphasis rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
@@ -58,7 +62,7 @@ function BudgetBar({ spend, budget }: { spend: number; budget: number }) {
   )
 }
 
-const tooltipStyle = { background: 'rgb(var(--surface))', border: '1px solid rgb(var(--border))', borderRadius: 8 }
+const tooltipStyle = chartTooltipStyle
 
 // ─── Pool Detail Panel ────────────────────────────────────────────────────────
 
@@ -73,6 +77,7 @@ function PoolDetailPanel({
   allPools: Pool[]
   onClose: () => void
 }) {
+  const fmt = useMoneyFormatter()
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [moveTarget, setMoveTarget] = useState<string>('')
@@ -113,9 +118,9 @@ function PoolDetailPanel({
   const validParents = allPools.filter((p) => p.id !== pool.id)
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/60" onClick={onClose} />
-      <div className="w-[580px] bg-canvas border-l border-edge flex flex-col overflow-y-auto">
+    <NativeDialog className="justify-end" label={pool.name} onClose={onClose}>
+
+      <div className="drawer-panel max-w-[580px]">
         {/* Header */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-edge">
           <div>
@@ -126,7 +131,7 @@ function PoolDetailPanel({
               {pool.parent_id && <span className="text-xs text-muted">{t('pools.childPool')}</span>}
             </div>
           </div>
-          <button onClick={onClose} className="text-secondary hover:text-primary text-xl leading-none mt-0.5">×</button>
+          <button onClick={onClose} aria-label={t('common.close')} className="icon-button">×</button>
         </div>
 
         <div className="flex-1 p-5 space-y-5">
@@ -135,13 +140,13 @@ function PoolDetailPanel({
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-surface rounded-lg p-3">
                 <p className="text-xs text-muted">{t('pools.monthToDate')}</p>
-                <p className="text-xl font-semibold text-primary">${trend.summary.month_spend.toFixed(2)}</p>
+                <p className="text-xl font-semibold text-primary">{fmt(trend.summary.month_spend)}</p>
               </div>
               <div className="bg-surface rounded-lg p-3">
                 <p className="text-xs text-muted">{t('pools.projectedMonthly')}</p>
                 <p className={`text-xl font-semibold ${
                   pool.monthly_budget && trend.summary.projected_month > pool.monthly_budget ? 'text-danger' : 'text-warning'
-                }`}>${trend.summary.projected_month.toFixed(2)}</p>
+                }`}>{fmt(trend.summary.projected_month)}</p>
               </div>
             </div>
           )}
@@ -151,11 +156,11 @@ function PoolDetailPanel({
             <div className="bg-surface rounded-lg p-3">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-xs text-secondary">{t('pools.budgetUtilisation')}</p>
-                <p className="text-xs text-secondary">{t('pools.budgetPerMonth', { amount: pool.monthly_budget.toLocaleString() })}</p>
+                <p className="text-xs text-secondary">{t('pools.budgetPerMonth', { amount: fmt(pool.monthly_budget) })}</p>
               </div>
               <BudgetBar spend={trend.summary.month_spend} budget={pool.monthly_budget} />
               {pool.monthly_budget && trend.summary.projected_month > pool.monthly_budget && (
-                <p className="text-xs text-danger mt-1">{t('pools.exceedBudget', { amount: (trend.summary.projected_month - pool.monthly_budget).toFixed(2) })}</p>
+                <p className="text-xs text-danger mt-1">{t('pools.exceedBudget', { amount: fmt(trend.summary.projected_month - pool.monthly_budget) })}</p>
               )}
             </div>
           )}
@@ -183,26 +188,26 @@ function PoolDetailPanel({
                 <AreaChart data={forecastChartData}>
                   <defs>
                     <linearGradient id="poolTrendGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#299d87" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#299d87" stopOpacity={0} />
+                      <stop offset="5%" stopColor={chartColors.blue} stopOpacity={0.35} />
+                      <stop offset="95%" stopColor={chartColors.blue} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
-                  <XAxis dataKey="date" tick={{ fill: 'rgb(var(--text-muted))', fontSize: 10 }} tickFormatter={(v: string) => v.slice(5)} interval={Math.floor(forecastChartData.length / 8)} />
-                  <YAxis tick={{ fill: 'rgb(var(--text-muted))', fontSize: 10 }} tickFormatter={(v: unknown) => `$${(v as number).toFixed(0)}`} />
+                  <CartesianGrid {...chartGrid}  vertical={false} />
+                  <XAxis {...chartAxis} dataKey="date" tick={{ fill: 'rgb(var(--text-muted))', fontSize: 10 }} tickFormatter={(v: string) => v.slice(5)} interval={Math.floor(forecastChartData.length / 8)} />
+                  <YAxis {...chartAxis} tick={{ fill: 'rgb(var(--text-muted))', fontSize: 10 }} tickFormatter={(v: unknown) => fmt(v as number)} />
                   <Tooltip
-                    formatter={(v: unknown, name: string) => [`$${(v as number).toFixed(2)}`, name === 'cost' ? t('pools.actual') : t('pools.forecast')]}
+                    formatter={(v: unknown, name: string) => [fmt(v as number), name === 'cost' ? t('pools.actual') : t('pools.forecast')]}
                     contentStyle={tooltipStyle}
                   />
                   {pool.monthly_budget && (
                     <ReferenceLine
                       y={pool.monthly_budget / 30}
-                      stroke="#f59e0b" strokeDasharray="4 2"
-                      label={{ value: t('pools.dailyBudget'), fill: '#f59e0b', fontSize: 9 }}
+                      stroke={chartColors.orange} strokeDasharray="4 2"
+                      label={{ value: t('pools.dailyBudget'), fill: chartColors.orange, fontSize: 9 }}
                     />
                   )}
-                  <Area type="monotone" dataKey="cost" stroke="#299d87" fill="url(#poolTrendGrad)" strokeWidth={1.5} dot={false} connectNulls />
-                  <Area type="monotone" dataKey="forecast" stroke="#f97316" fill="#f9731615" strokeWidth={1.5} strokeDasharray="4 2" dot={false} connectNulls />
+                  <Area isAnimationActive={false} type="linear" dataKey="cost" stroke={chartColors.blue} fill="url(#poolTrendGrad)" strokeWidth={1.5} dot={false} connectNulls />
+                  <Area isAnimationActive={false} type="linear" dataKey="forecast" stroke={chartColors.orange} fill="rgb(var(--chart-2) / 0.08)" strokeWidth={1.5} strokeDasharray="4 2" dot={false} connectNulls />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -222,13 +227,13 @@ function PoolDetailPanel({
                     name: r.resource_name ?? r.cloud_resource_id.slice(-10),
                     cost: r.total_cost,
                   }))}>
-                    <XAxis dataKey="name" tick={{ fill: 'rgb(var(--text-muted))', fontSize: 9 }} angle={-20} textAnchor="end" height={40} interval={0} />
-                    <YAxis tick={{ fill: 'rgb(var(--text-muted))', fontSize: 9 }} tickFormatter={(v: unknown) => `$${(v as number).toFixed(0)}`} />
-                    <Tooltip formatter={(v: unknown) => [`$${(v as number).toFixed(2)}`, t('pools.cost')]} contentStyle={tooltipStyle} />
-                    <Bar dataKey="cost" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+                    <XAxis {...chartAxis} dataKey="name" tick={{ fill: 'rgb(var(--text-muted))', fontSize: 9 }} angle={-20} textAnchor="end" height={40} interval={0} />
+                    <YAxis {...chartAxis} tick={{ fill: 'rgb(var(--text-muted))', fontSize: 9 }} tickFormatter={(v: unknown) => fmt(v as number)} />
+                    <Tooltip formatter={(v: unknown) => [fmt(v as number), t('pools.cost')]} contentStyle={tooltipStyle} />
+                    <Bar isAnimationActive={false} maxBarSize={32} dataKey="cost" fill={chartColors.orange} radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
-                <div className="table-scroll" tabIndex={0}><table className="w-full text-xs mt-2">
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-xs mt-2">
                   <thead>
                     <tr className="text-muted text-left border-b border-edge">
                       <th className="pb-1">{t('pools.colResource')}</th>
@@ -241,7 +246,7 @@ function PoolDetailPanel({
                       <tr key={r.cloud_resource_id} className="border-b border-edge/30">
                         <td className="py-1.5 text-secondary truncate max-w-[160px]">{r.resource_name ?? r.cloud_resource_id.slice(-16)}</td>
                         <td className="py-1.5 text-muted">{r.resource_type}</td>
-                        <td className="py-1.5 text-right text-warning font-mono">${r.total_cost.toFixed(2)}</td>
+                        <td className="py-1.5 text-right text-warning font-mono">{fmt(r.total_cost)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -273,7 +278,7 @@ function PoolDetailPanel({
                 <button
                   disabled={moveMutation.isPending}
                   onClick={() => moveMutation.mutate(moveTarget || null)}
-                  className="px-3 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-xs rounded-lg"
+                  className="btn-primary"
                 >
                   {moveMutation.isPending ? t('pools.moving') : t('pools.apply')}
                 </button>
@@ -295,13 +300,14 @@ function PoolDetailPanel({
           </div>
         </div>
       </div>
-    </div>
+    </NativeDialog>
   )
 }
 
 // ─── Visual Pool Tree ─────────────────────────────────────────────────────────
 
 function PoolTreeView({ nodes }: { nodes: PoolTreeNode[] }) {
+  const fmt = useMoneyFormatter()
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
@@ -361,9 +367,9 @@ function PoolTreeView({ nodes }: { nodes: PoolTreeNode[] }) {
             )}
           </div>
           <div className="text-right flex-shrink-0">
-            <p className="text-xs font-mono text-success">${node.current_month_spend.toFixed(2)}</p>
+            <p className="text-xs font-mono text-success">{fmt(node.current_month_spend)}</p>
             {node.monthly_budget != null && (
-              <p className="text-xs text-muted">{t('pools.ofBudget', { amount: node.monthly_budget.toLocaleString() })}</p>
+              <p className="text-xs text-muted">{t('pools.ofBudget', { amount: fmt(node.monthly_budget) })}</p>
             )}
           </div>
         </div>
@@ -396,6 +402,8 @@ interface NewPoolForm {
 }
 
 export default function Pools() {
+  const currency = useOrgCurrency()
+  const fmt = useMoneyFormatter()
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { currentOrg } = useOrgStore()
@@ -493,27 +501,27 @@ export default function Pools() {
         />
       )}
 
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('pools.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('pools.title')}</h1>
         <div className="flex items-center gap-2">
           {/* View mode toggle */}
-          <div className="flex rounded-lg overflow-hidden border border-strong">
-            <button
+          <div className="segmented-control ">
+            <button aria-pressed={viewMode === 'list'}
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 text-sm transition-colors ${viewMode === 'list' ? 'bg-emphasis text-primary' : 'bg-surface text-secondary hover:text-primary'}`}
+              className="segment"
             >
               {t('pools.viewList')}
             </button>
-            <button
+            <button aria-pressed={viewMode === 'tree'}
               onClick={() => setViewMode('tree')}
-              className={`px-3 py-1.5 text-sm transition-colors ${viewMode === 'tree' ? 'bg-emphasis text-primary' : 'bg-surface text-secondary hover:text-primary'}`}
+              className="segment"
             >
               {t('pools.viewTree')}
             </button>
           </div>
           <button
             onClick={() => setShowForm((v) => !v)}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+            className="btn-primary"
           >
             {showForm ? t('common.cancel') : t('pools.newPool')}
           </button>
@@ -560,7 +568,7 @@ export default function Pools() {
                 placeholder={t('pools.descPlaceholder')} />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('pools.monthlyBudget')}</label>
+              <label className="block text-xs text-secondary mb-1">{t('pools.monthlyBudget', { currency })}</label>
               <input type="number" min="0" step="0.01" value={form.monthly_budget}
                 onChange={(e) => setForm({ ...form, monthly_budget: e.target.value })}
                 className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
@@ -568,7 +576,7 @@ export default function Pools() {
             </div>
             <div className="flex items-end">
               <button type="submit" disabled={createMutation.isPending}
-                className="w-full px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm font-medium rounded-lg transition-colors">
+                className="btn-primary w-full">
                 {createMutation.isPending ? t('pools.creating') : t('pools.createPool')}
               </button>
             </div>
@@ -628,7 +636,7 @@ export default function Pools() {
                     <div className="text-right flex-shrink-0 flex items-center gap-3">
                       {pool.monthly_budget != null ? (
                         <span className="text-sm font-mono text-success">
-                          {t('pools.perMonth', { amount: pool.monthly_budget.toLocaleString() })}
+                          {t('pools.perMonth', { amount: fmt(pool.monthly_budget) })}
                         </span>
                       ) : (
                         <span className="text-sm text-muted">{t('pools.noBudget')}</span>
@@ -669,9 +677,9 @@ export default function Pools() {
 
       {/* ── Edit Pool Modal ─────────────────────────────────────────────── */}
       {editingPool && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setEditingPool(null)} />
-          <div className="relative bg-surface rounded-xl border border-strong p-6 w-full max-w-md space-y-4">
+        <NativeDialog className="items-center justify-center p-4" label={t('pools.editTitle')} onClose={() => setEditingPool(null)}>
+
+          <div className="dialog-panel relative p-6 w-full max-w-md space-y-4">
             <h3 className="text-lg font-semibold text-primary">{t('pools.editTitle')}</h3>
             <div>
               <label className="text-xs text-secondary mb-1 block">{t('common.name')}</label>
@@ -690,7 +698,7 @@ export default function Pools() {
               />
             </div>
             <div>
-              <label className="text-xs text-secondary mb-1 block">{t('pools.monthlyBudgetClear')}</label>
+              <label className="text-xs text-secondary mb-1 block">{t('pools.monthlyBudgetClear', { currency })}</label>
               <input
                 type="number"
                 min="0"
@@ -701,7 +709,7 @@ export default function Pools() {
               />
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setEditingPool(null)} className="flex-1 px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg">{t('common.cancel')}</button>
+              <button onClick={() => setEditingPool(null)} className="btn-secondary flex-1">{t('common.cancel')}</button>
               <button
                 disabled={!editForm.name.trim() || updateMutation.isPending}
                 onClick={() => updateMutation.mutate({
@@ -710,26 +718,26 @@ export default function Pools() {
                   description: editForm.description.trim() || undefined,
                   monthly_budget: editForm.monthly_budget.trim() ? parseFloat(editForm.monthly_budget) : null,
                 })}
-                className="flex-1 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg disabled:opacity-50"
+                className="btn-primary flex-1"
               >
                 {updateMutation.isPending ? t('pools.saving') : t('common.save')}
               </button>
             </div>
           </div>
-        </div>
+        </NativeDialog>
       )}
 
       {/* ── Delete Confirm Modal ────────────────────────────────────────── */}
       {confirmDeletePool && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setConfirmDeletePool(null)} />
-          <div className="relative bg-surface rounded-xl border border-strong p-6 w-full max-w-sm space-y-4 text-center">
+        <NativeDialog className="items-center justify-center p-4" label={t('pools.confirmDeleteTitle')} onClose={() => setConfirmDeletePool(null)}>
+
+          <div className="dialog-panel relative p-6 w-full max-w-sm space-y-4 text-center">
             <p className="text-primary font-semibold">{t('pools.confirmDeleteTitle')}</p>
             <p className="text-sm text-secondary">
               {t('pools.confirmDeleteBody', { name: confirmDeletePool.name })}
             </p>
             <div className="flex gap-3 pt-1">
-              <button onClick={() => setConfirmDeletePool(null)} className="flex-1 px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg">{t('common.cancel')}</button>
+              <button onClick={() => setConfirmDeletePool(null)} className="btn-secondary flex-1">{t('common.cancel')}</button>
               <button
                 disabled={deleteMutation.isPending}
                 onClick={() => { deleteMutation.mutate(confirmDeletePool.id); setConfirmDeletePool(null) }}
@@ -739,7 +747,7 @@ export default function Pools() {
               </button>
             </div>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

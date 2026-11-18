@@ -1,3 +1,5 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
+import { fmtMoney, useMoneyFormatter, useOrgCurrency } from '../lib/format'
 import { useDeferredValue, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -101,11 +103,12 @@ function RecModal({
   onClose: () => void
   isBusy: boolean
 }) {
+  const fmt = useMoneyFormatter()
   const { t } = useTranslation()
   const steps = getActionSteps(rec.rec_type).map((k) => t(`recommendations.actionStep.${k}`))
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-surface border border-edge rounded-xl w-full max-w-lg shadow-2xl">
+    <NativeDialog className="items-center justify-center p-4" label={rec.title} onClose={onClose}>
+      <div className="dialog-panel w-full max-w-lg">
         <div className="p-5 border-b border-edge flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -118,7 +121,7 @@ function RecModal({
             </div>
             <h3 className="text-lg font-semibold text-primary">{rec.title}</h3>
           </div>
-          <button onClick={onClose} className="text-secondary hover:text-primary transition-colors text-xl leading-none ml-4">✕</button>
+          <button onClick={onClose} aria-label={t('common.close')} className="icon-button ml-4">✕</button>
         </div>
 
         <div className="p-5 space-y-4">
@@ -127,11 +130,11 @@ function RecModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-subtle/60 rounded-lg p-3">
               <p className="text-xs text-muted mb-1">{t('recommendations.monthlyCost')}</p>
-              <p className="text-primary font-semibold">${rec.current_monthly_cost.toFixed(2)}</p>
+              <p className="text-primary font-semibold">{fmt(rec.current_monthly_cost)}</p>
             </div>
             <div className="bg-success/10 border border-success/25 rounded-lg p-3">
               <p className="text-xs text-muted mb-1">{t('recommendations.potentialSavings')}</p>
-              <p className="text-success font-semibold">${rec.potential_savings.toFixed(2)}/mo</p>
+              <p className="text-success font-semibold">{fmt(rec.potential_savings)}/mo</p>
             </div>
           </div>
 
@@ -174,14 +177,14 @@ function RecModal({
               <button
                 onClick={onApply}
                 disabled={isBusy}
-                className="px-4 py-2 text-sm bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent rounded-lg transition-colors"
+                className="btn-primary"
               >
                 {t('recommendations.apply')}
               </button>
               <button
                 onClick={onDismiss}
                 disabled={isBusy}
-                className="px-4 py-2 text-sm text-secondary hover:text-primary border border-strong hover:border-strong rounded-lg transition-colors"
+                className="btn-secondary"
               >
                 {t('recommendations.dismiss')}
               </button>
@@ -207,17 +210,19 @@ function RecModal({
           )}
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm bg-accent hover:bg-accent-hover text-on-accent rounded-lg transition-colors ml-auto"
+            className="btn-primary ml-auto"
           >
             {t('recommendations.close')}
           </button>
         </div>
       </div>
-    </div>
+    </NativeDialog>
   )
 }
 
 export default function Recommendations() {
+  const currency = useOrgCurrency()
+  const fmt = (value: number) => fmtMoney(value, currency)
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const location = useLocation()
@@ -255,7 +260,7 @@ export default function Recommendations() {
 
   const verifyMutation = useMutation({
     mutationFn: (recId: string) => {
-      const actual = window.prompt(t('recommendations.actualSavingsPrompt'), '0')
+      const actual = window.prompt(t('recommendations.actualSavingsPrompt', { currency }), '0')
       if (actual === null) return Promise.reject(new Error('cancelled'))
       return api.post(`/orgs/${orgId}/recommendations/${recId}/verify`, {
         actual_savings: Number(actual) || 0,
@@ -327,9 +332,9 @@ export default function Recommendations() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="page-header">
         <div>
-          <h2 className="page-title">{t('recommendations.title')}</h2>
+          <h1 className="page-title">{t('recommendations.title')}</h1>
           <p className="text-sm text-secondary mt-1">
             {isArchiveView ? t('recommendations.subtitleArchived') : t('recommendations.subtitleActive')}
           </p>
@@ -353,7 +358,7 @@ export default function Recommendations() {
             <button
               onClick={() => runMutation.mutate()}
               disabled={runMutation.isPending}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm font-medium rounded-lg transition-colors"
+              className="btn-primary"
             >
               {runMutation.isPending ? t('recommendations.running') : t('recommendations.runEngine')}
             </button>
@@ -382,18 +387,18 @@ export default function Recommendations() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="bg-surface border border-edge rounded-xl p-4 text-center">
             <p className="text-xs text-secondary mb-1">{t('common.active')}</p>
-            <p className="text-2xl font-bold text-primary">{activeData.length}</p>
+            <p className="text-2xl font-semibold text-primary">{activeData.length}</p>
           </div>
           <div className="bg-surface border border-edge rounded-xl p-4 text-center">
             <p className="text-xs text-secondary mb-1">{t('recommendations.potentialSavings')}</p>
-            <p className="text-2xl font-bold text-success">
-              ${activeData.reduce((s, r) => s + (r.potential_savings ?? 0), 0).toFixed(0)}/mo
+            <p className="text-2xl font-semibold text-success">
+              {fmt(activeData.reduce((s, r) => s + (r.potential_savings ?? 0), 0))}/mo
             </p>
           </div>
           <div className="bg-surface border border-edge rounded-xl p-4 text-center">
             <p className="text-xs text-secondary mb-1">{t('recommendations.currentCostAffected')}</p>
-            <p className="text-2xl font-bold text-primary">
-              ${activeData.reduce((s, r) => s + (r.current_monthly_cost ?? 0), 0).toFixed(0)}/mo
+            <p className="text-2xl font-semibold text-primary">
+              {fmt(activeData.reduce((s, r) => s + (r.current_monthly_cost ?? 0), 0))}/mo
             </p>
           </div>
         </div>
@@ -403,11 +408,11 @@ export default function Recommendations() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="bg-surface border border-edge rounded-xl p-4 text-center">
             <p className="text-xs text-secondary mb-1">{t('recommendations.tabArchived')}</p>
-            <p className="text-2xl font-bold text-primary">{archivedData.length}</p>
+            <p className="text-2xl font-semibold text-primary">{archivedData.length}</p>
           </div>
           <div className="bg-surface border border-edge rounded-xl p-4 text-center">
             <p className="text-xs text-secondary mb-1">{t('recommendations.recoverableSavings')}</p>
-            <p className="text-2xl font-bold text-success">${archivedData.reduce((s, r) => s + (r.potential_savings ?? 0), 0).toFixed(0)}/mo</p>
+            <p className="text-2xl font-semibold text-success">{fmt(archivedData.reduce((s, r) => s + (r.potential_savings ?? 0), 0))}/mo</p>
           </div>
           <div className="bg-surface border border-edge rounded-xl p-4 text-center">
             <p className="text-xs text-secondary mb-1">{t('recommendations.lastDismissed')}</p>
@@ -460,7 +465,7 @@ export default function Recommendations() {
               {t('recommendations.showingCount', { count: filteredRecs.length })}
             </span>
             <span className="text-sm font-semibold text-success">
-              {t('recommendations.totalPotentialSavings', { amount: totalSavings.toFixed(0) })}
+              {t('recommendations.totalPotentialSavings', { amount: fmt(totalSavings) })}
             </span>
           </div>
           <div className="flex flex-wrap gap-3 text-xs text-muted">
@@ -469,7 +474,7 @@ export default function Recommendations() {
               .map((c) => (
                 <span key={c.key}>
                   {c.icon} {t(`recCategory.${c.key}`, { defaultValue: c.label })}{' '}
-                  <span className="text-success/80">${c.savings.toFixed(0)}</span>
+                  <span className="text-success/80">{fmt(c.savings)}</span>
                 </span>
               ))}
           </div>
@@ -516,16 +521,16 @@ export default function Recommendations() {
                 <div className="flex w-full sm:w-auto sm:flex-col items-center sm:items-end justify-between gap-2 flex-shrink-0">
                   <div className="text-left sm:text-right">
                     <p className="text-xs text-muted">{t('recommendations.potentialSavings')}</p>
-                    <p className="text-lg font-bold text-success">${rec.potential_savings.toFixed(2)}/mo</p>
+                    <p className="text-lg font-bold text-success">{fmt(rec.potential_savings)}/mo</p>
                     <p className="text-xs text-muted mt-0.5">
-                      {t('recommendations.currentCost', { amount: rec.current_monthly_cost.toFixed(2) })}
+                      {t('recommendations.currentCost', { amount: fmt(rec.current_monthly_cost) })}
                     </p>
                   </div>
                   {rec.status === 'active' && (
                     <button
                       onClick={(e) => { e.stopPropagation(); dismissMutation.mutate(rec.id) }}
                       disabled={mutationBusy}
-                      className="px-3 py-1 text-xs text-secondary hover:text-primary border border-strong hover:border-strong rounded-lg transition-colors disabled:opacity-50"
+                      className="btn-secondary"
                     >
                       {t('recommendations.dismiss')}
                     </button>

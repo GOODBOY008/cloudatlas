@@ -156,20 +156,16 @@ export default function AICenter() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('aiCenter.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('aiCenter.title')}</h1>
       </div>
 
-      <div className="flex gap-1 mb-4 border-b border-edge flex-wrap">
+      <div className="page-tabs mb-4">
         {(['assistant', 'forecast', 'anomalies', 'notes', 'settings'] as const).map((tabKey) => (
-          <button
+          <button aria-pressed={tab === tabKey}
             key={tabKey}
             onClick={() => setTab(tabKey)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === tabKey
-                ? 'border-accent text-primary'
-                : 'border-transparent text-muted hover:text-secondary'
-            }`}
+            className="page-tab"
           >
             {tabLabels[tabKey]}
           </button>
@@ -186,7 +182,7 @@ export default function AICenter() {
             <p className="text-sm text-secondary mb-5">{t('copilot.redirectBody')}</p>
             <button
               onClick={() => useCopilotStore.getState().setOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+              className="btn-primary"
             >
               <Sparkles size={15} />
               {t('copilot.openCopilot')}
@@ -203,7 +199,7 @@ export default function AICenter() {
             </p>
             <button
               onClick={runForecast}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+              className="btn-primary"
             >
               {t('aiCenter.generateForecast')}
             </button>
@@ -226,7 +222,7 @@ export default function AICenter() {
           </div>
           {forecast && (
             <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-              <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
                 <thead className="border-b border-edge text-xs uppercase text-muted">
                   <tr>
                     <th className="px-4 py-2 font-medium">{t('aiCenter.colDate')}</th>
@@ -257,7 +253,7 @@ export default function AICenter() {
             </p>
             <button
               onClick={runAnomalies}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+              className="btn-primary"
             >
               {t('aiCenter.scanForAnomalies')}
             </button>
@@ -269,7 +265,7 @@ export default function AICenter() {
               </div>
             ) : (
               <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-                <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
                   <thead className="border-b border-edge text-xs uppercase text-muted">
                     <tr>
                       <th className="px-4 py-2 font-medium">{t('aiCenter.colDate')}</th>
@@ -344,7 +340,7 @@ export default function AICenter() {
                 <button
                   type="submit"
                   disabled={createNoteMutation.isPending}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {t('aiCenter.saveNote')}
                 </button>
@@ -361,7 +357,7 @@ export default function AICenter() {
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+                  className="btn-primary"
                 >
                   {t('common.search')}
                 </button>

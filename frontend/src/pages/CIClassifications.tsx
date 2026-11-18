@@ -108,7 +108,7 @@ export default function CIClassifications() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="page-header">
         <div>
           <h1 className="page-title">{t('ciClassifications.title')}</h1>
           <p className="text-sm text-secondary mt-0.5">
@@ -117,7 +117,7 @@ export default function CIClassifications() {
         </div>
         <button
           onClick={() => { resetForm(); setShowForm(true) }}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+          className="btn-primary"
         >
           {t('ciClassifications.newClassification')}
         </button>
@@ -191,13 +191,13 @@ export default function CIClassifications() {
             <button
               disabled={busy || !name.trim() || !displayName.trim()}
               onClick={() => editingId ? updateMutation.mutate() : createMutation.mutate()}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm font-medium rounded-lg"
+              className="btn-primary"
             >
               {busy ? t('ciClassifications.saving') : editingId ? t('ciClassifications.update') : t('ciClassifications.create')}
             </button>
             <button
               onClick={resetForm}
-              className="px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg"
+              className="btn-secondary"
             >
               {t('common.cancel')}
             </button>
@@ -215,7 +215,7 @@ export default function CIClassifications() {
         </div>
       ) : (
         <div className="bg-surface rounded-xl border border-edge overflow-hidden">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-muted border-b border-edge">
                 <th className="text-left px-4 py-3 font-medium">{t('ciClassifications.icon')}</th>

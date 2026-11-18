@@ -6,10 +6,12 @@
 
 use axum::body::Body;
 use axum::http::{Method, Request, StatusCode};
-use cloudatlas_lib::modules::cloud::adapters::kubernetes::{K8sNodeInfo, K8sWorkload};
+use cloudatlas_lib::modules::cloud::adapters::kubernetes::{
+    K8sNodeInfo, K8sWorkload, KubernetesAdapter,
+};
 use cloudatlas_lib::modules::k8s::pipeline::{
-    compute_recommendation, recompute_recommendations, record_samples, upsert_cluster,
-    upsert_workloads,
+    compute_recommendation, recompute_recommendations, record_samples, sync_cluster,
+    upsert_cluster, upsert_workloads,
 };
 use cloudatlas_lib::{config, db, routes, state, state::AppState};
 use serde_json::{json, Value};
@@ -151,6 +153,129 @@ async fn register_and_org(app: &axum::Router) -> (String, String) {
     assert_eq!(status, StatusCode::CREATED, "org: {body}");
     let org_id = body["data"]["id"].as_str().expect("org id").to_string();
     (token, org_id)
+}
+
+#[tokio::test]
+async fn k8s_sync_links_paginated_owners_and_refreshes_pod_placement() {
+    use axum::extract::{OriginalUri, Query, State};
+    use axum::routing::get;
+    use std::collections::HashMap;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
+
+    async fn cluster_api(
+        State(rescheduled): State<Arc<AtomicBool>>,
+        OriginalUri(uri): OriginalUri,
+        Query(query): Query<HashMap<String, String>>,
+    ) -> (StatusCode, axum::Json<Value>) {
+        let body = match uri.path() {
+            "/api/v1/nodes" => json!({ "items": [
+                { "metadata": { "name": "node-a" }},
+                { "metadata": { "name": "node-b" }}
+            ] }),
+            "/api/v1/namespaces" => json!({ "items": [
+                { "metadata": { "name": "apps" }},
+                { "metadata": { "name": "empty" }}
+            ] }),
+            "/apis/apps/v1/replicasets" if !query.contains_key("continue") => {
+                json!({"items": [], "metadata": { "continue": "second+/=" }})
+            }
+            "/apis/apps/v1/replicasets" => {
+                assert_eq!(query["continue"], "second+/=");
+                json!({ "items": [{ "metadata": {
+                    "namespace": "apps", "name": "web-rs",
+                    "ownerReferences": [{ "kind": "Deployment", "name": "web", "controller": true }]
+                }}] })
+            }
+            "/api/v1/pods" => {
+                let node = if rescheduled.load(Ordering::Relaxed) {
+                    "node-b"
+                } else {
+                    "node-a"
+                };
+                json!({ "items": [
+                    { "metadata": {
+                        "namespace": "apps", "name": "web-pod",
+                        "ownerReferences": [{ "kind":"ReplicaSet", "name":"web-rs" }]
+                    }, "spec": { "nodeName": node } },
+                    { "metadata": {
+                        "namespace": "apps", "name": "agent-pod",
+                        "ownerReferences": [{ "kind":"DaemonSet", "name":"agent" }]
+                    }, "spec": { "nodeName": "node-b" } }
+                ] })
+            }
+            "/apis/apps/v1/deployments" => {
+                json!({ "items": [{ "metadata": { "namespace": "apps", "name": "web" }}] })
+            }
+            "/apis/apps/v1/daemonsets" => {
+                json!({ "items": [{ "metadata": { "namespace": "apps", "name": "agent" }}] })
+            }
+            "/apis/apps/v1/statefulsets" | "/apis/batch/v1/jobs" | "/apis/batch/v1/cronjobs" => {
+                json!({ "items": [] })
+            }
+            _ => return (StatusCode::NOT_FOUND, axum::Json(json!({}))),
+        };
+        (StatusCode::OK, axum::Json(body))
+    }
+
+    let Some((app, pool)) = setup().await else {
+        return;
+    };
+    let (_, org) = register_and_org(&app).await;
+    let org: Uuid = org.parse().unwrap();
+    let account: Uuid = sqlx::query_scalar(
+        "INSERT INTO cloud_accounts (organization_id, name, provider, credentials_enc) VALUES ($1,'Topology','kubernetes','fixture') RETURNING id",
+    )
+    .bind(org)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let rescheduled = Arc::new(AtomicBool::new(false));
+    let mock = axum::Router::new()
+        .fallback(get(cluster_api))
+        .with_state(rescheduled.clone());
+    let socket = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}", socket.local_addr().unwrap());
+    let server = tokio::spawn(async move { axum::serve(socket, mock).await.unwrap() });
+    let adapter = KubernetesAdapter::from_credentials(
+        &json!({"server": url, "token": "fixture"}),
+        &json!({}),
+    )
+    .unwrap();
+
+    let relationships = r#"SELECT src.name, k.name, dst.name FROM ci_instance_associations e
+        JOIN cis src ON src.id = e.src_ci_id JOIN cis dst ON dst.id = e.dst_ci_id
+        JOIN ci_object_associations o ON o.id = e.object_association_id
+        JOIN ci_association_kinds k ON k.id = o.association_kind_id
+        WHERE e.organization_id = $1"#;
+    for node in ["node-a", "node-b"] {
+        sync_cluster(&pool, org, account, &adapter, "acceptance", &json!({}))
+            .await
+            .unwrap();
+        let edges: Vec<(String, String, String)> = sqlx::query_as(relationships)
+            .bind(org)
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+        assert_eq!(edges.len(), 8);
+        for (src, kind, dst) in [
+            ("acceptance", "contains", "empty"),
+            ("web", "contains", "web-pod"),
+            ("agent", "contains", "agent-pod"),
+            ("web-pod", "run_on", node),
+            ("agent-pod", "run_on", "node-b"),
+        ] {
+            assert!(
+                edges
+                    .iter()
+                    .any(|edge| (edge.0.as_str(), edge.1.as_str(), edge.2.as_str())
+                        == (src, kind, dst)),
+                "missing {src} {kind} {dst}"
+            );
+        }
+        rescheduled.store(true, Ordering::Relaxed);
+    }
+    server.abort();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

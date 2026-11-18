@@ -117,7 +117,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: e2e/package-lock.json
 
@@ -125,7 +125,7 @@ jobs:
         working-directory: e2e
         run: |
           npm ci
-          npx playwright install chromium --with-deps
+          npx playwright install chromium webkit --with-deps
 
       - name: Start application stack
         run: |
@@ -166,7 +166,7 @@ jobs:
           E2E_API_URL: http://localhost:8080
           E2E_ADMIN_EMAIL: admin@acme.com
           E2E_ADMIN_PASS: Password123!
-        run: npx playwright test --grep @smoke --project=chromium
+        run: npx playwright test --grep @smoke --project=chromium --project=mobile-webkit
 
       - name: Upload smoke report
         uses: actions/upload-artifact@v7
@@ -225,7 +225,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: e2e/package-lock.json
 

@@ -13,7 +13,7 @@ export class DashboardPage extends BasePage {
   constructor(page: Page) {
     super(page);
     this.totalCostCard = page.locator('main').getByText('Total Cost').first();
-    this.resourcesCard = page.locator('main').getByText('Resources').first();
+    this.resourcesCard = page.getByRole('button', { name: /^Billed Resources/ });
     this.recommendationsCard = page.locator('main').getByText('Recommendation').first();
     this.poolsCard = page.locator('main').getByText('Pool').first();
     this.costTrendChart = page.locator('main svg').first();

@@ -59,7 +59,10 @@ describe('CopilotPanel', () => {
     )
     renderPanel()
     openPanel()
-    expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true')
+    const dialog = screen.getByRole('dialog', { name: 'Copilot' })
+    expect(dialog.tagName).toBe('DIALOG')
+    expect(dialog).toHaveAttribute('open')
+    expect(dialog).toHaveAccessibleName('Copilot')
   })
 
   it('Cmd/Ctrl+I toggles the panel', () => {

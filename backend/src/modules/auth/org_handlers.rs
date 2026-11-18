@@ -726,54 +726,102 @@ pub async fn accept_invite(
     let user_id = claims.user_id()?;
 
     let token_hash = auth_token_hash(&req.token);
-    let row = sqlx::query(
-        r#"SELECT id, organization_id, role_name FROM invites
-           WHERE token_hash = $1 AND status = 'pending' AND expires_at > NOW()"#,
+    let mut tx = state.db.begin().await?;
+
+    // Serialize redemption with other redeemers, re-issuing, and revocation.
+    // At READ COMMITTED, a waiter rechecks pending/expiry after the lock holder
+    // commits, so a consumed or revoked token cannot be used a second time.
+    let invite = sqlx::query(
+        r#"SELECT i.id, i.organization_id, i.email, i.role_name
+           FROM invites i
+           JOIN organizations o ON o.id = i.organization_id
+           WHERE i.token_hash = $1 AND i.status = 'pending'
+             AND i.expires_at > NOW() AND o.deleted_at IS NULL
+           FOR UPDATE OF i"#,
     )
     .bind(&token_hash)
-    .fetch_optional(&state.db)
+    .fetch_optional(tx.as_mut())
     .await?
     .ok_or_else(|| AppError::Validation("Invite token is invalid or expired".into()))?;
 
-    let invite_id: Uuid = row.get("id");
-    let org_id: Uuid = row.get("organization_id");
-    let role_name: String = row.get("role_name");
-
-    // Join the org.
-    sqlx::query(
-        "INSERT INTO organization_members (id, organization_id, user_id, joined_at)
-         VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING",
+    // Use the current account record, not the email cached in a JWT. Holding
+    // this row prevents an email/account-state change during redemption.
+    let email = sqlx::query_scalar::<_, String>(
+        "SELECT email FROM users WHERE id = $1 AND is_active = true AND deleted_at IS NULL FOR SHARE",
     )
-    .bind(Uuid::new_v4())
-    .bind(org_id)
     .bind(user_id)
-    .execute(&state.db)
-    .await?;
-
-    // Assign the invited role.
-    if let Ok(Some(role)) =
-        sqlx::query("SELECT id FROM roles WHERE organization_id = $1 AND name = $2")
-            .bind(org_id)
-            .bind(&role_name)
-            .fetch_optional(&state.db)
-            .await
-    {
-        let role_id: Uuid = role.get("id");
-        let _ = sqlx::query(
-            "INSERT INTO user_roles (user_id, role_id, organization_id, assigned_at)
-             VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING",
-        )
-        .bind(user_id)
-        .bind(role_id)
-        .bind(org_id)
-        .execute(&state.db)
-        .await;
+    .fetch_optional(tx.as_mut())
+    .await?
+    .ok_or_else(|| AppError::Unauthorized("Account is not active".into()))?;
+    let invited_email: String = invite.get("email");
+    if !email.trim().eq_ignore_ascii_case(invited_email.trim()) {
+        return Err(AppError::Forbidden(
+            "This invitation belongs to a different email address".into(),
+        ));
     }
 
-    sqlx::query("UPDATE invites SET status = 'accepted' WHERE id = $1")
-        .bind(invite_id)
-        .execute(&state.db)
+    let invite_id: Uuid = invite.get("id");
+    let org_id: Uuid = invite.get("organization_id");
+    let role_name: String = invite.get("role_name");
+    let role_id = sqlx::query_scalar::<_, Uuid>(
+        "SELECT id FROM roles WHERE organization_id = $1 AND lower(name) = lower($2) FOR KEY SHARE",
+    )
+    .bind(org_id)
+    .bind(role_name.trim())
+    .fetch_optional(tx.as_mut())
+    .await?
+    .ok_or_else(|| {
+        AppError::Validation("Invited role no longer exists in this organization".into())
+    })?;
+
+    let membership = sqlx::query_scalar::<_, Uuid>(
+        "INSERT INTO organization_members (organization_id, user_id)
+         VALUES ($1, $2) ON CONFLICT (organization_id, user_id) DO NOTHING RETURNING id",
+    )
+    .bind(org_id)
+    .bind(user_id)
+    .fetch_optional(tx.as_mut())
+    .await?;
+    if membership.is_none() {
+        // An old invite must not overwrite the current role of an existing
+        // member. Role changes have their own authorized management endpoint.
+        return Err(AppError::Conflict(
+            "You are already a member of this organization".into(),
+        ));
+    }
+
+    // A previously removed member may still have role rows. A fresh invitation
+    // grants exactly its role, never resurrects that user's previous privileges.
+    sqlx::query("DELETE FROM user_roles WHERE user_id = $1 AND organization_id = $2")
+        .bind(user_id)
+        .bind(org_id)
+        .execute(tx.as_mut())
         .await?;
+    sqlx::query(
+        "INSERT INTO user_roles (user_id, role_id, organization_id, assigned_at)
+         VALUES ($1, $2, $3, NOW())",
+    )
+    .bind(user_id)
+    .bind(role_id)
+    .bind(org_id)
+    .execute(tx.as_mut())
+    .await?;
+
+    // NOW() is fixed at transaction start. Recheck with the database wall clock
+    // so waiting for a lock cannot extend the validity of an expiring token.
+    let consumed = sqlx::query(
+        "UPDATE invites SET status = 'accepted'
+         WHERE id = $1 AND status = 'pending' AND expires_at > clock_timestamp()",
+    )
+    .bind(invite_id)
+    .execute(tx.as_mut())
+    .await?;
+    if consumed.rows_affected() != 1 {
+        return Err(AppError::Validation(
+            "Invite token is invalid or expired".into(),
+        ));
+    }
+    tx.commit().await?;
 
     Ok(Json(
         json!({ "data": { "organization_id": org_id, "message": "Invite accepted" } }),

@@ -1,3 +1,6 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
+import { chartColors, chartAxis, chartGrid } from '../lib/chartTheme'
+import { useMoneyFormatter } from '../lib/format'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
@@ -27,11 +30,11 @@ interface Anomaly {
   deviation_pct: number
 }
 
-function fmt(v: number) { return `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }
 
 const TYPES = ['anomaly', 'resource_count', 'total_expense']
 
 export default function AnomalyDetection() {
+  const fmt = useMoneyFormatter()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id ?? ''
   const qc = useQueryClient()
@@ -74,7 +77,7 @@ export default function AnomalyDetection() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="page-header">
         <div>
           <h1 className="page-title">{t('anomalyDetection.title')}</h1>
           <p className="text-sm text-secondary mt-1">{t('anomalyDetection.subtitle')}</p>
@@ -89,7 +92,7 @@ export default function AnomalyDetection() {
           </button>
           <button
             onClick={() => setShowCreate(true)}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg transition-colors"
+            className="btn-primary"
           >
             {t('anomalyDetection.addPolicy')}
           </button>
@@ -100,30 +103,28 @@ export default function AnomalyDetection() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('anomalyDetection.totalAnomalies')}</p>
-          <p className="text-2xl font-bold text-warning mt-1">{(anomalies ?? []).length}</p>
+          <p className="text-2xl font-semibold text-warning mt-1">{(anomalies ?? []).length}</p>
           <p className="text-xs text-muted mt-1">{t('anomalyDetection.thisPeriod')}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('anomalyDetection.costImpact')}</p>
-          <p className="text-2xl font-bold text-danger mt-1">{fmt(totalAnomalyCost)}</p>
+          <p className="text-2xl font-semibold text-danger mt-1">{fmt(totalAnomalyCost)}</p>
           <p className="text-xs text-muted mt-1">{t('anomalyDetection.aboveBaseline')}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('anomalyDetection.activePolicies')}</p>
-          <p className="text-2xl font-bold text-accent mt-1">{(constraints ?? []).filter(c => c.is_active).length}</p>
+          <p className="text-2xl font-semibold text-accent mt-1">{(constraints ?? []).filter(c => c.is_active).length}</p>
           <p className="text-xs text-muted mt-1">{t('anomalyDetection.ofTotal', { count: (constraints ?? []).length })}</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-strong">
+      <div className="page-tabs ">
         {(['violations', 'policies'] as const).map(tab => (
-          <button
+          <button aria-pressed={activeTab === tab}
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-              activeTab === tab ? 'border-accent text-primary' : 'border-transparent text-secondary hover:text-primary'
-            }`}
+            className="page-tab"
           >
             {tab === 'violations' ? t('anomalyDetection.tabAnomalies', { count: (anomalies ?? []).length }) : t('anomalyDetection.tabPolicies', { count: (constraints ?? []).length })}
           </button>
@@ -138,12 +139,12 @@ export default function AnomalyDetection() {
               <p className="text-sm font-semibold text-primary mb-3">{t('anomalyDetection.topAnomaliesByDeviation')}</p>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={topAnomalies.map(a => ({ name: (a.resource_name ?? a.cloud_resource_id).slice(0, 16), deviation: Math.round(a.deviation_pct) }))}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
-                  <YAxis tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} unit="%" />
+                  <CartesianGrid {...chartGrid}  vertical={false} />
+                  <XAxis {...chartAxis} dataKey="name" tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
+                  <YAxis {...chartAxis} tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} unit="%" />
                   <Tooltip formatter={(v: number) => `${v}%`} />
-                  <Bar dataKey="deviation" radius={[4, 4, 0, 0]}>
-                    {topAnomalies.map((_, i) => <Cell key={i} fill={i < 3 ? '#ef4444' : '#f59e0b'} />)}
+                  <Bar isAnimationActive={false} maxBarSize={32} dataKey="deviation" radius={[4, 4, 0, 0]}>
+                    {topAnomalies.map((_, i) => <Cell key={i} fill={i < 3 ? chartColors.danger : chartColors.orange} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -152,7 +153,7 @@ export default function AnomalyDetection() {
 
           {/* Anomalies table */}
           <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-            <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-strong">
                   {['anomalyDetection.colResource', 'common.type', 'anomalyDetection.colDate', 'anomalyDetection.colCost', 'anomalyDetection.colBaseline', 'anomalyDetection.colDeviation', 'anomalyDetection.colZScore'].map(h => (
@@ -191,7 +192,7 @@ export default function AnomalyDetection() {
 
       {activeTab === 'policies' && (
         <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead>
               <tr className="border-b border-strong">
                 {['anomalyDetection.colPolicyName', 'common.type', 'anomalyDetection.colLimit', 'common.status', 'anomalyDetection.colLastTriggered', 'common.actions'].map(h => (
@@ -227,9 +228,9 @@ export default function AnomalyDetection() {
 
       {/* Create modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setShowCreate(false)} />
-          <div className="relative bg-surface rounded-xl border border-strong p-6 w-full max-w-md space-y-4">
+        <NativeDialog className="items-center justify-center p-4" label={t('anomalyDetection.newPolicy')} onClose={() => setShowCreate(false)}>
+
+          <div className="dialog-panel relative p-6 w-full max-w-md space-y-4">
             <h3 className="text-lg font-semibold text-primary">{t('anomalyDetection.newPolicy')}</h3>
             <div className="space-y-3">
               <div>
@@ -251,17 +252,17 @@ export default function AnomalyDetection() {
               </div>
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowCreate(false)} className="flex-1 px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg">{t('common.cancel')}</button>
+              <button onClick={() => setShowCreate(false)} className="btn-secondary flex-1">{t('common.cancel')}</button>
               <button
                 onClick={() => createConstraint.mutate({ name: form.name, constraint_type: form.constraint_type, limit_value: form.limit_value ? parseFloat(form.limit_value) : null })}
                 disabled={!form.name || createConstraint.isPending}
-                className="flex-1 px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg disabled:opacity-50"
+                className="btn-primary flex-1"
               >
                 {t('anomalyDetection.create')}
               </button>
             </div>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

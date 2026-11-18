@@ -1,9 +1,12 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
+import { fmtMoney } from '../lib/format'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api from '../lib/api'
 import { useOrgStore } from '../store/orgStore'
 import { Modal } from '../components/shared/Modal'
+import { CiPicker } from '../components/shared/CiPicker'
 
 interface Service {
   id: string
@@ -70,27 +73,16 @@ function ServiceDetailPanel({
     },
   })
 
-  const { data: costs } = useQuery<{ total_monthly_cost?: number }>({
+  const { data: costs } = useQuery<{ total_cost: number; currency: string }>({
     queryKey: ['service-costs', orgId, service.id],
     enabled: !!orgId,
     queryFn: async () => {
-      const { data: res } = await api.get<{ data: { total_monthly_cost?: number } }>(
+      const { data: res } = await api.get<{ data: { total_cost: number; currency: string } }>(
         `/orgs/${orgId}/services/${service.id}/costs`
       )
-      return res.data ?? {}
+      return res.data
     },
     retry: false,
-  })
-
-  const { data: allCIs = [] } = useQuery<{ id: string; name: string; display_name?: string }[]>({
-    queryKey: ['cmdb-ids', orgId],
-    enabled: !!orgId,
-    queryFn: async () => {
-      const { data: res } = await api.get<{ data: { id: string; name: string; display_name?: string }[] }>(
-        `/orgs/${orgId}/cis`
-      )
-      return res.data ?? []
-    },
   })
 
   const addCIMutation = useMutation({
@@ -118,20 +110,17 @@ function ServiceDetailPanel({
     },
   })
 
-  const linkedCiIds = new Set(cis.map(c => c.ci_id))
-  const availableCIs = allCIs.filter(c => !linkedCiIds.has(c.id))
-
   return (
-    <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} aria-hidden="true" />
-      <div className="fixed right-0 top-0 h-full w-[480px] bg-surface border-l border-edge z-50 overflow-y-auto">
+    <NativeDialog className="justify-end" label={service.display_name || service.name} onClose={onClose}>
+
+      <div className="drawer-panel max-w-[480px]">
         {/* Header */}
         <div className="flex items-start justify-between p-5 border-b border-edge sticky top-0 bg-surface">
           <div>
             <h2 className="text-lg font-semibold text-primary">{service.display_name || service.name}</h2>
             <p className="text-xs text-muted mt-0.5">{service.name}</p>
           </div>
-          <button onClick={onClose} className="text-secondary hover:text-primary text-xl leading-none mt-0.5">✕</button>
+          <button onClick={onClose} aria-label={t('common.close')} className="icon-button">✕</button>
         </div>
 
         <div className="p-5 space-y-6">
@@ -160,11 +149,11 @@ function ServiceDetailPanel({
           </section>
 
           {/* Cost summary */}
-          {costs?.total_monthly_cost != null && (
+          {costs?.total_cost != null && (
             <section>
-              <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">{t('services.monthlyCost')}</h3>
-              <p className="text-2xl font-bold text-primary">
-                ${costs.total_monthly_cost.toFixed(2)}
+              <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">{t('services.lastThirtyDaysCost')}</h3>
+              <p className="text-2xl font-semibold text-primary">
+                {fmtMoney(costs.total_cost, costs.currency)}
               </p>
             </section>
           )}
@@ -176,39 +165,44 @@ function ServiceDetailPanel({
             </h3>
 
             {/* Add CI form */}
-            <div className="bg-subtle/70 rounded-lg p-3 mb-3 space-y-2">
-              <select
+            <form
+              className="bg-subtle/70 rounded-lg p-3 mb-3 space-y-2"
+              onSubmit={event => {
+                event.preventDefault()
+                if (addCiId && !addCIMutation.isPending) addCIMutation.mutate()
+              }}
+            >
+              {orgId && <CiPicker
+                orgId={orgId}
+                excludeIds={cis.map(c => c.ci_id)}
                 value={addCiId}
-                onChange={e => setAddCiId(e.target.value)}
-                className="w-full bg-emphasis text-primary text-xs rounded px-2 py-1.5 border border-strong focus:outline-none focus:border-accent"
-              >
-                <option value="">{t('services.selectCiPlaceholder')}</option>
-                {availableCIs.map(c => (
-                  <option key={c.id} value={c.id}>{c.display_name || c.name}</option>
-                ))}
-              </select>
+                onChange={setAddCiId}
+                placeholder={t('services.selectCiPlaceholder')}
+              />}
               <input
+                name="serviceCiRole"
+                aria-label={t('services.roleOptional')}
                 type="text"
                 placeholder={t('services.roleOptional')}
                 value={addRole}
                 onChange={e => setAddRole(e.target.value)}
                 className="w-full bg-emphasis text-primary text-xs rounded px-2 py-1.5 border border-strong focus:outline-none focus:border-accent placeholder-muted"
               />
-              {addError && <p className="text-xs text-danger">{addError}</p>}
+              {addError && <p role="alert" className="text-xs text-danger">{addError}</p>}
               <button
-                onClick={() => addCIMutation.mutate()}
-                disabled={!addCiId || addCIMutation.isPending}
-                className="w-full py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent text-xs rounded transition-colors"
+                type="submit"
+                disabled={addCIMutation.isPending}
+                className="btn-primary w-full"
               >
                 {addCIMutation.isPending ? t('services.adding') : t('services.addCi')}
               </button>
-            </div>
+            </form>
 
             {cis.length === 0 ? (
               <p className="text-muted text-sm">{t('services.noCisLinked')}</p>
             ) : (
               <div className="bg-subtle/50 rounded-lg overflow-hidden">
-                <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                   <thead>
                     <tr className="text-muted text-xs border-b border-strong">
                       <th className="px-3 py-2 text-left">{t('services.colCi')}</th>
@@ -240,7 +234,7 @@ function ServiceDetailPanel({
           </section>
         </div>
       </div>
-    </>
+    </NativeDialog>
   )
 }
 
@@ -300,16 +294,16 @@ export default function Services() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="page-header">
         <div>
           <h1 className="page-title">{t('services.title')}</h1>
           <p className="text-sm text-secondary mt-1">{t('services.subtitle')}</p>
         </div>
         <button
           onClick={() => setShowForm(v => !v)}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg transition-colors"
+          className="btn-primary"
         >
           {showForm ? t('common.cancel') : t('services.newService')}
         </button>
@@ -383,7 +377,7 @@ export default function Services() {
             <button
               type="submit"
               disabled={createMutation.isPending}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm rounded-lg transition-colors"
+              className="btn-primary"
             >
               {createMutation.isPending ? t('services.creating') : t('services.createService')}
             </button>
@@ -402,7 +396,7 @@ export default function Services() {
         </div>
       ) : (
         <div className="bg-subtle rounded-xl overflow-hidden">
-          <div className="table-scroll" tabIndex={0}><table className="w-full">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full">
             <thead>
               <tr className="text-secondary text-xs font-medium uppercase tracking-wider border-b border-strong">
                 <th className="px-4 py-3 text-left">{t('services.colService')}</th>
@@ -530,7 +524,7 @@ export default function Services() {
               <button
                 type="submit"
                 disabled={updateMutation.isPending}
-                className="px-4 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm rounded-lg transition-colors"
+                className="btn-primary"
               >
                 {updateMutation.isPending ? t('services.saving') : t('common.save')}
               </button>

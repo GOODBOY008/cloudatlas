@@ -1,63 +1,6 @@
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import {
-  AlertTriangle,
-  CircleHelp,
-  Activity,
-  ChevronDown,
-  ChevronRight,
-  Check,
-  Search,
-  Sun,
-  Moon,
-  Menu,
-  X,
-  Archive,
-  ArrowLeftRight,
-  BarChart3,
-  Bell,
-  Boxes,
-  Building2,
-  BookMarked,
-  ClipboardList,
-  Clock,
-  Cloud,
-  Container,
-  Database,
-  DollarSign,
-  Download,
-  FileSpreadsheet,
-  FolderTree,
-  Globe,
-  History,
-  LayoutDashboard,
-  Layers,
-  Lightbulb,
-  Link,
-  ListChecks,
-  LogOut,
-  Map,
-  Network,
-  Puzzle,
-  RadioTower,
-  RefreshCw,
-  Scale,
-  Server,
-  Settings,
-  ShieldCheck,
-  SlidersHorizontal,
-  Sparkles,
-  Tags,
-  Target,
-  TrafficCone,
-  Type,
-  UploadCloud,
-  Wallet,
-  Webhook,
-  Wind,
-  Zap,
-  type LucideIcon,
-} from 'lucide-react'
+import { CircleHelp, ChevronDown, ChevronRight, Check, Search, Sun, Moon, Menu, X, LogOut, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import CopilotPanel from './CopilotPanel'
 import CopilotFab from './copilot/CopilotFab'
@@ -67,117 +10,16 @@ import GlobalSearch from './GlobalSearch'
 import { setOrgCurrency, useOrgCurrency } from '../lib/format'
 import { auth } from '../lib/auth'
 import api from '../lib/api'
-import { setStoredLanguage, syncHtmlLang } from '../i18n'
+import { changeAppLanguage, WORKSPACE_NAMESPACE } from '../i18n'
 import { useOrgStore } from '../store/orgStore'
 import { useCopilotStore } from '../store/copilotStore'
 import { useThemeStore } from '../store/themeStore'
 import Brand from './Brand'
 import { helpForPath } from '../lib/help'
 import { useDialogFocus } from '../lib/hooks/useDialogFocus'
+import { navigationSections as navSections, routeForPath } from '../app/routeCatalog'
+import ErrorBoundary from './ErrorBoundary'
 import type { Organization } from '../types'
-
-type NavItem = { to: string; labelKey: string; icon: LucideIcon }
-
-const overviewNavItems: NavItem[] = [
-  { to: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
-  { to: '/data-flow', labelKey: 'nav.dataFlow', icon: Activity },
-  { to: '/recommendations', labelKey: 'nav.recommendations', icon: Lightbulb },
-  { to: '/checklist', labelKey: 'nav.checklist', icon: ListChecks },
-  { to: '/ai-center', labelKey: 'nav.aiCenter', icon: Sparkles },
-]
-
-const costManagementNavItems: NavItem[] = [
-  { to: '/expenses', labelKey: 'nav.expenses', icon: DollarSign },
-  { to: '/cost-map', labelKey: 'nav.costMap', icon: Map },
-  { to: '/showback', labelKey: 'nav.showback', icon: ArrowLeftRight },
-  { to: '/quotas-budgets', labelKey: 'nav.budgetsQuotas', icon: Wallet },
-  { to: '/cost-comparison', labelKey: 'nav.costComparison', icon: Scale },
-  { to: '/s3-duplicates', labelKey: 'nav.s3Duplicates', icon: Database },
-  { to: '/bi-export', labelKey: 'nav.biExport', icon: FileSpreadsheet },
-]
-
-const resourceManagementNavItems: NavItem[] = [
-  { to: '/resources', labelKey: 'nav.resources', icon: Boxes },
-  { to: '/pools', labelKey: 'nav.pools', icon: Layers },
-  {
-    to: '/shared-environments',
-    labelKey: 'nav.sharedEnvironments',
-    icon: Globe,
-  },
-  {
-    to: '/resource-lifecycle',
-    labelKey: 'nav.resourceLifecycle',
-    icon: RefreshCw,
-  },
-  { to: '/k8s-rightsizing', labelKey: 'nav.k8sRightsizing', icon: Container },
-  { to: '/archive', labelKey: 'nav.archive', icon: Archive },
-]
-
-const assetInventoryNavItems: NavItem[] = [
-  { to: '/cmdb', labelKey: 'nav.cmdb', icon: Server },
-  { to: '/services', labelKey: 'nav.services', icon: Puzzle },
-  { to: '/dynamic-groups', labelKey: 'nav.dynamicGroups', icon: Target },
-  { to: '/ci-types', labelKey: 'nav.ciTypes', icon: Type },
-  {
-    to: '/ci-classifications',
-    labelKey: 'nav.classifications',
-    icon: FolderTree,
-  },
-  { to: '/association-kinds', labelKey: 'nav.associations', icon: Link },
-  { to: '/model-topology', labelKey: 'nav.modelTopology', icon: Network },
-  {
-    to: '/service-templates',
-    labelKey: 'nav.serviceTemplates',
-    icon: ClipboardList,
-  },
-  { to: '/ci-topology', labelKey: 'nav.ciTopology', icon: Network },
-  { to: '/field-templates', labelKey: 'nav.fieldTemplates', icon: Layers },
-  { to: '/ci-import', labelKey: 'nav.ciImport', icon: Download },
-  { to: '/cmdb-stats', labelKey: 'nav.inventoryStats', icon: BarChart3 },
-  { to: '/external-cmdb', labelKey: 'nav.externalCmdb', icon: Network },
-]
-
-const governanceNavItems: NavItem[] = [
-  { to: '/compliance', labelKey: 'nav.compliance', icon: ShieldCheck },
-  { to: '/tagging-coverage', labelKey: 'nav.taggingCoverage', icon: Tags },
-  {
-    to: '/tagging-policies',
-    labelKey: 'nav.taggingPolicies',
-    icon: BookMarked,
-  },
-  { to: '/constraints', labelKey: 'nav.constraints', icon: TrafficCone },
-  { to: '/drift', labelKey: 'nav.drift', icon: Wind },
-  {
-    to: '/anomaly-detection',
-    labelKey: 'nav.anomalyDetection',
-    icon: AlertTriangle,
-  },
-  { to: '/schedules', labelKey: 'nav.powerSchedules', icon: Clock },
-  { to: '/ci-apply-rules', labelKey: 'nav.applyRules', icon: Zap },
-]
-
-const administrationNavItems: NavItem[] = [
-  { to: '/cloud-accounts', labelKey: 'nav.cloudAccounts', icon: Cloud },
-  { to: '/billing-import', labelKey: 'nav.billingImport', icon: UploadCloud },
-  { to: '/cost-centers', labelKey: 'nav.costCenters', icon: Building2 },
-  { to: '/alerts', labelKey: 'nav.alerts', icon: Bell },
-  { to: '/alert-events', labelKey: 'nav.alertEvents', icon: History },
-  { to: '/events', labelKey: 'nav.events', icon: RadioTower },
-  { to: '/webhooks', labelKey: 'nav.webhooks', icon: Webhook },
-  { to: '/integrations', labelKey: 'nav.integrations', icon: Puzzle },
-  { to: '/rules', labelKey: 'nav.rules', icon: SlidersHorizontal },
-  { to: '/settings', labelKey: 'nav.settings', icon: Settings },
-  { to: '/help', labelKey: 'nav.help', icon: CircleHelp },
-]
-
-const navSections = [
-  { key: 'nav.section.overview', items: overviewNavItems },
-  { key: 'nav.section.costManagement', items: costManagementNavItems },
-  { key: 'nav.section.resourceManagement', items: resourceManagementNavItems },
-  { key: 'nav.section.assetInventory', items: assetInventoryNavItems },
-  { key: 'nav.section.governance', items: governanceNavItems },
-  { key: 'nav.section.administration', items: administrationNavItems },
-]
 
 function NavSection({
   section,
@@ -189,7 +31,7 @@ function NavSection({
   const { t } = useTranslation()
   const { pathname } = useLocation()
   const active = section.items.some(
-    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
+    (item) => pathname === item.path || pathname.startsWith(`${item.path}/`),
   )
   const [expanded, setExpanded] = useState(
     active ||
@@ -200,7 +42,7 @@ function NavSection({
     if (active) setExpanded(true)
   }, [active])
   return (
-    <div>
+    <div className="nav-section">
       <button
         type="button"
         className="nav-heading"
@@ -214,17 +56,17 @@ function NavSection({
         />
       </button>
       {expanded && (
-        <div className="space-y-0.5">
-          {section.items.map(({ to, labelKey, icon: Icon }) => (
+        <div className="nav-items">
+          {section.items.map(({ path, labelKey, icon: Icon }) => (
             <NavLink
-              key={to}
-              to={to}
+              key={path}
+              to={path}
               onClick={onNavigate}
               className={({ isActive }) =>
                 `nav-link ${isActive ? 'active' : ''}`
               }
             >
-              <Icon size={17} />
+              <Icon size={16} />
               <span className="truncate">{t(labelKey)}</span>
             </NavLink>
           ))}
@@ -238,7 +80,10 @@ export default function Layout() {
   useOrgCurrency()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const { t, i18n } = useTranslation()
+  const { t, i18n } = useTranslation(['translation', WORKSPACE_NAMESPACE])
+  if (!i18n.languages.some(language => i18n.hasResourceBundle(language, WORKSPACE_NAMESPACE))) {
+    throw new Error('Workspace translations could not be loaded')
+  }
   const { organizations, currentOrg, setOrganizations, setCurrentOrg } =
     useOrgStore()
   const [orgMenuOpen, setOrgMenuOpen] = useState(false)
@@ -246,19 +91,15 @@ export default function Layout() {
   const toggleCopilot = useCopilotStore((s) => s.toggle)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+  const [logoutFailed, setLogoutFailed] = useState(false)
   const orgMenuRef = useRef<HTMLDivElement>(null)
   const mobileNavRef = useDialogFocus<HTMLElement>(mobileNavOpen, () =>
     setMobileNavOpen(false),
   )
   const mainRef = useRef<HTMLElement>(null)
-  const currentSection = navSections.find((section) =>
-    section.items.some(
-      (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
-    ),
-  )
-  const currentItem = currentSection?.items.find(
-    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
-  )
+  const currentItem = routeForPath(pathname)
+  const currentSection = navSections.find((section) => section.key === currentItem?.section)
 
   useEffect(() => {
     setMobileNavOpen(false)
@@ -293,50 +134,63 @@ export default function Layout() {
 
   function switchLanguage() {
     const next = i18n.language === 'zh' ? 'en' : 'zh'
-    i18n.changeLanguage(next)
-    setStoredLanguage(next)
-    syncHtmlLang(next)
+    void changeAppLanguage(next)
   }
 
   useEffect(() => {
+    let active = true
     api
       .get<{ data: Organization[] }>('/organizations')
       .then((res) => {
+        if (!active) return
         const orgs = res.data.data ?? []
         setOrganizations(orgs)
-        const selected = useOrgStore.getState().currentOrg
-        if (selected) loadOrgCurrency(selected.id)
       })
       .catch(() => {
         /* Some pages can be used without an organization. */
       })
+    return () => { active = false }
   }, [setOrganizations])
+
+  const workspaceId = currentOrg?.id
+  const workspaceCurrency = currentOrg?.settings?.currency
+  useLayoutEffect(() => {
+    setOrgCurrency(workspaceCurrency ?? 'USD')
+    if (workspaceCurrency) return
+    let active = true
+    const id = workspaceId
+    if (!id) return
+    api.get<{ data: { settings?: { currency?: string } } }>(`/organizations/${id}`)
+      .then((res) => {
+        if (active && useOrgStore.getState().currentOrg?.id === id)
+          setOrgCurrency(res.data.data.settings?.currency ?? 'USD')
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [workspaceId, workspaceCurrency])
 
   function switchOrg(org: Organization) {
     setCurrentOrg(org)
     setOrgMenuOpen(false)
-    loadOrgCurrency(org.id)
     navigate('/dashboard')
   }
 
-  function loadOrgCurrency(id: string) {
-    api
-      .get<{ data: { settings?: { currency?: string } } }>(
-        `/organizations/${id}`,
-      )
-      .then((res) => setOrgCurrency(res.data.data.settings?.currency ?? 'USD'))
-      .catch(() => {})
-  }
-
-  function handleLogout() {
-    auth.clearTokens()
-    navigate('/login')
+  async function handleLogout() {
+    setLogoutFailed(false)
+    setSigningOut(true)
+    try {
+      if (await auth.signOut()) navigate('/login', { replace: true })
+    } catch {
+      setLogoutFailed(true)
+    } finally {
+      setSigningOut(false)
+    }
   }
 
   const workspace = (
     <div ref={orgMenuRef} className="relative">
       <button
-        className="workspace-switch w-[calc(100%-2rem)]"
+        className="workspace-switch"
         disabled={organizations.length < 2}
         aria-label={t('design.switchWorkspace')}
         aria-expanded={orgMenuOpen}
@@ -378,7 +232,7 @@ export default function Layout() {
 
   const sidebarContents = (mobile: boolean) => (
     <>
-      <div className="flex h-[88px] shrink-0 items-center justify-between px-5">
+      <div className="sidebar-brand">
         <Brand />
         {mobile && (
           <button
@@ -393,7 +247,7 @@ export default function Layout() {
       {workspace}
       <nav
         aria-label={t('design.primaryNavigation')}
-        className="flex-1 overflow-y-auto px-4 pb-5 pt-1"
+        className="sidebar-navigation"
       >
         {navSections.map((section) => (
           <NavSection
@@ -403,30 +257,25 @@ export default function Layout() {
           />
         ))}
       </nav>
-      <div className="mx-4 mb-4 rounded-xl border border-edge bg-canvas p-3.5">
-        <div className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-primary">
-          <Sparkles size={14} className="text-accent" />
-          {t('design.copilotHeading')}
-        </div>
-        <p className="mb-3 text-[11px] leading-relaxed text-muted">
-          {t('design.copilotDescription')}
-        </p>
+      <div className="sidebar-assistant">
         <button
-          className="text-link"
+          className="nav-link w-full"
           onClick={() => {
             setMobileNavOpen(false)
             toggleCopilot()
           }}
         >
-          {t('design.openCopilot')}
-          <ChevronRight size={13} />
+          <Sparkles size={16} className="text-accent" />
+          <span className="flex-1 text-left">{t('design.copilotHeading')}</span>
+          <ChevronRight size={14} />
         </button>
       </div>
-      <div className="border-t border-edge px-4 py-3">
-        <button className="nav-link w-full" onClick={handleLogout}>
+      <div className="border-t border-edge px-3 py-2">
+        <button type="button" className="nav-link w-full" onClick={handleLogout} disabled={signingOut}>
           <LogOut size={16} />
           {t('common.logout')}
         </button>
+        {logoutFailed && <p role="alert" className="mt-2 text-xs text-danger">{t('common.logoutError')}</p>}
       </div>
     </>
   )
@@ -443,8 +292,11 @@ export default function Layout() {
         <header className="app-header">
           <div className="flex min-w-0 items-center gap-3">
             <button
-              onClick={() => setMobileNavOpen(true)}
-              aria-label="Menu"
+              onClick={(event) => {
+                event.currentTarget.focus()
+                setMobileNavOpen(true)
+              }}
+              aria-label={t('design.openNavigation')}
               aria-expanded={mobileNavOpen}
               className="icon-button lg:hidden"
             >
@@ -464,8 +316,11 @@ export default function Layout() {
           </div>
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <button
-              className="search-trigger !border-transparent !bg-transparent !px-2 md:!border-edge md:!bg-canvas md:!px-3"
-              onClick={() => setSearchOpen(true)}
+              className="search-trigger"
+              onClick={(event) => {
+                event.currentTarget.focus()
+                setSearchOpen(true)
+              }}
               aria-label={t('common.search')}
             >
               <Search size={16} />
@@ -528,10 +383,12 @@ export default function Layout() {
                 </div>
               }
             >
-              <Outlet />
+              <ErrorBoundary key={`${currentOrg?.id ?? 'none'}:${pathname}`} embedded>
+                <Outlet />
+              </ErrorBoundary>
             </Suspense>
           </div>
-          <footer className="mt-10 flex items-center justify-between border-t border-edge pt-5 text-[10px] text-muted">
+          <footer className="app-footer">
             <span>CloudAtlas</span>
             <span>{t('design.footer')}</span>
           </footer>

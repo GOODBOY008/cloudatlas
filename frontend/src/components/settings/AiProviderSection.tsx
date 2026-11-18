@@ -23,9 +23,9 @@ interface ProviderInfo {
 }
 
 const MODE_BADGE: Record<string, string> = {
-  org: 'bg-accent-soft bg-accent-soft/60 border-accent border-accent text-accent text-accent',
+  org: 'bg-accent-soft border-accent/25 text-accent',
   env: 'bg-subtle border-strong text-secondary',
-  local: 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400',
+  local: 'bg-warning/10 border-warning/25 text-warning',
 }
 
 /** Settings → AI Provider tab (spec 2026-08-14-ai-provider-config-ui §5.1). */
@@ -132,7 +132,7 @@ export default function AiProviderSection() {
       </div>
 
       {source === 'local' && (
-        <div className="rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+        <div className="rounded-lg border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-warning">
           {t('settings.aiProvider.localHint')}
         </div>
       )}
@@ -255,7 +255,7 @@ export default function AiProviderSection() {
             type="button"
             onClick={save}
             disabled={saving}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="btn-primary"
           >
             {t('settings.aiProvider.save')}
           </button>

@@ -166,7 +166,7 @@ pub async fn summary(
             "open":                     row.try_get::<i64, _>("open").unwrap_or(0),
             "dismissed":                row.try_get::<i64, _>("dismissed").unwrap_or(0),
             "total_potential_savings":  row.try_get::<f64, _>("total_savings").unwrap_or(0.0),
-            "currency": "USD"
+            "currency": crate::modules::billing::fx::org_currency(&state.db, org_id).await
         }
     })))
 }

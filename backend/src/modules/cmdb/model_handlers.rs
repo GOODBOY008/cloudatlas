@@ -670,7 +670,7 @@ pub async fn execute_ci_apply_rule(
 
     // Load the rule
     let rule_row = sqlx::query(
-        r#"SELECT ci_type_id, attributes, is_active
+        r#"SELECT ci_type_id, conditions, attributes, is_active
            FROM ci_apply_rules
            WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL"#,
     )
@@ -686,37 +686,44 @@ pub async fn execute_ci_apply_rule(
 
     let ci_type_id = rule_row.get::<Uuid, _>("ci_type_id");
     let attributes: Value = rule_row.get("attributes");
+    let conditions: Value = rule_row.get("conditions");
+    let conditions = conditions
+        .as_array()
+        .ok_or_else(|| AppError::Validation("Rule conditions must be an array".into()))?;
 
-    // T1: the rule's attribute values must satisfy the type's attribute
-    // definitions (type / enum / regex) before anything is applied.
     let attr_defs = super::validation::load_attr_defs(&state.db, ci_type_id).await?;
-    if let Err(errors) = super::validation::validate_meta(&attr_defs, &attributes) {
-        let msgs: Vec<Value> = errors.iter().map(|ve| ve.to_json()).collect();
-        return Err(crate::error::AppError::Structured(
-            axum::http::StatusCode::UNPROCESSABLE_ENTITY,
-            "ERR_VALIDATION".into(),
-            "CI apply rule attributes fail type validation".into(),
-            serde_json::json!({ "errors": msgs }),
-        ));
+    // A rule is a patch. Required fields outside the patch come from each CI.
+    if let Err(errors) =
+        super::validation::validate_meta_update(&attr_defs, &Value::Null, &attributes)
+    {
+        return Err(super::validation::validation_error(errors));
     }
 
-    // Load all active CIs of this type
-    let ci_rows = sqlx::query(
-        r#"SELECT id, meta FROM cis
-           WHERE organization_id = $1 AND ci_type_id = $2 AND deleted_at IS NULL
-             AND lifecycle_state NOT IN ('decommissioned', 'retired')"#,
+    let (ci_rows, _) = super::handlers::run_dynamic_group_sql(
+        &state.db,
+        org_id,
+        conditions,
+        Some(ci_type_id),
+        i64::MAX,
+        0,
     )
-    .bind(org_id)
-    .bind(ci_type_id)
-    .fetch_all(&state.db)
     .await?;
 
     let mut applied = 0usize;
     let mut skipped: Vec<Value> = Vec::new();
+    let mut matching_cis = 0usize;
 
     for ci_row in &ci_rows {
-        let ci_id = ci_row.get::<Uuid, _>("id");
-        let current_meta: Value = ci_row.get("meta");
+        if matches!(
+            ci_row["lifecycle_state"].as_str(),
+            Some("decommissioned" | "retired" | "terminated")
+        ) {
+            continue;
+        }
+        matching_cis += 1;
+        let ci_id = serde_json::from_value::<Uuid>(ci_row["id"].clone())
+            .map_err(|err| AppError::Internal(err.into()))?;
+        let current_meta = &ci_row["meta"];
 
         // T1: merged view (current meta overridden by rule attributes) must
         // still validate — e.g. a required attribute cannot be nulled out.
@@ -728,46 +735,73 @@ pub async fn execute_ci_apply_rule(
         }
         let merged_value = Value::Object(merged);
         if let Err(errors) =
-            super::validation::validate_meta_update(&attr_defs, &current_meta, &merged_value)
+            super::validation::validate_meta_update(&attr_defs, current_meta, &merged_value)
         {
             let msgs: Vec<String> = errors.iter().map(|ve| ve.message.clone()).collect();
             skipped.push(json!({ "ci_id": ci_id, "reason": msgs.join("; ") }));
             continue;
         }
 
-        // Merge attributes into meta using jsonb_strip_nulls + concat
+        if let Err(error) = super::validation::check_unique_constraints(
+            &state.db,
+            org_id,
+            ci_type_id,
+            &merged_value,
+            Some(ci_id),
+        )
+        .await
+        {
+            skipped.push(json!({ "ci_id": ci_id, "reason": error.to_string() }));
+            continue;
+        }
+
         let result = sqlx::query(
-            r#"UPDATE cis
-               SET meta = meta || $3
-               WHERE id = $1 AND organization_id = $2"#,
+            r#"WITH changed AS (
+                   UPDATE cis SET meta = $3, updated_at = NOW()
+                   WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+                       AND meta IS NOT DISTINCT FROM $4
+                       AND lifecycle_state NOT IN ('decommissioned', 'retired', 'terminated')
+                   RETURNING id
+               )
+               INSERT INTO ci_apply_rule_results (rule_id, ci_id)
+               SELECT $5, id FROM changed
+               ON CONFLICT (rule_id, ci_id) DO UPDATE SET applied_at = NOW()"#,
         )
         .bind(ci_id)
         .bind(org_id)
-        .bind(&attributes)
+        .bind(&merged_value)
+        .bind(current_meta)
+        .bind(rule_id)
         .execute(&state.db)
-        .await;
+        .await?;
 
-        if result.is_ok() {
-            // Record result
-            let _ = sqlx::query(
-                r#"INSERT INTO ci_apply_rule_results (rule_id, ci_id)
-                   VALUES ($1, $2)
-                   ON CONFLICT (rule_id, ci_id) DO UPDATE SET applied_at = NOW()"#,
-            )
-            .bind(rule_id)
-            .bind(ci_id)
-            .execute(&state.db)
-            .await;
-
-            applied += 1;
+        if result.rows_affected() == 0 {
+            skipped.push(json!({ "ci_id": ci_id, "reason": "CI changed during rule execution" }));
+            continue;
         }
+        super::handlers::write_audit_log(
+            &state.db,
+            ci_id,
+            org_id,
+            Some(user_id),
+            "update",
+            Some(&json!({
+                "rule_id": rule_id,
+                "update_fields": ["meta"],
+                "pre_data": { "meta": current_meta },
+                "cur_data": { "meta": merged_value },
+            })),
+            "user",
+        )
+        .await;
+        applied += 1;
     }
 
     Ok(Json(json!({
         "data": {
             "rule_id": rule_id,
             "ci_type_id": ci_type_id,
-            "total_cis": ci_rows.len(),
+            "total_cis": matching_cis,
             "applied": applied,
             "skipped": skipped,
         }

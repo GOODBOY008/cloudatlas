@@ -19,10 +19,10 @@ describe('CopilotFab', () => {
     expect(useCopilotStore.getState().open).toBe(true)
   })
 
-  it('hides when the panel is open', () => {
+  it('keeps the launcher mounted for focus restoration', () => {
     render(<CopilotFab />)
     act(() => useCopilotStore.getState().setOpen(true))
-    expect(screen.queryByRole('button', { name: 'Open Copilot' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Copilot' })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('label is localized in Chinese', async () => {

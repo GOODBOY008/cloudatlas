@@ -1,4 +1,6 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
+import { useMoneyFormatter } from '../lib/format'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../lib/api'
 import { useOrgStore } from '../store/orgStore'
@@ -136,6 +138,7 @@ function CostCenterRow({
 }
 
 export default function CostCenters() {
+  const fmt = useMoneyFormatter()
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { currentOrg } = useOrgStore()
@@ -264,18 +267,18 @@ export default function CostCenters() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="page-header">
         <div>
-          <h2 className="page-title">{t('costCenters.title')}</h2>
+          <h1 className="page-title">{t('costCenters.title')}</h1>
           {totalCost > 0 && (
             <p className="text-sm text-muted mt-0.5">
-              {t('costCenters.totalMtd', { amount: totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 }) })}
+              {t('costCenters.totalMtd', { amount: fmt(totalCost) })}
             </p>
           )}
         </div>
         <button
           onClick={() => openCreate()}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+          className="btn-primary"
         >
           {t('costCenters.newCostCenter')}
         </button>
@@ -311,8 +314,8 @@ export default function CostCenters() {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-surface rounded-xl p-6 w-full max-w-lg border border-edge shadow-xl">
+        <NativeDialog className="items-center justify-center p-4" label={editingId ? t('costCenters.editTitle') : t('costCenters.newTitle')} onClose={closeModal}>
+          <div className="dialog-panel p-6 w-full max-w-lg">
             <h3 className="text-base font-semibold text-primary mb-4">
               {editingId ? t('costCenters.editTitle') : t('costCenters.newTitle')}
             </h3>
@@ -387,14 +390,14 @@ export default function CostCenters() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary border border-strong rounded-lg transition-colors"
+                  className="btn-secondary"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm font-medium rounded-lg transition-colors"
+                  className="btn-primary"
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? t('costCenters.saving')
@@ -405,7 +408,7 @@ export default function CostCenters() {
               </div>
             </form>
           </div>
-        </div>
+        </NativeDialog>
       )}
 
       {/* Business capabilities (T17) */}
@@ -421,7 +424,7 @@ export default function CostCenters() {
               setCapError('')
               setShowCapModal(true)
             }}
-            className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-xs font-medium rounded-lg transition-colors"
+            className="btn-primary"
             data-testid="add-capability"
           >
             {t('costCenters.addCapability')}
@@ -430,7 +433,7 @@ export default function CostCenters() {
         {capabilities.length === 0 ? (
           <div className="px-5 py-6 text-center text-muted text-sm">{t('costCenters.noCapabilities')}</div>
         ) : (
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
             <thead className="border-b border-edge text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">{t('common.name')}</th>
@@ -471,12 +474,9 @@ export default function CostCenters() {
 
       {/* Capability modal */}
       {showCapModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setShowCapModal(false)}
-        >
+        <NativeDialog className="items-center justify-center p-4" label={t('costCenters.newCapability')} onClose={() => setShowCapModal(false)}>
           <div
-            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-md shadow-xl"
+            className="dialog-panel p-6 w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-primary mb-4">{t('costCenters.newCapability')}</h3>
@@ -535,14 +535,14 @@ export default function CostCenters() {
                 <button
                   type="submit"
                   disabled={createCapMutation.isPending}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {t('costCenters.createCapability')}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

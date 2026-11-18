@@ -84,11 +84,23 @@ export default function Settings() {
       }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['org-details', orgId] })
-      setOrgCurrency((res.data.data.settings as { currency?: string } | undefined)?.currency ?? orgForm.currency)
-      setOrgSaveMsg(t('settings.saved'))
-      if (currentOrg && res.data?.data?.name) {
-        setCurrentOrg({ ...currentOrg, name: res.data.data.name, slug: res.data.data.slug ?? currentOrg.slug })
+      const state = useOrgStore.getState()
+      if (!state.currentOrg || state.currentOrg.id !== orgId) return
+      const saved = res.data.data
+      const currency = (saved.settings as { currency?: string } | undefined)?.currency ?? orgForm.currency
+      const updated = {
+        ...state.currentOrg,
+        name: saved.name,
+        slug: saved.slug ?? state.currentOrg.slug,
+        settings: { ...state.currentOrg.settings, currency },
       }
+      setOrgCurrency(currency)
+      if (state.organizations.some(org => org.id === updated.id)) {
+        state.setOrganizations(state.organizations.map(org => org.id === updated.id ? updated : org))
+      } else {
+        setCurrentOrg(updated)
+      }
+      setOrgSaveMsg(t('settings.saved'))
       setTimeout(() => setOrgSaveMsg(null), 2500)
     },
     onError: () => setOrgSaveMsg(t('settings.updateFailed')),
@@ -141,11 +153,6 @@ export default function Settings() {
 
   const orgSection = (
     <div className="space-y-6">
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="page-title">{t('settings.title')}</h2>
-      </div>
-
       {/* Organization Info */}
       <div className="bg-surface rounded-xl border border-edge p-6">
         <h3 className="text-base font-semibold text-primary mb-4">{t('settings.organization')}</h3>
@@ -200,7 +207,7 @@ export default function Settings() {
             <button
               type="submit"
               disabled={updateOrgMutation.isPending || !orgForm.name.trim()}
-              className="bg-accent text-on-accent px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
+              className="btn-primary"
             >
               {updateOrgMutation.isPending ? t('common.loading') : t('settings.save')}
             </button>
@@ -238,7 +245,7 @@ export default function Settings() {
           <button
             type="submit"
             disabled={inviteMutation.isPending}
-            className="bg-accent text-on-accent px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
+            className="btn-primary"
           >
             {inviteMutation.isPending ? t('settings.inviting') : t('settings.invite')}
           </button>
@@ -261,7 +268,7 @@ export default function Settings() {
         ) : (
           <div className="divide-y divide-edge">
             {(members ?? []).map((m) => (
-              <div key={m.user_id} className="flex items-center justify-between py-3">
+              <div key={m.user_id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div>
                   <p className="text-sm font-medium text-primary">{m.display_name || m.email}</p>
                   <p className="text-xs text-muted">{m.email}</p>
@@ -298,21 +305,18 @@ export default function Settings() {
 
   return (
     <div>
-      <div className="flex gap-1 overflow-x-auto border-b border-edge mb-6">
+      <div className="page-header"><h1 className="page-title">{t('settings.title')}</h1></div>
+      <div className="page-tabs mb-6">
         {([
           ['org', t('settings.organization')],
           ['keys', t('settings.apiKeys')],
           ['security', t('settings.security')],
           ['aiProvider', t('settings.aiProvider')],
         ] as const).map(([key, label]) => (
-          <button
+          <button aria-pressed={activeTab === key}
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === key
-                ? 'border-accent text-primary'
-                : 'border-transparent text-muted hover:text-secondary'
-            }`}
+            className="page-tab"
           >
             {label}
           </button>
@@ -391,7 +395,7 @@ function FxRatesSection() {
         <p className="text-sm text-muted">{t('settings.fxNoRates')}</p>
       ) : (
         <div className="overflow-x-auto">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
             <thead className="border-b border-edge text-xs uppercase text-muted">
               <tr>
                 <th className="px-3 py-2 font-medium">{t('settings.fxFrom')}</th>
@@ -429,7 +433,7 @@ function FxRatesSection() {
           <button
             onClick={save}
             disabled={saving}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm font-medium rounded-lg transition-colors"
+            className="btn-primary"
           >
             {saving ? t('common.loading') : t('settings.fxSave')}
           </button>
@@ -498,7 +502,7 @@ function ApiKeysSection() {
         />
         <button
           onClick={createKey}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-sm font-medium transition-colors"
+          className="btn-primary"
         >
           {t('settings.createKey')}
         </button>
@@ -513,7 +517,7 @@ function ApiKeysSection() {
       {keys.length === 0 ? (
         <p className="text-sm text-muted">{t('settings.noKeys')}</p>
       ) : (
-        <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
           <thead className="border-b border-edge text-xs uppercase text-muted">
             <tr>
               <th className="px-3 py-2 font-medium">{t('settings.name')}</th>
@@ -611,7 +615,7 @@ function SecuritySection() {
           />
           <button
             onClick={enroll}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent rounded-lg text-sm font-medium transition-colors"
+            className="btn-primary"
           >
             {t('settings.enable2fa')}
           </button>

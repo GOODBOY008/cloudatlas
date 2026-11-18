@@ -10,6 +10,7 @@ This directory contains the documentation for CloudAtlas — a unified FinOps + 
 | [User Guide](user-guide.md) | Everyone | Page-by-page walkthrough of all 50+ pages: getting started, cost management, CMDB, governance, administration, troubleshooting |
 | [System Keyboard Shortcuts](user-guide.md#system-keyboard-shortcuts) | Everyone | macOS and Windows/Linux shortcuts for search, Copilot, overlay dismissal, focus navigation, and panel resizing |
 | [README](../README.md) | Everyone | Project overview, feature list, quick start, architecture summary |
+| [2026-11-04 Product & Architecture Review](product-architecture-review.md) | Contributors / Product | Current module map, verified defects and fixes, architecture boundaries, and follow-up priorities |
 | [Architecture Design](design.md) | Contributors | Full technical design: data model, modules, scheduler, API layout |
 | [FinOps + CMDB Intro](intro-finops-cmdb.md) | Everyone | Domain background: what FinOps and CMDB mean, and how CloudAtlas models them |
 

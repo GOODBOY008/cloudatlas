@@ -1,3 +1,4 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -94,13 +95,13 @@ export default function SharedEnvironments() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="page-header">
         <div>
           <h1 className="page-title">{t('sharedEnvironments.title')}</h1>
           <p className="text-sm text-secondary mt-1">{t('sharedEnvironments.subtitle')}</p>
         </div>
         <button onClick={() => setShowCreate(true)}
-          className="px-4 py-2 bg-accent text-on-accent rounded-lg text-sm font-medium hover:bg-accent-hover">
+          className="btn-primary">
           {t('sharedEnvironments.newEnvironment')}
         </button>
       </div>
@@ -109,15 +110,15 @@ export default function SharedEnvironments() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('sharedEnvironments.total')}</p>
-          <p className="text-2xl font-bold text-primary mt-1">{envs.length}</p>
+          <p className="text-2xl font-semibold text-primary mt-1">{envs.length}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('sharedEnvironments.available')}</p>
-          <p className="text-2xl font-bold text-success mt-1">{available}</p>
+          <p className="text-2xl font-semibold text-success mt-1">{available}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('sharedEnvironments.booked')}</p>
-          <p className="text-2xl font-bold text-warning mt-1">{booked}</p>
+          <p className="text-2xl font-semibold text-warning mt-1">{booked}</p>
         </div>
       </div>
 
@@ -154,7 +155,7 @@ export default function SharedEnvironments() {
               <div className="flex gap-2 mt-auto">
                 {env.status === 'available' && (
                   <button onClick={() => setBookingEnv(env)}
-                    className="flex-1 text-xs py-1.5 bg-accent hover:bg-accent-hover text-on-accent rounded-md font-medium">
+                    className="btn-primary flex-1">
                     {t('sharedEnvironments.book')}
                   </button>
                 )}
@@ -177,8 +178,8 @@ export default function SharedEnvironments() {
 
       {/* Create Environment Modal */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-surface rounded-2xl border border-strong p-6 w-full max-w-md space-y-4">
+        <NativeDialog className="items-center justify-center p-4" label={t('sharedEnvironments.newEnvironmentTitle')} onClose={() => setShowCreate(false)}>
+          <div className="dialog-panel p-6 w-full max-w-md space-y-4">
             <h2 className="text-lg font-bold text-primary">{t('sharedEnvironments.newEnvironmentTitle')}</h2>
             <div className="space-y-3">
               <div>
@@ -207,18 +208,18 @@ export default function SharedEnvironments() {
               </button>
               <button onClick={() => createEnv.mutate()}
                 disabled={createEnv.isPending || !form.name.trim()}
-                className="flex-1 py-2 text-sm bg-accent text-on-accent rounded-lg hover:bg-accent-hover disabled:opacity-50">
+                className="btn-primary flex-1">
                 {createEnv.isPending ? t('sharedEnvironments.creating') : t('sharedEnvironments.create')}
               </button>
             </div>
           </div>
-        </div>
+        </NativeDialog>
       )}
 
       {/* Book Environment Modal */}
       {bookingEnv && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-surface rounded-2xl border border-strong p-6 w-full max-w-md space-y-4">
+        <NativeDialog className="items-center justify-center p-4" label={t('sharedEnvironments.bookTitle', { name: bookingEnv.name })} onClose={() => setBookingEnv(null)}>
+          <div className="dialog-panel p-6 w-full max-w-md space-y-4">
             <h2 className="text-lg font-bold text-primary">{t('sharedEnvironments.bookTitle', { name: bookingEnv.name })}</h2>
             <div className="space-y-3">
               <div>
@@ -247,12 +248,12 @@ export default function SharedEnvironments() {
               </button>
               <button onClick={() => bookEnv.mutate(bookingEnv.id)}
                 disabled={bookEnv.isPending || !bookForm.start_time || !bookForm.end_time}
-                className="flex-1 py-2 text-sm bg-accent text-on-accent rounded-lg hover:bg-accent-hover disabled:opacity-50">
+                className="btn-primary flex-1">
                 {bookEnv.isPending ? t('sharedEnvironments.booking') : t('sharedEnvironments.bookNow')}
               </button>
             </div>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

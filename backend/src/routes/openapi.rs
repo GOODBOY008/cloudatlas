@@ -1,0 +1,120 @@
+//! OpenAPI aggregation kept separate from runtime routing.
+
+use crate::modules::{auth, cloud, cmdb, expense, health, recommendation};
+use utoipa::OpenApi;
+
+// OpenAPI documentation aggregation
+#[derive(OpenApi)]
+#[openapi(
+    info(
+        title = "CloudAtlas API",
+        version = "1.0.0",
+        description = "Unified FinOps + CMDB Platform API — combining cloud cost optimization (FinOps) and configuration management (CMDB) in a single modular monolith."
+    ),
+    paths(
+        // ── Health ──────────────────────────────────────────────────────────
+        health::liveness,
+        health::readiness,
+        // ── Auth ────────────────────────────────────────────────────────────
+        auth::handlers::register,
+        auth::handlers::login,
+        auth::handlers::me,
+        auth::handlers::logout,
+        auth::oidc::oidc_session,
+        auth::oidc::end_oidc_session,
+        // ── Organizations ────────────────────────────────────────────────────
+        auth::org_handlers::list_orgs,
+        auth::org_handlers::create_org,
+        auth::org_handlers::get_org,
+        auth::org_handlers::update_org,
+        auth::org_handlers::list_members,
+        // ── Cloud Accounts ───────────────────────────────────────────────────
+        cloud::handlers::list_accounts,
+        cloud::handlers::create_account,
+        cloud::handlers::get_account,
+        // ── Expenses ─────────────────────────────────────────────────────────
+        expense::handlers::list_expenses,
+        expense::handlers::summary,
+        expense::reporting::data_flow,
+        // ── CMDB ─────────────────────────────────────────────────────────────
+        cmdb::handlers::list_cis,
+        cmdb::handlers::create_ci,
+        cmdb::handlers::get_ci,
+        cmdb::handlers::patch_ci_tags,
+        cmdb::handlers::transition_ci_lifecycle,
+        cmdb::model_handlers::list_unique_constraints,
+        cmdb::model_handlers::create_unique_constraint,
+        cmdb::model_handlers::delete_unique_constraint,
+        cmdb::compliance_handlers::trigger_discovery,
+        cmdb::analytics_handlers::list_ci_events,
+        cmdb::import_export::ci_import_template,
+        cmdb::import_export::cis_import_csv,
+        cmdb::import_export::cis_export_csv,
+        cmdb::handlers::search_cis,
+        cmdb::handlers::batch_update_cis,
+        cmdb::handlers::batch_delete_cis,
+        cmdb::handlers::clone_ci,
+        cmdb::compliance_handlers::compliance_last_run,
+        cmdb::model_handlers::bind_field_template,
+        cmdb::model_handlers::unbind_field_template,
+        cmdb::model_handlers::field_template_bound_types,
+        cmdb::model_handlers::field_template_diff,
+        cmdb::model_handlers::apply_field_template,
+        cmdb::handlers::ci_forest,
+        cmdb::external_sync::trigger_external_sync,
+        cmdb::external_sync::external_sync_dry_run,
+        cmdb::external_sync::external_sync_logs,
+        cmdb::analytics_handlers::cmdb_stats_trends,
+        expense::cost_center_handlers::list_business_capabilities,
+        expense::cost_center_handlers::create_business_capability,
+        expense::cost_center_handlers::update_business_capability,
+        expense::cost_center_handlers::delete_business_capability,
+        // ── Recommendations ───────────────────────────────────────────────────
+        recommendation::handlers::list,
+        recommendation::handlers::summary,
+    ),
+    components(schemas(
+        auth::dto::RegisterRequest,
+        auth::dto::LoginRequest,
+        auth::dto::AuthResponse,
+        auth::dto::UserResponse,
+        auth::oidc::OidcSessionRequest,
+        auth::oidc::EndOidcSessionRequest,
+        cloud::dto::CreateCloudAccountRequest,
+        cloud::dto::CloudAccountResponse,
+        cmdb::dto::CreateCiRequest,
+        cmdb::dto::PatchCiTagsRequest,
+        cmdb::dto::CiResponse,
+        cmdb::handlers::LifecycleTransitionRequest,
+        cmdb::model_handlers::CreateUniqueConstraintRequest,
+        cmdb::handlers::BatchUpdateCiRequest,
+        cmdb::handlers::BatchDeleteCiRequest,
+        cmdb::handlers::CloneCiRequest,
+        cmdb::model_handlers::BindFieldTemplateRequest,
+        cmdb::handlers::CiForestQuery,
+        cmdb::external_sync::TriggerSyncRequest,
+        expense::cost_center_handlers::CreateBusinessCapabilityRequest,
+        cmdb::compliance_handlers::TriggerDiscoveryRequest,
+        expense::dto::ExpenseSummaryResponse,
+        recommendation::dto::RecommendationResponse,
+        recommendation::dto::RecommendationSummaryResponse,
+    )),
+    tags(
+        (name = "health",           description = "Health and readiness probes"),
+        (name = "auth",             description = "Authentication and session management"),
+        (name = "organizations",    description = "Organization and member management"),
+        (name = "cloud-accounts",   description = "Cloud provider account management"),
+        (name = "expenses",         description = "Cost and expense analytics"),
+        (name = "cmdb",             description = "Configuration Management Database"),
+        (name = "recommendations",  description = "Cost optimization recommendations"),
+        (name = "alerts",           description = "Budget alerts and notifications"),
+        (name = "webhooks",         description = "Webhook delivery"),
+        (name = "rules",            description = "Cost allocation rules"),
+        (name = "constraints",      description = "Resource constraints"),
+        (name = "power-schedules",  description = "Power schedule management"),
+        (name = "tagging",          description = "Resource tagging policies"),
+        (name = "billing",          description = "Cloud billing import (CUR/BSS)"),
+        (name = "compliance",       description = "CMDB compliance and drift detection"),
+    )
+)]
+pub(super) struct ApiDoc;

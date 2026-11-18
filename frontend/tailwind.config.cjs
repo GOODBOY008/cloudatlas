@@ -21,6 +21,7 @@ module.exports = {
           hover: token('accent-hover'),
           soft: token('accent-soft'),
         },
+        brand: token('brand'),
         'on-accent': token('on-accent'),
         success: { DEFAULT: token('success'), solid: '#15803d' },
         warning: { DEFAULT: token('warning'), solid: '#a16207' },
@@ -38,11 +39,10 @@ module.exports = {
           'sans-serif',
         ],
       },
-      borderRadius: { xl: '0.875rem', '2xl': '1.125rem' },
+      borderRadius: { sm: '0.125rem', DEFAULT: '0.25rem', md: '0.25rem', lg: '0.375rem', xl: '0.375rem', '2xl': '0.5rem' },
       boxShadow: {
-        panel:
-          '0 2px 4px rgb(15 23 42 / 0.02), 0 8px 24px rgb(15 23 42 / 0.025)',
-        popover: '0 12px 48px rgb(15 23 42 / 0.16)',
+        panel: 'none',
+        popover: '0 4px 16px rgb(18 22 28 / 0.12)',
       },
     },
   },

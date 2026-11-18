@@ -102,7 +102,7 @@ export default function CIImport() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="page-heading">
         <h1 className="page-title">{t('ciImport.title')}</h1>
         <p className="text-sm text-secondary mt-0.5">{t('ciImport.subtitleServer')}</p>
       </div>
@@ -142,7 +142,7 @@ export default function CIImport() {
             onClick={downloadTemplate}
             disabled={!selectedTypeId}
             data-testid="ciimport-download-template"
-            className="px-3 py-1.5 bg-emphasis hover:bg-emphasis disabled:opacity-50 text-primary text-xs rounded-lg transition-colors"
+            className="btn-secondary"
           >
             {t('ciImport.downloadTemplate')}
           </button>
@@ -162,7 +162,7 @@ export default function CIImport() {
             onClick={() => fileRef.current?.click()}
             disabled={!selectedTypeId || importMutation.isPending}
             data-testid="ciimport-upload-button"
-            className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm font-medium rounded-lg transition-colors"
+            className="btn-primary"
           >
             {importMutation.isPending ? t('ciImport.importing') : t('ciImport.uploadAndImport')}
           </button>
@@ -200,7 +200,7 @@ export default function CIImport() {
               ['failed', 'text-danger'],
             ] as const).map(([key, cls]) => (
               <div key={key} className="text-center">
-                <p className={`text-3xl font-bold ${cls}`}>{result[key]}</p>
+                <p className={`text-[28px] font-semibold ${cls}`}>{result[key]}</p>
                 <p className="text-xs text-muted mt-1">{t(`ciImport.${key}`)}</p>
               </div>
             ))}

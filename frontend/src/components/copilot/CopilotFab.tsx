@@ -7,11 +7,17 @@ export default function CopilotFab() {
   const { t } = useTranslation()
   const open = useCopilotStore((s) => s.open)
   const setOpen = useCopilotStore((s) => s.setOpen)
-  if (open) return null
   return (
     <button
-      onClick={() => setOpen(true)}
+      type="button"
+      onClick={(event) => {
+        // Safari does not focus buttons on pointer activation.
+        event.currentTarget.focus()
+        setOpen(true)
+      }}
       aria-label={t('copilot.openCopilot')}
+      aria-haspopup="dialog"
+      aria-expanded={open}
       className="lg:hidden fixed bottom-5 right-5 z-40 w-12 h-12 rounded-full bg-accent hover:bg-accent-hover text-on-accent shadow-lg flex items-center justify-center transition-colors"
     >
       <Sparkles size={20} />

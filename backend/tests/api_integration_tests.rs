@@ -369,6 +369,81 @@ async fn full_api_flow() {
         "other org sees no webhooks from org A"
     );
 
+    // Service bindings and pagination must stay within the service's workspace.
+    let (status, body) = send(
+        &app,
+        Method::POST,
+        &format!("/api/v1/orgs/{org_id}/services"),
+        Some(&token),
+        Some(json!({ "name": "it-service" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "create service: {body}");
+    let service_id: uuid::Uuid = body["data"]["id"]
+        .as_str()
+        .expect("service id")
+        .parse()
+        .expect("service UUID");
+    let service_cis_url = format!("/api/v1/orgs/{org_id}/services/{service_id}/cis");
+    let ci_type_id: uuid::Uuid = sqlx::query_scalar(
+        "SELECT id FROM ci_types WHERE name = 'on_prem_server' AND organization_id IS NULL",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("built-in server type");
+    let mut local_ci = None;
+    for (workspace, name, deleted) in [
+        (&org_id, "local", false),
+        (&org_id, "deleted", true),
+        (&other_org, "other-workspace", false),
+    ] {
+        let ci_id: uuid::Uuid = sqlx::query_scalar(
+            r#"INSERT INTO cis (organization_id, ci_type_id, name, deleted_at)
+               VALUES ($1, $2, $3, CASE WHEN $4 THEN NOW() ELSE NULL END)
+               RETURNING id"#,
+        )
+        .bind(workspace.parse::<uuid::Uuid>().expect("workspace UUID"))
+        .bind(ci_type_id)
+        .bind(name)
+        .bind(deleted)
+        .fetch_one(&pool)
+        .await
+        .expect("CI fixture");
+        let (status, body) = send(
+            &app,
+            Method::POST,
+            &service_cis_url,
+            Some(&token),
+            Some(json!({ "ci_id": ci_id, "role": "dependency" })),
+        )
+        .await;
+        if name == "local" {
+            assert_eq!(status, StatusCode::CREATED, "bind local CI: {body}");
+            local_ci = Some(ci_id);
+        } else {
+            assert_eq!(status, StatusCode::NOT_FOUND, "bind {name} CI: {body}");
+            sqlx::query("INSERT INTO service_cis (service_id, ci_id) VALUES ($1, $2)")
+                .bind(service_id)
+                .bind(ci_id)
+                .execute(&pool)
+                .await
+                .expect("legacy service binding");
+        }
+    }
+
+    let (status, body) = send(
+        &app,
+        Method::GET,
+        &format!("{service_cis_url}?per_page=1"),
+        Some(&token),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "list service CIs: {body}");
+    assert_eq!(body["meta"]["total"], 1);
+    assert_eq!(body["data"][0]["ci_id"], local_ci.unwrap().to_string());
+    assert_eq!(body["data"].as_array().unwrap().len(), 1);
+
     // ── Auth guard: unauthenticated requests are rejected ───────────────────
     let (status, _) = send(
         &app,

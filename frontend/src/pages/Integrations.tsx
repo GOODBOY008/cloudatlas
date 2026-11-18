@@ -1,3 +1,4 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../lib/api'
@@ -113,8 +114,8 @@ export default function Integrations() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('integrations.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('integrations.title')}</h1>
       </div>
 
       {isError && (
@@ -219,12 +220,9 @@ export default function Integrations() {
       )}
 
       {showModal && meta && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setShowModal(false)}
-        >
+        <NativeDialog className="items-center justify-center p-4" label={t('integrations.connectProvider', { name: meta.label })} onClose={() => setShowModal(false)}>
           <div
-            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="dialog-panel p-6 w-full max-w-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-primary mb-4">
@@ -269,14 +267,14 @@ export default function Integrations() {
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {t('integrations.connect')}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

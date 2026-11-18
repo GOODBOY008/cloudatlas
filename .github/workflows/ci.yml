@@ -73,7 +73,7 @@ jobs:
         env:
           DATABASE_URL: postgres://cloudatlas:cloudatlas@localhost:5432/cloudatlas_test
           JWT_SECRET: ci-test-secret-at-least-32-chars-long
-        run: cargo test
+        run: TEST_DATABASE_URL="$DATABASE_URL" cargo test
 
   frontend:
     name: Frontend (TypeScript/React)
@@ -88,7 +88,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 

@@ -29,7 +29,9 @@ export const useAuthStore = create<AuthState>()(
       name: 'cloudatlas-auth',
       partialize: (state) => ({
         user: state.user,
-        accessToken: state.accessToken,
+        // Browser SSO keeps its bearer access token in memory. A reload
+        // restores it using the HttpOnly session cookie.
+        accessToken: state.refreshToken ? state.accessToken : null,
         refreshToken: state.refreshToken,
       }),
     }

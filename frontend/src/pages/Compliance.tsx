@@ -324,9 +324,9 @@ export default function Compliance() {
   })
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="page-header">
         <div>
           <h1 className="page-title">{t('compliance.title')}</h1>
           <p className="text-sm text-secondary mt-1">{t('compliance.subtitle')}</p>
@@ -352,7 +352,7 @@ export default function Compliance() {
           </button>
           <button
             onClick={showForm ? closeForm : openCreate}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg transition-colors"
+            className="btn-primary"
           >
             {showForm ? t('common.cancel') : t('compliance.newPolicy')}
           </button>
@@ -527,7 +527,7 @@ export default function Compliance() {
             <button
               type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm rounded-lg"
+              className="btn-primary"
             >
               {editingId
                 ? (updateMutation.isPending ? t('compliance.saving') : t('compliance.save'))
@@ -538,14 +538,12 @@ export default function Compliance() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 bg-subtle/50 rounded-lg p-1 w-fit">
+      <div className="segmented-control mb-5">
         {(['policies', 'results'] as const).map(tab => (
-          <button
+          <button aria-pressed={activeTab === tab}
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-1.5 rounded text-sm transition-colors ${
-              activeTab === tab ? 'bg-emphasis text-primary' : 'text-secondary hover:text-primary'
-            }`}
+            className="segment"
           >
             {tab === 'policies' ? t('compliance.tabPolicies') : t('compliance.tabResults')}
           </button>
@@ -564,7 +562,7 @@ export default function Compliance() {
           </div>
         ) : (
           <div className="bg-subtle rounded-xl overflow-hidden">
-            <div className="table-scroll" tabIndex={0}><table className="w-full">
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full">
               <thead>
                 <tr className="text-secondary text-xs font-medium uppercase tracking-wider border-b border-strong">
                   <th className="px-4 py-3 text-left">{t('compliance.policy')}</th>
@@ -642,7 +640,7 @@ export default function Compliance() {
           </div>
         ) : (
           <div className="bg-subtle rounded-xl overflow-hidden">
-            <div className="table-scroll" tabIndex={0}><table className="w-full">
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full">
               <thead>
                 <tr className="text-secondary text-xs font-medium uppercase tracking-wider border-b border-strong">
                   <th className="px-4 py-3 text-left">{t('compliance.ci')}</th>

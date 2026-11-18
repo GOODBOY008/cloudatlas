@@ -66,7 +66,7 @@ async fn ensure_org_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> Ap
     Ok(())
 }
 
-async fn write_audit_log(
+pub(crate) async fn write_audit_log(
     db: &sqlx::PgPool,
     ci_id: Uuid,
     org_id: Uuid,
@@ -1141,10 +1141,15 @@ pub async fn list_associations(
             cia.meta,
             cia.created_at
         FROM ci_instance_associations cia
-        JOIN cis src ON src.id = cia.src_ci_id
-        JOIN cis dst ON dst.id = cia.dst_ci_id
+        JOIN cis src ON src.id = cia.src_ci_id AND src.organization_id = cia.organization_id
+            AND src.deleted_at IS NULL
+        JOIN cis dst ON dst.id = cia.dst_ci_id AND dst.organization_id = cia.organization_id
+            AND dst.deleted_at IS NULL
         JOIN ci_object_associations coa ON coa.id = cia.object_association_id
+            AND (coa.organization_id = cia.organization_id OR coa.organization_id IS NULL)
+            AND coa.src_ci_type_id = src.ci_type_id AND coa.dst_ci_type_id = dst.ci_type_id
         JOIN ci_association_kinds ciak ON ciak.id = coa.association_kind_id
+            AND (ciak.organization_id = cia.organization_id OR ciak.organization_id IS NULL)
         WHERE cia.organization_id = $1
           AND (cia.src_ci_id = $2 OR cia.dst_ci_id = $2)
         ORDER BY cia.created_at DESC, cia.id DESC
@@ -1161,6 +1166,15 @@ pub async fn list_associations(
     let total: i64 = sqlx::query_scalar(
         r#"SELECT COUNT(*)
            FROM ci_instance_associations cia
+           JOIN cis src ON src.id = cia.src_ci_id AND src.organization_id = cia.organization_id
+               AND src.deleted_at IS NULL
+           JOIN cis dst ON dst.id = cia.dst_ci_id AND dst.organization_id = cia.organization_id
+               AND dst.deleted_at IS NULL
+           JOIN ci_object_associations coa ON coa.id = cia.object_association_id
+               AND (coa.organization_id = cia.organization_id OR coa.organization_id IS NULL)
+               AND coa.src_ci_type_id = src.ci_type_id AND coa.dst_ci_type_id = dst.ci_type_id
+           JOIN ci_association_kinds ciak ON ciak.id = coa.association_kind_id
+               AND (ciak.organization_id = cia.organization_id OR ciak.organization_id IS NULL)
            WHERE cia.organization_id = $1
              AND (cia.src_ci_id = $2 OR cia.dst_ci_id = $2)"#,
     )
@@ -1203,11 +1217,20 @@ pub async fn create_association(
     let assoc_id = Uuid::new_v4();
     let meta = body.meta.unwrap_or(Value::Object(Default::default()));
 
-    sqlx::query(
+    let inserted = sqlx::query(
         r#"
         INSERT INTO ci_instance_associations
             (id, organization_id, src_ci_id, object_association_id, dst_ci_id, meta, created_by, source, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, 'user', $8)
+        SELECT $1, $2, src.id, coa.id, dst.id, $6, $7, 'user', $8
+        FROM cis src
+        JOIN cis dst ON dst.id = $5 AND dst.organization_id = $2 AND dst.deleted_at IS NULL
+        JOIN ci_object_associations coa ON coa.id = $4
+            AND (coa.organization_id = $2 OR coa.organization_id IS NULL)
+            AND coa.src_ci_type_id = src.ci_type_id AND coa.dst_ci_type_id = dst.ci_type_id
+        JOIN ci_association_kinds ciak ON ciak.id = coa.association_kind_id
+            AND (ciak.organization_id = $2 OR ciak.organization_id IS NULL)
+        WHERE src.id = $3 AND src.organization_id = $2 AND src.deleted_at IS NULL
+            AND src.id <> dst.id
         "#,
     )
     .bind(assoc_id)
@@ -1221,12 +1244,18 @@ pub async fn create_association(
     .execute(&state.db)
     .await
     .map_err(|e| {
-        if e.to_string().contains("unique") || e.to_string().contains("duplicate") {
+        if e.as_database_error().is_some_and(|e| e.is_unique_violation()) {
             AppError::Conflict("This association already exists".into())
         } else {
             AppError::Database(e)
         }
     })?;
+
+    if inserted.rows_affected() == 0 {
+        return Err(AppError::Validation(
+            "The association needs two distinct, active CIs in this workspace matching the selected type mapping".into(),
+        ));
+    }
 
     // Association change event (best-effort: needs the live src CI row).
     if let Ok(Some(src_ci)) = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
@@ -1641,6 +1670,11 @@ pub async fn ci_impact(
                 1 AS depth,
                 dirs.direction
             FROM ci_instance_associations cia
+            JOIN cis src ON src.id = cia.src_ci_id AND src.organization_id = $2 AND src.deleted_at IS NULL
+            JOIN cis dst ON dst.id = cia.dst_ci_id AND dst.organization_id = $2 AND dst.deleted_at IS NULL
+            JOIN ci_object_associations coa ON coa.id = cia.object_association_id
+                AND (coa.organization_id = $2 OR coa.organization_id IS NULL)
+                AND coa.src_ci_type_id = src.ci_type_id AND coa.dst_ci_type_id = dst.ci_type_id
             CROSS JOIN (
                 SELECT 'out'::text AS direction
                 WHERE $3 IN ('outgoing','both')
@@ -1661,6 +1695,11 @@ pub async fn ci_impact(
                 bfs.depth + 1,
                 bfs.direction
             FROM ci_instance_associations cia
+            JOIN cis src ON src.id = cia.src_ci_id AND src.organization_id = $2 AND src.deleted_at IS NULL
+            JOIN cis dst ON dst.id = cia.dst_ci_id AND dst.organization_id = $2 AND dst.deleted_at IS NULL
+            JOIN ci_object_associations coa ON coa.id = cia.object_association_id
+                AND (coa.organization_id = $2 OR coa.organization_id IS NULL)
+                AND coa.src_ci_type_id = src.ci_type_id AND coa.dst_ci_type_id = dst.ci_type_id
             JOIN bfs ON (
                 (bfs.direction = 'out' AND cia.src_ci_id = bfs.ci_id)
              OR (bfs.direction = 'in'  AND cia.dst_ci_id = bfs.ci_id)
@@ -1678,7 +1717,7 @@ pub async fn ci_impact(
                ct.display_name          AS ci_type_name,
                cak.name                 AS association_kind
         FROM bfs
-        JOIN cis c ON c.id = bfs.ci_id AND c.deleted_at IS NULL
+        JOIN cis c ON c.id = bfs.ci_id AND c.organization_id = $2 AND c.deleted_at IS NULL
         LEFT JOIN ci_types ct ON ct.id = c.ci_type_id
         LEFT JOIN ci_object_associations coa ON coa.id = bfs.object_association_id
         LEFT JOIN ci_association_kinds cak ON cak.id = coa.association_kind_id
@@ -2304,7 +2343,12 @@ pub async fn list_ci_object_associations(
            JOIN ci_types src_t ON src_t.id = coa.src_ci_type_id
            JOIN ci_types dst_t ON dst_t.id = coa.dst_ci_type_id
            JOIN ci_association_kinds cak ON cak.id = coa.association_kind_id
-           WHERE coa.organization_id = $1 OR coa.organization_id IS NULL
+           WHERE (coa.organization_id = $1 OR coa.organization_id IS NULL)
+             AND (src_t.organization_id = $1 OR src_t.organization_id IS NULL)
+             AND src_t.deleted_at IS NULL
+             AND (dst_t.organization_id = $1 OR dst_t.organization_id IS NULL)
+             AND dst_t.deleted_at IS NULL
+             AND (cak.organization_id = $1 OR cak.organization_id IS NULL)
            ORDER BY src_t.display_name, cak.name, dst_t.display_name"#,
     )
     .bind(org_id)
@@ -3070,19 +3114,7 @@ const GROUP_TOP_LEVEL_FIELDS: &[&str] = &[
     "cloud_provider",
     "cloud_region",
     "cloud_resource_id",
-];
-
-const GROUP_OPS: &[&str] = &[
-    "$eq",
-    "$ne",
-    "$in",
-    "$nin",
-    "$contains",
-    "$startswith",
-    "$gte",
-    "$lte",
-    "$gt",
-    "$lt",
+    "ci_type_name",
 ];
 
 /// One compiled condition: a SQL fragment plus the bind value (already typed).
@@ -3101,30 +3133,31 @@ pub fn compile_group_condition(cond: &Value) -> Result<CompiledCondition, String
     let op = cond
         .get("operator")
         .and_then(|v| v.as_str())
-        .unwrap_or("$eq");
-    if !GROUP_OPS.contains(&op) {
-        return Err(format!("unsupported operator '{op}'"));
-    }
+        .unwrap_or("eq");
+    // Browser forms use bare operator names. Keep the stored $-prefixed names
+    // used by existing groups and compliance policies.
+    let op = op.strip_prefix('$').unwrap_or(op);
     let value = cond.get("value").cloned().unwrap_or(Value::Null);
 
-    let (column, jsonb) = if GROUP_TOP_LEVEL_FIELDS.contains(&field) {
-        let col = match field {
+    let column = if GROUP_TOP_LEVEL_FIELDS.contains(&field) {
+        match field {
             "lifecycle_state" => "c.lifecycle_state::text".to_string(),
             "cloud_provider" => "c.cloud_provider::text".to_string(),
-            // whitelisted identifier — safe to interpolate with alias
+            "ci_type_name" => {
+                "(SELECT display_name FROM ci_types WHERE id = c.ci_type_id)".to_string()
+            }
             other => format!("c.{other}"),
-        };
-        (col, false)
+        }
     } else if let Some(key) = field.strip_prefix("meta.") {
         if !is_safe_group_key(key) {
             return Err(format!("invalid meta key '{key}'"));
         }
-        (format!("c.meta->>'{key}'"), true)
+        format!("c.meta->>'{key}'")
     } else if let Some(key) = field.strip_prefix("tags.") {
         if !is_safe_group_key(key) {
             return Err(format!("invalid tags key '{key}'"));
         }
-        (format!("c.tags->>'{key}'"), true)
+        format!("c.tags->>'{key}'")
     } else {
         return Err(format!(
             "field must be one of {GROUP_TOP_LEVEL_FIELDS:?} or meta.*/tags.*"
@@ -3132,38 +3165,61 @@ pub fn compile_group_condition(cond: &Value) -> Result<CompiledCondition, String
     };
 
     let sql = match op {
-        "$eq" => format!("{column} = {{}}"),
-        "$ne" => format!("({column} IS DISTINCT FROM {{}})"),
-        "$in" => format!("{column} = ANY({{}})"),
-        "$nin" => format!("NOT ({column} = ANY({{}}))"),
-        "$contains" => format!("{column} ILIKE {{}}"),
-        "$startswith" => format!("{column} ILIKE {{}}"),
-        "$gte" => numeric_expr(&column, ">=", jsonb),
-        "$lte" => numeric_expr(&column, "<=", jsonb),
-        "$gt" => numeric_expr(&column, ">", jsonb),
-        "$lt" => numeric_expr(&column, "<", jsonb),
-        _ => unreachable!("op whitelisted above"),
+        "eq" => format!("{column} = {{}}"),
+        "ne" => format!("({column} IS DISTINCT FROM {{}})"),
+        "in" => format!("{column} = ANY({{}})"),
+        "nin" => format!("NOT ({column} = ANY({{}}))"),
+        "contains" | "startswith" | "starts_with" => format!("{column} ILIKE {{}}"),
+        "not_contains" => format!("{column} NOT ILIKE {{}}"),
+        "gte" => numeric_expr(&column, ">="),
+        "lte" => numeric_expr(&column, "<="),
+        "gt" => numeric_expr(&column, ">"),
+        "lt" => numeric_expr(&column, "<"),
+        _ => return Err(format!("unsupported operator '{op}'")),
     };
-    let _ = jsonb;
 
-    // Value shaping: contains/startswith wrap as ILIKE patterns.
     let shaped = match op {
-        "$contains" => value
+        "contains" | "not_contains" => value
             .as_str()
             .map(|s| json!(format!("%{}%", s)))
-            .ok_or_else(|| "$contains requires a string value".to_string())?,
-        "$startswith" => value
+            .ok_or_else(|| format!("{op} requires a string value"))?,
+        "startswith" | "starts_with" => value
             .as_str()
             .map(|s| json!(format!("{}%", s)))
-            .ok_or_else(|| "$startswith requires a string value".to_string())?,
+            .ok_or_else(|| format!("{op} requires a string value"))?,
+        "in" | "nin" => match value {
+            Value::String(items) => Value::Array(
+                items
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(Value::from)
+                    .collect(),
+            ),
+            Value::Array(_) => value,
+            _ => return Err(format!("{op} requires a list of values")),
+        },
+        "gte" | "lte" | "gt" | "lt" => {
+            let number = value
+                .as_str()
+                .map(str::to_owned)
+                .unwrap_or_else(|| value.to_string());
+            if !number.parse::<f64>().is_ok_and(f64::is_finite) {
+                return Err(format!("{op} requires a finite number"));
+            }
+            Value::String(number)
+        }
+        "eq" | "ne" if value.is_number() || value.is_boolean() => Value::String(value.to_string()),
         _ => value,
     };
 
     Ok(CompiledCondition { sql, value: shaped })
 }
 
-fn numeric_expr(column: &str, cmp: &str, _jsonb: bool) -> String {
-    format!("NULLIF({column}, '')::numeric {cmp} {{}}")
+fn numeric_expr(column: &str, cmp: &str) -> String {
+    format!(
+        "(CASE WHEN ({column}) ~ '^[+-]?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$' THEN ({column})::numeric END) {cmp} {{}}::numeric"
+    )
 }
 
 fn is_safe_group_key(key: &str) -> bool {
@@ -3422,7 +3478,28 @@ mod group_tests {
         let compiled = compile_group_condition(&c).unwrap();
         assert!(compiled
             .sql
-            .contains("NULLIF(c.meta->>'cpu_count', '')::numeric >="));
+            .contains("THEN (c.meta->>'cpu_count')::numeric END"));
+        assert!(compiled.sql.ends_with(" >= {}::numeric"));
+        assert_eq!(compiled.value, json!("4"));
+    }
+
+    #[test]
+    fn accepts_browser_group_operators_and_list_input() {
+        let plain = compile_group_condition(&json!({
+            "field": "name", "operator": "eq", "value": "web"
+        }))
+        .unwrap();
+        let legacy = compile_group_condition(&json!({
+            "field": "name", "operator": "$eq", "value": "web"
+        }))
+        .unwrap();
+        assert_eq!((plain.sql, plain.value), (legacy.sql, legacy.value));
+
+        let list = compile_group_condition(&json!({
+            "field": "lifecycle_state", "operator": "in", "value": "active, stopped"
+        }))
+        .unwrap();
+        assert_eq!(list.value, json!(["active", "stopped"]));
     }
 
     #[test]

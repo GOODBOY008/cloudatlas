@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import { useCopilotStore } from '../store/copilotStore'
 import { useIsDesktop } from './copilot/useMediaQuery'
 import CopilotChat from './copilot/CopilotChat'
+import { NativeDialog } from './shared/NativeDialog'
 
 /** Drag + keyboard resize handle on the panel's left edge (spec §4.1). */
 function ResizeHandle() {
@@ -53,9 +54,10 @@ function ResizeHandle() {
 function closeButton(onClose: () => void, label: string) {
   return (
     <button
+      type="button"
       onClick={onClose}
       aria-label={label}
-      className="w-8 h-8 flex items-center justify-center rounded-lg text-secondary hover:bg-subtle hover:text-primary transition-colors"
+      className="icon-button"
     >
       <X size={18} />
     </button>
@@ -73,30 +75,26 @@ export default function CopilotPanel() {
   const toggle = useCopilotStore((s) => s.toggle)
   const width = useCopilotStore((s) => s.width)
   const isDesktop = useIsDesktop()
-  const lastFocused = useRef<HTMLElement | null>(null)
-
-  // Cmd/Ctrl+I toggles (GlobalSearch owns Cmd-K). Esc closes.
+  // Native dialog dismissal handles Escape on mobile.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'i') {
         e.preventDefault()
         toggle()
       }
-      if (e.key === 'Escape') setOpen(false)
+      if (isDesktop && e.key === 'Escape' && !e.defaultPrevented) setOpen(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [toggle, setOpen])
+  }, [isDesktop, toggle, setOpen])
 
-  // Focus management: restore focus to the launcher on close.
-  useEffect(() => {
-    if (open) {
-      lastFocused.current = document.activeElement as HTMLElement | null
-    } else if (lastFocused.current) {
-      lastFocused.current.focus?.()
-      lastFocused.current = null
+  useLayoutEffect(() => {
+    if (!open || !isDesktop) return
+    const launcher = document.activeElement
+    return () => {
+      if (launcher instanceof HTMLElement) launcher.focus()
     }
-  }, [open])
+  }, [isDesktop, open])
 
   if (!open) return null
 
@@ -117,11 +115,10 @@ export default function CopilotPanel() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label={t('copilot.title')}>
-      <div className="absolute inset-0 bg-black/40" onClick={close} />
-      <div className="absolute inset-x-0 bottom-0 h-[75dvh] bg-surface rounded-t-2xl border-t border-edge flex flex-col shadow-2xl">
-        <CopilotChat rightSlot={closeButton(close, t('common.cancel'))} />
+    <NativeDialog className="items-end" label={t('copilot.title')} onClose={close}>
+      <div className="h-[75dvh] w-full bg-surface rounded-t-2xl border-t border-edge flex flex-col shadow-popover">
+        <CopilotChat rightSlot={closeButton(close, t('common.close'))} />
       </div>
-    </div>
+    </NativeDialog>
   )
 }

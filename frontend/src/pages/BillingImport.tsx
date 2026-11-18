@@ -152,8 +152,8 @@ export default function BillingImport() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('billingImport.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('billingImport.title')}</h1>
       </div>
 
       <div className="bg-surface border border-edge rounded-xl p-5 mb-6">
@@ -190,7 +190,7 @@ export default function BillingImport() {
           <button
             type="submit"
             disabled={submitDisabled || importMutation.isPending}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="btn-primary"
           >
             {billingActiveFor(accountId) ? t('billingImport.importing') : t('billingImport.runImport')}
           </button>
@@ -310,7 +310,7 @@ export default function BillingImport() {
             {t('billingImport.empty')}
           </div>
         ) : (
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
             <thead className="border-b border-edge text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">{t('billingImport.colAccount')}</th>
@@ -345,7 +345,7 @@ export default function BillingImport() {
         {recentJobs.length === 0 ? (
           <div className="p-5 text-center text-muted text-sm">{t('billingImport.empty')}</div>
         ) : (
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
             <thead className="border-b border-edge text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">{t('billingImport.colAccount')}</th>

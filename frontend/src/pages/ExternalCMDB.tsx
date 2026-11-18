@@ -1,3 +1,4 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api, { paginatedGet } from '../lib/api'
@@ -195,15 +196,15 @@ export default function ExternalCMDB() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('externalCmdb.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('externalCmdb.title')}</h1>
         <button
           onClick={() => {
             setForm({ name: '', provider: 'rest', config: configTemplate('rest') })
             setFormError('')
             setShowModal(true)
           }}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+          className="btn-primary"
         >
           {t('externalCmdb.newConnection')}
         </button>
@@ -229,7 +230,7 @@ export default function ExternalCMDB() {
         </div>
       ) : (
         <div className="bg-surface border border-edge rounded-xl overflow-hidden mb-6">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
             <thead className="border-b border-edge text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">{t('common.name')}</th>
@@ -330,7 +331,7 @@ export default function ExternalCMDB() {
           ) : logs.length === 0 ? (
             <div className="p-5 text-center text-muted text-sm">{t('externalCmdb.noSyncs')}</div>
           ) : (
-            <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
               <thead className="border-b border-edge text-xs uppercase text-muted">
                 <tr>
                   <th className="px-4 py-3 font-medium">{t('externalCmdb.startedAt')}</th>
@@ -384,12 +385,9 @@ export default function ExternalCMDB() {
       )}
 
       {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setShowModal(false)}
-        >
+        <NativeDialog className="items-center justify-center p-4" label={t('externalCmdb.newConnectionTitle')} onClose={() => setShowModal(false)}>
           <div
-            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto"
+            className="dialog-panel p-6 w-full max-w-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-primary mb-4">{t('externalCmdb.newConnectionTitle')}</h3>
@@ -461,14 +459,14 @@ export default function ExternalCMDB() {
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {t('externalCmdb.createConnection')}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

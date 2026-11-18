@@ -10,7 +10,7 @@
  *   - Governance:         Compliance, Tagging Coverage, Anomaly Detection, Power Schedules, Apply Rules
  *   - Administration:     Cloud Accounts, Cost Centers, Alerts, Rules, Settings
  *
- * /cmdb-audit is intentionally NOT in the sidebar (route preserved, see pages.spec.ts).
+ * /cmdb-audit is available from Asset Inventory and keeps its direct URL.
  */
 import { test, expect } from '../fixtures/base.fixture';
 
@@ -150,19 +150,14 @@ test.describe('Navigation & Sidebar', () => {
     expect(await homeLink.count()).toBe(0);
   });
 
-  test('NAV-12 — /cmdb-audit is not in sidebar (route still works) @regression', async ({ page }) => {
-    // Per the 2026-06-01 redesign, Audit Log was removed from the sidebar.
-    // The route /cmdb-audit is preserved (see pages.spec.ts PAGE-34) but
-    // is no longer reachable from the sidebar.
-    const auditLink = page
-      .locator('nav')
-      .getByRole('link', { name: /audit/i });
-    expect(await auditLink.count()).toBe(0);
-
-    // Sanity: the route still loads when accessed directly.
-    await page.goto('/cmdb-audit');
-    await page.waitForLoadState('domcontentloaded');
-    const body = await page.locator('body').textContent();
-    expect(body?.length ?? 0).toBeGreaterThan(10);
+  test('NAV-12 — audit trail is reachable from Asset Inventory @regression', async ({ page }) => {
+    const nav = page.getByRole('navigation', { name: 'Primary navigation' });
+    const section = nav.getByRole('button', { name: 'Asset Inventory' });
+    if (await section.getAttribute('aria-expanded') === 'false') await section.click();
+    const auditLink = nav.getByRole('link', { name: 'CMDB Audit Log' });
+    await expect(auditLink).toBeVisible();
+    await auditLink.click();
+    await expect(page).toHaveURL(/\/cmdb-audit$/);
+    await expect(auditLink).toHaveAttribute('aria-current', 'page');
   });
 });

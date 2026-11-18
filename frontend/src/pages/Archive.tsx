@@ -1,3 +1,4 @@
+import { useMoneyFormatter } from '../lib/format'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../lib/api'
@@ -7,9 +8,9 @@ import { useTranslation } from 'react-i18next'
 interface ArchivedRec { id: string; rec_type: string; saving: number; resource_id: string; status: string; created_at: string; dismissed_at?: string }
 interface AlertEvent { id: string; alert_id: string; alert_name: string; triggered_at: string; cost: number; message: string }
 
-function fmt(v: number) { return `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }
 
 export default function Archive() {
+  const fmt = useMoneyFormatter()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id ?? ''
   const qc = useQueryClient()
@@ -40,7 +41,7 @@ export default function Archive() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="page-heading">
         <h1 className="page-title">{t('archive.title')}</h1>
         <p className="text-sm text-secondary mt-1">{t('archive.subtitle')}</p>
       </div>
@@ -49,29 +50,29 @@ export default function Archive() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('archive.archivedRecommendations')}</p>
-          <p className="text-2xl font-bold text-secondary mt-1">{recs.length}</p>
+          <p className="text-2xl font-semibold text-secondary mt-1">{recs.length}</p>
           <p className="text-xs text-muted mt-1">{t('archive.deferredSavings', { amount: fmt(totalArchivedSavings) })}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('archive.alertEvents')}</p>
-          <p className="text-2xl font-bold text-secondary mt-1">{events.length}</p>
+          <p className="text-2xl font-semibold text-secondary mt-1">{events.length}</p>
           <p className="text-xs text-muted mt-1">{t('archive.historicalTriggers')}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('archive.reactivatable')}</p>
-          <p className="text-2xl font-bold text-accent mt-1">{recs.filter(r => r.status === 'archived').length}</p>
+          <p className="text-2xl font-semibold text-accent mt-1">{recs.filter(r => r.status === 'archived').length}</p>
           <p className="text-xs text-muted mt-1">{t('archive.recommendations')}</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-strong">
+      <div className="page-tabs ">
         {([
           { key: 'recommendations', label: t('archive.tabRecommendations', { count: recs.length }) },
           { key: 'alerts', label: t('archive.tabAlertHistory', { count: events.length }) },
         ] as const).map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === tab.key ? 'border-accent text-primary' : 'border-transparent text-secondary hover:text-primary'}`}>
+          <button aria-pressed={activeTab === tab.key} key={tab.key} onClick={() => setActiveTab(tab.key)}
+            className="page-tab">
             {tab.label}
           </button>
         ))}
@@ -79,7 +80,7 @@ export default function Archive() {
 
       {activeTab === 'recommendations' && (
         <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead><tr className="border-b border-strong">
               {['common.type', 'archive.colResource', 'archive.colSavingPerMonth', 'common.status', 'archive.colArchived', 'common.actions'].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
@@ -119,7 +120,7 @@ export default function Archive() {
 
       {activeTab === 'alerts' && (
         <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead><tr className="border-b border-strong">
               {['archive.colAlert', 'archive.colTriggeredAt', 'archive.colCostAtTrigger', 'archive.colMessage'].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>

@@ -1,0 +1,104 @@
+//! Inventory HTTP endpoints. Authentication is applied once by the parent router.
+
+use crate::{
+    modules::{cloud, expense, jobs, k8s, resources},
+    state::AppState,
+};
+use axum::{
+    routing::{delete, get, patch, post, put},
+    Router,
+};
+
+pub(super) fn router() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/api/v1/orgs/{org_id}/cloud-accounts",
+            get(cloud::handlers::list_accounts),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/cloud-accounts",
+            post(cloud::handlers::create_account),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/cloud-accounts/{id}",
+            get(cloud::handlers::get_account),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/cloud-accounts/{id}",
+            put(cloud::handlers::update_account),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/cloud-accounts/{id}",
+            delete(cloud::handlers::delete_account),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/cloud-accounts/{id}/test",
+            post(cloud::handlers::test_connection),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/cloud-accounts/{id}/sync",
+            post(cloud::handlers::trigger_sync),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/cloud-accounts/{id}/sync-jobs",
+            get(cloud::handlers::list_sync_jobs),
+        )
+        .route("/api/v1/orgs/{org_id}/jobs", get(jobs::list_jobs))
+        .route("/api/v1/orgs/{org_id}/jobs/{job_id}", get(jobs::get_job))
+        .route(
+            "/api/v1/orgs/{org_id}/jobs/{job_id}/cancel",
+            post(jobs::cancel_job),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/resources",
+            get(resources::handlers::list_resources),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/resources/{resource_id}",
+            get(resources::handlers::get_resource),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/resources/{resource_id}/raw-expenses",
+            get(expense::handlers::raw_expenses_by_resource),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/resources/{resource_id}/pool",
+            patch(resources::handlers::patch_resource_pool),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/resources/{resource_id}/tags",
+            patch(resources::handlers::patch_resource_tags),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/s3-duplicates",
+            get(resources::handlers::s3_duplicate_analysis),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/resources/{resource_id}/recommendations",
+            get(resources::handlers::resource_recommendations),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/metrics",
+            post(resources::handlers::ingest_metrics).get(resources::handlers::list_metrics),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/search",
+            get(resources::handlers::global_search),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/demo-data",
+            post(resources::handlers::seed_demo_data),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/k8s/clusters",
+            get(k8s::handlers::list_clusters).post(k8s::handlers::upsert_cluster),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/k8s/workloads",
+            get(k8s::handlers::list_workloads).post(k8s::handlers::upsert_workload),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/k8s/summary",
+            get(k8s::handlers::rightsizing_summary),
+        )
+}

@@ -166,7 +166,7 @@ Prefer videos to reading? The [User Guide](docs/user-guide.md) walks through eve
 | Tool | Version | Purpose |
 |------|---------|---------|
 | [Rust](https://rustup.rs/) | 1.94+ | Backend compiler |
-| [Node.js](https://nodejs.org/) | 20+ | Frontend build |
+| [Node.js](https://nodejs.org/) | 24 LTS | Frontend build and browser tests |
 | [Docker](https://docs.docker.com/get-docker/) | 24+ | Container runtime |
 | [cargo-watch](https://crates.io/crates/cargo-watch) | latest | Backend hot reload |
 | [sqlx-cli](https://crates.io/crates/sqlx-cli) | latest | Database migrations |
