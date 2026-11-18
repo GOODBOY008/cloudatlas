@@ -290,7 +290,7 @@ pub async fn pull_once(
                 continue;
             };
 
-            let existing = sqlx::query_scalar::<_, (Uuid, Value)>(
+            let existing = sqlx::query_as::<_, (Uuid, Value)>(
                 r#"SELECT id, meta FROM cis
                    WHERE organization_id = $1 AND ci_type_id = $2
                      AND meta->>'external_id' = $3 AND deleted_at IS NULL
@@ -429,19 +429,7 @@ pub async fn push_once(db: &sqlx::PgPool, cfg: &SyncConfig) -> AppResult<(u64, u
         }
     };
 
-    // Reverse mapping: remote_field <- local meta key / name.
-    let reverse: std::collections::HashMap<String, String> = cfg
-        .field_mapping
-        .get("meta")
-        .and_then(|m| m.as_object())
-        .map(|m| {
-            m.iter()
-                .filter_map(|(local, remote)| {
-                    remote.as_str().map(|r| (r.to_string(), local.clone()))
-                })
-                .collect()
-        })
-        .unwrap_or_default();
+    let field_mapping = cfg.field_mapping.get("meta").and_then(Value::as_object);
     let name_remote = cfg
         .field_mapping
         .get("name")
@@ -470,8 +458,11 @@ pub async fn push_once(db: &sqlx::PgPool, cfg: &SyncConfig) -> AppResult<(u64, u
                 if k == "external_id" {
                     continue;
                 }
-                if let Some(remote_field) = reverse.get(k) {
-                    payload.insert(remote_field.clone(), v.clone());
+                if let Some(remote_field) = field_mapping
+                    .and_then(|fields| fields.get(k))
+                    .and_then(Value::as_str)
+                {
+                    payload.insert(remote_field.to_owned(), v.clone());
                 }
             }
         }

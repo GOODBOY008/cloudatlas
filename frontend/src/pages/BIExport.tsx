@@ -1,3 +1,4 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../lib/api'
@@ -179,11 +180,11 @@ export default function BIExport() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('biExport.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('biExport.title')}</h1>
         <button
           onClick={openCreate}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+          className="btn-primary"
         >
           {t('biExport.newExport')}
         </button>
@@ -205,7 +206,7 @@ export default function BIExport() {
         <div className="space-y-3">
           {exports.map((e) => (
             <div key={e.id} className="bg-surface border border-edge rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4">
+              <div className="flex flex-col gap-3 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
                 <div className="flex items-center gap-3">
                   <div>
                     <p className="font-medium text-primary">{e.name}</p>
@@ -215,7 +216,7 @@ export default function BIExport() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-xs">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
                   <span className="text-muted">{t('biExport.runsCount', { count: e.run_count })}</span>
                   {e.last_run_at && (
                     <span className="text-muted">{t('biExport.lastRun', { date: new Date(e.last_run_at).toLocaleDateString() })}</span>
@@ -223,7 +224,7 @@ export default function BIExport() {
                   <button
                     onClick={() => runMutation.mutate(e.id)}
                     disabled={runMutation.isPending}
-                    className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent font-medium rounded-lg disabled:opacity-50"
+                    className="btn-primary"
                   >
                     {t('biExport.run')}
                   </button>
@@ -259,7 +260,7 @@ export default function BIExport() {
                   ) : runs.length === 0 ? (
                     <div className="p-4 text-muted text-xs">{t('biExport.noRuns')}</div>
                   ) : (
-                    <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
                       <thead className="border-b border-edge text-xs uppercase text-muted">
                         <tr>
                           <th className="px-4 py-2 font-medium">{t('common.status')}</th>
@@ -300,9 +301,9 @@ export default function BIExport() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={closeModal}>
+        <NativeDialog className="items-center justify-center p-4" label={editingId ? t('biExport.editExport') : t('biExport.newExportTitle')} onClose={closeModal}>
           <div
-            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="dialog-panel p-6 w-full max-w-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-primary mb-4">
@@ -385,14 +386,14 @@ export default function BIExport() {
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {editingId ? t('biExport.saveChanges') : t('biExport.createExport')}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

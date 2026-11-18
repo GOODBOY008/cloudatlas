@@ -306,7 +306,7 @@ pub async fn tag_coverage_analysis(
         let compliant_row = sqlx::query(
             r#"SELECT
                    COUNT(DISTINCT cloud_resource_id) AS compliant,
-                   COALESCE(SUM(cost), 0)::float8     AS compliant_cost
+                   COALESCE(SUM(cost) FILTER (WHERE currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')), 0)::float8 AS compliant_cost
                FROM expenses
                WHERE organization_id = $1
                  AND date >= CURRENT_DATE - INTERVAL '30 days'
@@ -328,6 +328,7 @@ pub async fn tag_coverage_analysis(
             r#"SELECT COALESCE(SUM(cost), 0)::float8
                FROM expenses
                WHERE organization_id = $1
+                 AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
                  AND date >= CURRENT_DATE - INTERVAL '30 days'"#,
         )
         .bind(org_id)

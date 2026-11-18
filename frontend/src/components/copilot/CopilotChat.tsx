@@ -53,6 +53,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const conversationVersion = useRef(0)
   const stickToBottom = useRef(true)
 
   const labelKey = pageLabelKeyForRoute(location.pathname)
@@ -61,11 +62,20 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
 
   // Reset conversation whenever the org changes.
   useEffect(() => {
+    conversationVersion.current += 1
+    abortRef.current?.abort()
+    abortRef.current = null
+    setBusy(false)
     setMessages([])
     setError('')
     setActiveConvId(null)
     setView('chat')
     setConversations([])
+    return () => {
+      conversationVersion.current += 1
+      abortRef.current?.abort()
+      abortRef.current = null
+    }
   }, [orgId])
 
   // Re-attach page context on navigation.
@@ -78,12 +88,14 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    let current = true
     if (orgId) {
       api
         .get<{ data: Conversation[] }>(`/orgs/${orgId}/ai/conversations`)
-        .then((res) => setConversations(res.data.data ?? []))
+        .then((res) => { if (current) setConversations(res.data.data ?? []) })
         .catch(() => {/* history is optional */})
     }
+    return () => { current = false }
   }, [orgId])
 
   // Autoscroll only while the user is at the bottom (spec §4.3 scroll pause).
@@ -100,6 +112,10 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
   }
 
   function startNewChat() {
+    conversationVersion.current += 1
+    abortRef.current?.abort()
+    abortRef.current = null
+    setBusy(false)
     setMessages([])
     setActiveConvId(null)
     setView('chat')
@@ -108,6 +124,8 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
 
   async function resumeConversation(conv: Conversation) {
     if (!orgId) return
+    startNewChat()
+    const version = conversationVersion.current
     setActiveConvId(conv.id)
     setView('chat')
     setError('')
@@ -118,6 +136,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
         `/orgs/${orgId}/ai/conversations/${conv.id}/messages`,
         { params: { per_page: 200 } },
       )
+      if (version !== conversationVersion.current || useOrgStore.getState().currentOrg?.id !== orgId) return
       setMessages(
         (res.data ?? [])
           .filter((m) => m.role === 'user' || m.role === 'assistant')
@@ -125,18 +144,20 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
           .map((m) => ({ role: m.role as 'user' | 'assistant', text: m.content })),
       )
     } catch {
-      setError(t('copilot.error'))
+      if (version === conversationVersion.current) setError(t('copilot.error'))
     }
   }
 
   async function deleteConversation(convId: string) {
     if (!orgId) return
+    const version = conversationVersion.current
     try {
       await api.delete(`/orgs/${orgId}/ai/conversations/${convId}`)
+      if (version !== conversationVersion.current || useOrgStore.getState().currentOrg?.id !== orgId) return
       setConversations((list) => list.filter((c) => c.id !== convId))
       if (activeConvId === convId) startNewChat()
     } catch {
-      setError(t('copilot.error'))
+      if (version === conversationVersion.current) setError(t('copilot.error'))
     }
   }
 
@@ -148,6 +169,8 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
     if (!orgId || busy) return
     const text = userText.trim()
     if (!text) return
+    const version = ++conversationVersion.current
+    const isCurrent = () => version === conversationVersion.current && useOrgStore.getState().currentOrg?.id === orgId
     setInput('')
     setError('')
     setBusy(true)
@@ -175,6 +198,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
         }),
       })
 
+      if (!isCurrent()) return
       if (!res.ok || !res.body) throw new Error('copilot request failed')
 
       const reader = res.body.getReader()
@@ -184,6 +208,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
 
       while (true) {
         const { done, value } = await reader.read()
+        if (!isCurrent()) { await reader.cancel(); return }
         if (done) break
         buffer += decoder.decode(value, { stream: true })
 
@@ -216,6 +241,7 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
         }
       }
     } catch (e) {
+      if (!isCurrent()) return
       if (e instanceof DOMException && e.name === 'AbortError') {
         // Keep the partial reply, mark it stopped (interrupt-and-resume pattern).
         setMessages((m) => {
@@ -228,13 +254,13 @@ export default function CopilotChat({ rightSlot }: { rightSlot?: ReactNode }) {
         setMessages((m) => [...m, { role: 'assistant', text: t('copilot.error') }])
       }
     } finally {
-      setBusy(false)
-      abortRef.current = null
-      // Refresh the conversation list (new titles/counts); history is optional.
-      if (orgId) {
+      if (isCurrent()) {
+        setBusy(false)
+        abortRef.current = null
+        // Refresh the conversation list (new titles/counts); history is optional.
         api
           .get<{ data: Conversation[] }>(`/orgs/${orgId}/ai/conversations`)
-          .then((res) => setConversations(res.data.data ?? []))
+          .then((res) => { if (isCurrent()) setConversations(res.data.data ?? []) })
           .catch(() => {})
       }
     }

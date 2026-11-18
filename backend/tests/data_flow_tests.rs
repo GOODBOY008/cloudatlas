@@ -260,8 +260,8 @@ async fn map_service(state: &AppState, org: Uuid, center: Uuid, ci: Uuid, name: 
         .await
         .unwrap();
 }
-async fn get(state: &AppState, org: Uuid, user: Option<Uuid>) -> (StatusCode, Value) {
-    let mut request = Request::builder().uri(format!("/api/v1/orgs/{org}/data-flow"));
+async fn get(state: &AppState, uri: &str, user: Option<Uuid>) -> (StatusCode, Value) {
+    let mut request = Request::builder().uri(uri);
     if let Some(user) = user {
         let token = Claims::new_access(user, "flow@test.invalid", 600)
             .encode_token(&state.config.jwt_secret)
@@ -382,7 +382,8 @@ async fn reports_scope_accounts_deduplicate_ownership_and_reconcile_gaps() {
     assert_eq!(report["ambiguous_cost"].as_f64(), Some(50.0));
     assert_eq!(report["ambiguous_resources"], 1);
     assert_eq!(report["excluded_currency_rows"], 1);
-    let (status, body) = get(&state, org, Some(user)).await;
+    let data_flow_uri = format!("/api/v1/orgs/{org}/data-flow");
+    let (status, body) = get(&state, &data_flow_uri, Some(user)).await;
     assert_eq!(status, StatusCode::OK, "{body}");
     let accounts = body["data"]["accounts"].as_array().unwrap();
     assert_eq!(accounts.len(), 2);
@@ -391,15 +392,31 @@ async fn reports_scope_accounts_deduplicate_ownership_and_reconcile_gaps() {
     assert_eq!(accounts[0]["total_cost"].as_f64(), Some(200.0));
     assert_eq!(accounts[1]["unmatched_cost"].as_f64(), Some(200.0));
     assert_eq!(accounts[0]["currency_mismatch_rows"], 1);
-    assert_eq!(get(&state, org, None).await.0, StatusCode::UNAUTHORIZED);
     assert_eq!(
-        get(&state, org, Some(Uuid::new_v4())).await.0,
+        get(&state, &data_flow_uri, None).await.0,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        get(&state, &data_flow_uri, Some(Uuid::new_v4())).await.0,
         StatusCode::FORBIDDEN
     );
     // A different workspace is not observable with a valid token from this one.
+    let other_data_flow_uri = format!("/api/v1/orgs/{}/data-flow", Uuid::new_v4());
     assert_eq!(
-        get(&state, Uuid::new_v4(), Some(user)).await.0,
+        get(&state, &other_data_flow_uri, Some(user)).await.0,
         StatusCode::FORBIDDEN
     );
+
+    let usd_ci = ci(&state, org, account_a, "foreign-currency").await;
+    map_service(&state, org, center_b, usd_ci, "foreign-currency").await;
+    map_service(&state, org, center_b, ambiguous, "duplicate-owner-b").await;
+    map_service(&state, org, center_b, deleted, "deleted-owner-b").await;
+    expense(&state, org, account_b, "ambiguous", 300.0, 0, "CNY", None).await;
+    let center_uri = format!("/api/v1/cost-centers/{center_b}/expenses");
+    let (status, body) = get(&state, &center_uri, Some(user)).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["data"]["currency"], "CNY");
+    assert_eq!(body["data"]["total_cost"], 50.0);
+    assert_eq!(body["data"]["resource_count"], 1);
     cleanup(&state, org, user).await;
 }

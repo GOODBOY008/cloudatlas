@@ -29,7 +29,7 @@ test.describe('Workspace design and accessibility', () => {
     const trigger = page.getByRole('button', { name: 'Search', exact: true });
     await trigger.click();
     const dialog = page.getByRole('dialog', { name: 'Search', exact: true });
-    const input = dialog.getByRole('textbox', { name: 'Search', exact: true });
+    const input = dialog.getByRole('combobox', { name: 'Search', exact: true });
     await expect(input).toBeFocused();
     await page.keyboard.press('Shift+Tab');
     await expect(dialog.getByRole('button', { name: 'Close search' })).toBeFocused();
@@ -95,7 +95,7 @@ test.describe('Workspace design and accessibility', () => {
     await expect(page.getByRole('button', { name: '探索成本' })).toBeVisible();
     const sizes = await page.locator('main').evaluate((el) => ({ width: el.clientWidth, scroll: el.scrollWidth }));
     expect(sizes.scroll).toBeLessThanOrEqual(sizes.width + 1);
-    await page.getByRole('button', { name: 'Menu', exact: true }).click();
+    await page.getByRole('button', { name: '打开导航', exact: true }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
   });
 });

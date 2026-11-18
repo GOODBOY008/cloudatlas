@@ -170,7 +170,7 @@ export default function AssociationKinds() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="page-header">
         <div>
           <h1 className="page-title">{t('assocKinds.title')}</h1>
           <p className="text-sm text-secondary mt-0.5">
@@ -180,16 +180,12 @@ export default function AssociationKinds() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-subtle/60 p-1 rounded-lg w-fit">
+      <div className="segmented-control ">
         {(['kinds', 'mappings'] as const).map(tab => (
-          <button
+          <button aria-pressed={activeTab === tab}
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-1.5 text-sm rounded-md font-medium transition-colors capitalize ${
-              activeTab === tab
-                ? 'bg-emphasis text-primary'
-                : 'text-secondary hover:text-primary'
-            }`}
+            className="segment"
           >
             {tab === 'kinds' ? t('assocKinds.title') : t('assocKinds.tabMappings')}
           </button>
@@ -202,7 +198,7 @@ export default function AssociationKinds() {
           <div className="flex justify-end">
             <button
               onClick={() => { resetKindForm(); setShowKindForm(true) }}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg"
+              className="btn-primary"
             >
               {t('assocKinds.newKind')}
             </button>
@@ -259,11 +255,11 @@ export default function AssociationKinds() {
                 <button
                   disabled={kindBusy || !kindName.trim() || !kindDisplay.trim()}
                   onClick={() => editKindId ? updateKindMutation.mutate() : createKindMutation.mutate()}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm font-medium rounded-lg"
+                  className="btn-primary"
                 >
                   {kindBusy ? t('assocKinds.saving') : editKindId ? t('assocKinds.update') : t('assocKinds.create')}
                 </button>
-                <button onClick={resetKindForm} className="px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg">
+                <button onClick={resetKindForm} className="btn-secondary">
                   {t('common.cancel')}
                 </button>
               </div>
@@ -274,7 +270,7 @@ export default function AssociationKinds() {
             <p className="text-muted text-sm">{t('common.loading')}</p>
           ) : (
             <div className="bg-surface rounded-xl border border-edge overflow-hidden">
-              <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-muted border-b border-edge">
                     <th className="text-left px-4 py-3">{t('common.name')}</th>
@@ -333,7 +329,7 @@ export default function AssociationKinds() {
           <div className="flex justify-end">
             <button
               onClick={() => setShowMappingForm(true)}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg"
+              className="btn-primary"
             >
               {t('assocKinds.newMapping')}
             </button>
@@ -410,13 +406,13 @@ export default function AssociationKinds() {
                 <button
                   disabled={createMappingMutation.isPending || !mapSrcType || !mapKindId || !mapDstType}
                   onClick={() => createMappingMutation.mutate()}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm font-medium rounded-lg"
+                  className="btn-primary"
                 >
                   {createMappingMutation.isPending ? t('assocKinds.saving') : t('assocKinds.createMapping')}
                 </button>
                 <button
                   onClick={() => { setShowMappingForm(false); setMapError('') }}
-                  className="px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg"
+                  className="btn-secondary"
                 >
                   {t('common.cancel')}
                 </button>
@@ -428,7 +424,7 @@ export default function AssociationKinds() {
             <p className="text-muted text-sm">{t('common.loading')}</p>
           ) : (
             <div className="bg-surface rounded-xl border border-edge overflow-hidden">
-              <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-muted border-b border-edge">
                     <th className="text-left px-4 py-3">{t('assocKinds.colSrcType')}</th>

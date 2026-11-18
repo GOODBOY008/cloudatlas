@@ -1,0 +1,33 @@
+# Run alongside the existing native development services:
+# docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+name: cloudatlas-local
+
+services:
+  postgres:
+    container_name: cloudatlas-local-postgres
+    ports: !override
+      - "127.0.0.1:5433:5432"
+
+  migrate:
+    container_name: cloudatlas-local-migrate
+
+  api:
+    container_name: cloudatlas-local-api
+    env_file:
+      - .env.cloudatlas-local
+    environment:
+      # Load the signing and encryption keys from the local env_file.
+      JWT_SECRET: !reset null
+      ENCRYPTION_KEY: !reset null
+      CLOUD_MOCK_ENABLED: "false"
+      RUST_LOG: info,cloudatlas=debug
+      SCHEDULER_ENABLED: "true"
+      RATE_LIMIT_MAX_REQUESTS: "600"
+    ports: !override
+      - "127.0.0.1:8081:8080"
+
+  frontend:
+    container_name: cloudatlas-local-frontend
+    ports: !override
+      # Share the web UI over the LAN; API and PostgreSQL stay on loopback.
+      - "0.0.0.0:3000:80"

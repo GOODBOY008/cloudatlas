@@ -1,3 +1,5 @@
+import { chartColors, chartAxis, chartGrid } from '../lib/chartTheme'
+import { fmtMoney, fmtMoneyShort, useOrgCurrency } from '../lib/format'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -14,13 +16,6 @@ function normalizeAgg(item: Record<string, unknown>): ExpenseAgg {
   return { name: name ? String(name) : 'Unknown', total_cost: Number.isFinite(total) ? total : 0 }
 }
 
-function fmt(v: number) { return `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }
-function fmtShort(v: number) {
-  if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`
-  if (Math.abs(v) >= 1_000) return `$${(v / 1_000).toFixed(1)}K`
-  return `$${v.toFixed(2)}`
-}
-
 const DIM_OPTIONS = [
   { labelKey: 'costComparison.dimService', headerKey: 'costComparison.colService', endpoint: 'by-service', key: 'name' },
   { labelKey: 'costComparison.dimRegion', headerKey: 'costComparison.colRegion', endpoint: 'by-region', key: 'name' },
@@ -34,6 +29,9 @@ function daysAgo(n: number) {
 function today() { return new Date().toISOString().slice(0, 10) }
 
 export default function CostComparison() {
+  const currency = useOrgCurrency()
+  const fmt = (value: number) => fmtMoney(value, currency)
+  const fmtShort = (value: number) => fmtMoneyShort(value, currency)
   const { t } = useTranslation()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id ?? ''
@@ -77,7 +75,7 @@ export default function CostComparison() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="page-heading">
         <h1 className="page-title">{t('costComparison.title')}</h1>
         <p className="text-sm text-secondary mt-1">{t('costComparison.subtitle')}</p>
       </div>
@@ -117,17 +115,17 @@ export default function CostComparison() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('costComparison.periodATotal')}</p>
-          <p className="text-2xl font-bold text-accent mt-1">{fmtShort(totalA)}</p>
+          <p className="text-2xl font-semibold text-accent mt-1">{fmtShort(totalA)}</p>
           <p className="text-xs text-muted mt-1">{periodA.start} → {periodA.end}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('costComparison.periodBTotal')}</p>
-          <p className="text-2xl font-bold text-primary mt-1">{fmtShort(totalB)}</p>
+          <p className="text-2xl font-semibold text-primary mt-1">{fmtShort(totalB)}</p>
           <p className="text-xs text-muted mt-1">{periodB.start} → {periodB.end}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('costComparison.change')}</p>
-          <p className={`text-2xl font-bold mt-1 ${totalDelta > 0 ? 'text-danger' : 'text-success'}`}>
+          <p className={`text-2xl font-semibold mt-1 ${totalDelta > 0 ? 'text-danger' : 'text-success'}`}>
             {totalDelta > 0 ? '+' : ''}{fmtShort(totalDelta)}
           </p>
           <p className={`text-xs mt-1 ${totalDelta > 0 ? 'text-danger' : 'text-success'}`}>
@@ -142,13 +140,13 @@ export default function CostComparison() {
           <h2 className="text-sm font-semibold text-primary mb-4">{t('costComparison.chartTitle', { dim: t(dim.labelKey) })}</h2>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={merged.slice(0, 12)} barCategoryGap="20%">
-              <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
-              <YAxis tickFormatter={v => fmtShort(v)} tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
+              <CartesianGrid {...chartGrid}  vertical={false} />
+              <XAxis {...chartAxis} dataKey="name" tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
+              <YAxis {...chartAxis} tickFormatter={v => fmtShort(v)} tick={{ fontSize: 10, fill: 'rgb(var(--text-muted))' }} />
               <Tooltip formatter={(v: number) => fmt(v)} />
               <Legend />
-              <Bar dataKey="period_a" name={t('costComparison.colPeriodA')} fill="#299d87" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="period_b" name={t('costComparison.colPeriodB')} fill="#10b981" radius={[4, 4, 0, 0]} />
+              <Bar isAnimationActive={false} maxBarSize={32} dataKey="period_a" name={t('costComparison.colPeriodA')} fill={chartColors.blue} radius={[4, 4, 0, 0]} />
+              <Bar isAnimationActive={false} maxBarSize={32} dataKey="period_b" name={t('costComparison.colPeriodB')} fill={chartColors.orange} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -161,9 +159,9 @@ export default function CostComparison() {
           <span className="text-xs text-secondary">{t('costComparison.itemsCount', { count: merged.length })}</span>
         </div>
         <div className="overflow-x-auto">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead><tr className="border-b border-strong">
-              {[t(dim.headerKey), t('costComparison.colPeriodA'), t('costComparison.colPeriodB'), t('costComparison.colDeltaUsd'), t('costComparison.colDeltaPct')].map(h => (
+              {[t(dim.headerKey), t('costComparison.colPeriodA'), t('costComparison.colPeriodB'), t('costComparison.colDeltaAmount', { currency }), t('costComparison.colDeltaPct')].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{h}</th>
               ))}
             </tr></thead>
@@ -174,7 +172,7 @@ export default function CostComparison() {
                 <tr key={i} className="hover:bg-subtle">
                   <td className="px-4 py-3 font-medium text-primary">{r.full_name ?? r.name}</td>
                   <td className="px-4 py-3 text-accent">{fmt(r.period_a)}</td>
-                  <td className="px-4 py-3 text-success">{fmt(r.period_b)}</td>
+                  <td className="px-4 py-3 text-primary">{fmt(r.period_b)}</td>
                   <td className={`px-4 py-3 font-semibold ${r.delta > 0 ? 'text-danger' : r.delta < 0 ? 'text-success' : 'text-secondary'}`}>
                     {r.delta > 0 ? '+' : ''}{fmt(r.delta)}
                   </td>

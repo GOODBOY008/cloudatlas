@@ -1,7 +1,7 @@
 # ────────────────────────────────────────────────────────────────────────────
 # Stage 1: Build React app
 # ────────────────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Install deps first (better layer caching)

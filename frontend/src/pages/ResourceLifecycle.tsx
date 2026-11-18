@@ -1,3 +1,4 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -107,13 +108,13 @@ export default function ResourceLifecycle() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="page-header">
         <div>
           <h1 className="page-title">{t('resourceLifecycle.title')}</h1>
           <p className="text-sm text-secondary mt-1">{t('resourceLifecycle.subtitle')}</p>
         </div>
         <button onClick={() => setShowCreate(true)}
-          className="px-4 py-2 bg-accent text-on-accent rounded-lg text-sm font-medium hover:bg-accent-hover">
+          className="btn-primary">
           {t('resourceLifecycle.newPolicy')}
         </button>
       </div>
@@ -122,26 +123,26 @@ export default function ResourceLifecycle() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('resourceLifecycle.totalPolicies')}</p>
-          <p className="text-2xl font-bold text-primary mt-1">{pols.length}</p>
+          <p className="text-2xl font-semibold text-primary mt-1">{pols.length}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('common.active')}</p>
-          <p className="text-2xl font-bold text-success mt-1">{activePolicies}</p>
+          <p className="text-2xl font-semibold text-success mt-1">{activePolicies}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('resourceLifecycle.lifecycleEvents')}</p>
-          <p className="text-2xl font-bold text-warning mt-1">{evts.length}</p>
+          <p className="text-2xl font-semibold text-warning mt-1">{evts.length}</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-strong">
+      <div className="page-tabs ">
         {([
           { key: 'policies', label: t('resourceLifecycle.tabPolicies', { count: pols.length }) },
           { key: 'events', label: t('resourceLifecycle.tabEvents', { count: evts.length }) },
         ] as const).map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === tab.key ? 'border-accent text-primary' : 'border-transparent text-secondary hover:text-primary'}`}>
+          <button aria-pressed={activeTab === tab.key} key={tab.key} onClick={() => setActiveTab(tab.key)}
+            className="page-tab">
             {tab.label}
           </button>
         ))}
@@ -149,7 +150,7 @@ export default function ResourceLifecycle() {
 
       {activeTab === 'policies' && (
         <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead><tr className="border-b border-strong">
               {['common.name', 'common.type', 'resourceLifecycle.colThreshold', 'resourceLifecycle.colAction', 'common.active', 'resourceLifecycle.colLastRun', 'common.actions'].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
@@ -203,7 +204,7 @@ export default function ResourceLifecycle() {
 
       {activeTab === 'events' && (
         <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead><tr className="border-b border-strong">
               {['resourceLifecycle.colEvent', 'pools.colResource', 'common.type', 'resourceLifecycle.colPolicy', 'resourceLifecycle.colReason', 'resourceLifecycle.colTime'].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
@@ -235,8 +236,8 @@ export default function ResourceLifecycle() {
 
       {/* Create Policy Modal */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-surface rounded-2xl border border-strong p-6 w-full max-w-md space-y-4">
+        <NativeDialog className="items-center justify-center p-4" label={t('resourceLifecycle.newPolicyTitle')} onClose={() => setShowCreate(false)}>
+          <div className="dialog-panel p-6 w-full max-w-md space-y-4">
             <h2 className="text-lg font-bold text-primary">{t('resourceLifecycle.newPolicyTitle')}</h2>
             <div className="space-y-3">
               <div>
@@ -287,12 +288,12 @@ export default function ResourceLifecycle() {
               </button>
               <button onClick={() => createPolicy.mutate()}
                 disabled={createPolicy.isPending || !form.name.trim()}
-                className="flex-1 py-2 text-sm bg-accent text-on-accent rounded-lg hover:bg-accent-hover disabled:opacity-50">
+                className="btn-primary flex-1">
                 {createPolicy.isPending ? t('resourceLifecycle.creating') : t('resourceLifecycle.createPolicy')}
               </button>
             </div>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

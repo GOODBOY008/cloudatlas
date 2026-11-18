@@ -22,10 +22,9 @@ test.describe('Dashboard Interactions @smoke', () => {
     expect(dashboardPage.page.url()).toContain('/expenses');
   });
 
-  test('DASH-04 — clicking Resources navigates to /cmdb', async ({ dashboardPage }) => {
+  test('DASH-04 — clicking Billed Resources opens Cost Explorer', async ({ dashboardPage }) => {
     await dashboardPage.resourcesCard.click();
-    await dashboardPage.page.waitForURL(/\/cmdb/, { timeout: 8000 });
-    expect(dashboardPage.page.url()).toContain('/cmdb');
+    await expect(dashboardPage.page).toHaveURL(/\/expenses$/);
   });
 
   test('DASH-09 — forecast section is visible', async ({ dashboardPage }) => {

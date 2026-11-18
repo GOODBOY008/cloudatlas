@@ -73,8 +73,8 @@ export default function Events() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('events.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('events.title')}</h1>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mb-4">

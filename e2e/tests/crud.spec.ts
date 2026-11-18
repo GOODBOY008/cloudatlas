@@ -126,12 +126,9 @@ test.describe('Settings @regression', () => {
   });
 
   test('SET-07 — invite member form visible', async ({ settingsPage }) => {
-    const inviteInput = settingsPage.page.getByLabel(/email/i).first();
-    if (await inviteInput.isVisible()) {
-      await expect(inviteInput).toBeEnabled();
-    } else {
-      test.skip(true, 'Invite form not found');
-    }
+    const inviteInput = settingsPage.page.getByRole('main').getByPlaceholder('Email address');
+    await expect(inviteInput).toBeVisible();
+    await expect(inviteInput).toBeEnabled();
   });
 });
 

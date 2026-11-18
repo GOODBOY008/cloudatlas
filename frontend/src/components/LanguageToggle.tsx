@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { setStoredLanguage } from '../i18n'
+import { changeAppLanguage } from '../i18n'
 
 /** Language switcher for pre-auth screens (login / reset password). */
 export default function LanguageToggle() {
@@ -7,10 +7,7 @@ export default function LanguageToggle() {
   const next = i18n.language === 'zh' ? 'en' : 'zh'
   return (
     <button
-      onClick={() => {
-        i18n.changeLanguage(next)
-        setStoredLanguage(next)
-      }}
+      onClick={() => { void changeAppLanguage(next) }}
       aria-label={t('header.switchLanguage')}
       className="icon-button text-xs font-medium"
     >

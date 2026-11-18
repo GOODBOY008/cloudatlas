@@ -1,3 +1,4 @@
+import { useMoneyFormatter } from '../lib/format'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../lib/api'
@@ -17,10 +18,9 @@ interface AlertEvent {
   created_at: string
 }
 
-const formatMoney = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 export default function AlertEvents() {
+  const formatMoney = useMoneyFormatter()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id
   const { t } = useTranslation()
@@ -40,8 +40,8 @@ export default function AlertEvents() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('alertEvents.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('alertEvents.title')}</h1>
       </div>
 
       <div className="flex items-center gap-2 mb-4">
@@ -76,7 +76,7 @@ export default function AlertEvents() {
         </div>
       ) : (
         <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
             <thead className="border-b border-edge text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">{t('common.type')}</th>

@@ -167,7 +167,7 @@ The seed also includes two mock cloud accounts with discovered resources, 30+ da
 
 After logging in you will land on the **Dashboard**, titled **Workspace overview**, which shows:
 
-- Month-to-date cloud spend
+- Month-to-date cloud spend and the number of resources billed this month (not total inventory)
 - Daily spending over the last 30 days and a separate forecast panel
 - Active recommendations count
 - Top 5 spending resources
@@ -175,6 +175,10 @@ After logging in you will land on the **Dashboard**, titled **Workspace overview
 - Anomaly alerts
 
 ---
+
+### 2.4 Joining an invited workspace
+
+Open the invitation link and sign in with the invited email address. CloudAtlas preserves the invitation destination across sign-in. Review the displayed account and click **Accept invitation** to join; opening the link alone does not accept it. The new workspace becomes active after acceptance. Expired, revoked, already used, or wrong-account invitations cannot be redeemed; ask the workspace administrator for a new invitation when needed.
 
 ## 3. Core Concepts
 
@@ -1519,7 +1523,7 @@ CloudAtlas ships with a full **English / 中文** translation of every page. To 
 
 ### Global search & Copilot
 
-- Click **Search** in the header, or press **⌘K / Ctrl+K**, to open global search. Enter at least two characters to find configuration items, resources, recommendations, services, and pools. Use **Tab** to focus a result and **Enter** to open its page.
+- Click **Search** in the header, or press **⌘K / Ctrl+K**, to open global search. Quick navigation appears immediately. Search feature pages in English or Chinese; enter at least two characters to also search configuration items, resources, recommendations, services, and pools in the selected workspace. Use **↑ / ↓** to choose and **Enter** to open a result. Page navigation remains available when workspace search fails; use **Retry search** to retry the data request.
 - Click **Ask Copilot** in the sidebar, use the floating launcher on mobile, or press **⌘I / Ctrl+I**. On desktop, Copilot docks on the right; drag its left edge to resize it. Below 1024 px, it opens as a bottom sheet.
 - Copilot streams answers, offers page-aware suggestions and an optional page-context attachment, and supports stopping and copying replies. Press **Enter** in its message field to send. AI availability depends on your deployment configuration; see [AI Center](#64-ai-center).
 
@@ -1532,8 +1536,9 @@ These are CloudAtlas application shortcuts. Global search and Copilot shortcuts 
 | Toggle global search | **⌘K** | **Ctrl+K** | Any authenticated page; focuses the search field on opening |
 | Toggle Copilot | **⌘I** | **Ctrl+I** | Any authenticated page |
 | Close an overlay | **Esc** | **Esc** | Global search, Copilot, mobile navigation, shared dialogs, and the workspace selector |
-| Move focus forward / backward | **Tab / Shift+Tab** | **Tab / Shift+Tab** | Links, buttons, form fields, search results, and scrollable tables |
-| Activate a focused link or button | **Enter** | **Enter** | Includes opening a focused search result |
+| Move focus forward / backward | **Tab / Shift+Tab** | **Tab / Shift+Tab** | Links, buttons, form fields, and scrollable tables |
+| Choose a search result | **↑ / ↓** | **↑ / ↓** | Global search field; **Enter** opens the selected result |
+| Activate a focused link or button | **Enter** | **Enter** | Includes opening the selected search result |
 | Activate a focused button | **Space** | **Space** | Includes sidebar section toggles and theme/language controls |
 | Send a Copilot message | **Enter** | **Enter** | Focus the message field; a non-empty message is required |
 | Widen / narrow Copilot | **← / →** | **← / →** | Focus the desktop panel's left divider with Tab; changes width by 16 px within its allowed range |

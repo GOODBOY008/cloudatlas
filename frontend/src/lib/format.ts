@@ -26,27 +26,28 @@ export function useOrgCurrency() {
   }, getOrgCurrency, getOrgCurrency)
 }
 
-/** Format a number as money in the org currency. */
-export function fmtMoney(value: number, currency?: string): string {
-  const cur = currency ?? orgCurrency
+function formatMoney(value: number, currency: string, notation: 'standard' | 'compact') {
   try {
     return new Intl.NumberFormat(undefined, {
       style: 'currency',
-      currency: cur,
+      currency,
+      notation,
       maximumFractionDigits: 2,
     }).format(value)
   } catch {
-    return `$${value.toFixed(2)}`
+    return `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`
   }
 }
 
-/** Short form for charts (e.g. $1.2K, ¥3.4万). */
+export function fmtMoney(value: number, currency = orgCurrency): string {
+  return formatMoney(value, currency, 'standard')
+}
+
 export function fmtMoneyShort(value: number, currency?: string): string {
-  const cur = currency ?? orgCurrency
-  const abs = Math.abs(value)
-  const symbol =
-    cur === 'CNY' ? '¥' : cur === 'EUR' ? '€' : cur === 'GBP' ? '£' : '$'
-  if (abs >= 1_000_000) return `${symbol}${(value / 1_000_000).toFixed(2)}M`
-  if (abs >= 1_000) return `${symbol}${(value / 1_000).toFixed(1)}K`
-  return `${symbol}${value.toFixed(2)}`
+  return formatMoney(value, currency ?? orgCurrency, 'compact')
+}
+
+export function useMoneyFormatter() {
+  const currency = useOrgCurrency()
+  return (value: number, sourceCurrency = currency) => fmtMoney(value, sourceCurrency)
 }

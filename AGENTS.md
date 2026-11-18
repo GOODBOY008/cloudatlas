@@ -1,5 +1,15 @@
 # CloudAtlas — Agent Instructions & Task List
 
+## Current implementation guidance (2026-11-04)
+
+- See [product and architecture review](docs/product-architecture-review.md) for the current module map, verified fixes and remaining evolution work. Historical task-board completion marks and skeleton descriptions below are not current verification evidence.
+- Product routes, lazy page loaders, navigation labels, section ownership and contextual help belong in `frontend/src/app/routeCatalog.ts`; do not add independent route/name lists to Layout or Copilot. Workflow-only routes such as invite confirmation remain explicit in App.
+- Dashboard and workspace search server state belongs in `frontend/src/features/`; failed requests must not become zero metrics or successful empty states.
+- Use `frontend/src/lib/auth.ts` for session changes and `lib/queryClient.ts` for the shared cache. Token refresh must preserve session data and reject stale-session responses.
+- Backend domain route registrations live in `backend/src/routes/`; `routes.rs` is the composition root and applies the shared security layers. Adding a write route also requires an appropriate RBAC mapping and negative permission coverage.
+
+---
+
 > **Platform**: Unified FinOps + CMDB — Rust (Axum) backend, React (TypeScript + Vite) frontend, PostgreSQL-only.
 > **Spec reference**: `../docs/superpowers/specs/2026-05-19-finops-unified-spec.md`
 > **Architecture**: Modular monolith. No Redis, Kafka, Elasticsearch. PostgreSQL only.
@@ -54,9 +64,9 @@ P3 可选项(XLSX、字段分组、列个性化、引用模型、拓扑图位置
 
 ---
 
-## Global Theme Design System (2026-10-27)
+## Global Theme Design System (2026-11-17)
 
-CloudAtlas uses a slate and teal design system with **light** as the default and a coordinated **dark** theme. Existing preferences are persisted in Zustand under `cloudatlas-theme`.
+CloudAtlas uses a Cloudflare-inspired console design: neutral surfaces, blue interactions, a small orange brand accent, compact controls, fine borders, and restrained charts. **Light** remains the default with a coordinated **dark** theme; preferences remain persisted under `cloudatlas-theme`. See [UI design system and page audit](docs/ui-design-system.md).
 
 ### Architecture
 
@@ -68,6 +78,7 @@ CloudAtlas uses a slate and teal design system with **light** as the default and
 | Tokens and components | `frontend/src/styles.css` — RGB CSS variables, shared shell, panels, controls, tables, and responsive rules |
 | Tailwind | `frontend/tailwind.config.cjs` + `postcss.config.cjs`; CSS is compiled locally by Vite, with no Tailwind CDN |
 | Typography | Locally bundled Inter Variable, with system and CJK fallbacks |
+| Charts | `frontend/src/lib/chartTheme.ts` — shared palette, axes, grid, and tooltip settings; theme colors live in CSS |
 | Navigation | `Layout.tsx` — collapsible sections, workspace selector, visible search, mobile drawer, and breadcrumbs |
 | Auth shell | `AuthShell.tsx` and `Brand.tsx` — shared sign-in/reset layout and identity |
 
@@ -97,8 +108,8 @@ Use the same semantic class in both themes. Do not add `dark:` color duplicates 
 4. Place tables in `<div className="table-scroll" tabIndex={0}>` so wide columns remain accessible on small screens.
 5. Use `skeleton` for loading placeholders and `empty-state` / `empty-state-icon` for empty panels.
 6. Use semantic CSS variables in chart styles, such as `rgb(var(--border))` and `rgb(var(--text-muted))`. Maps and custom SVGs should consume `useThemeStore` (see `CostMap.tsx` and `ModelTopology.tsx`).
-7. Modal dialogs should use `Modal` or `useDialogFocus` for Escape, focus containment, and restoration. Preserve a child's existing `autoFocus` target and capture the launcher before child autofocus runs. Non-modal panels (such as desktop Copilot) must allow Tab focus to leave the panel.
-8. Keep new labels in both `i18n/locales/en.ts` and `zh.ts`. Shared design labels use the `design.*` prefix.
+7. New modal dialogs and detail drawers should reuse `NativeDialog` and `dialog-panel` / `drawer-panel`; the browser owns Escape, focus containment, and restoration. Existing `Modal` and `useDialogFocus` consumers remain supported. Preserve a child's existing `autoFocus` target and capture the launcher before child autofocus runs. Non-modal panels (such as desktop Copilot) must allow Tab focus to leave the panel.
+8. Use `page-tabs` / `page-tab` and `segmented-control` / `segment` for view selectors, with `aria-pressed` on the selected button. Keep new labels in both `i18n/locales/en.ts` and `zh.ts`. Shared design labels use the `design.*` prefix.
 9. Respect reduced motion and retain visible keyboard focus. Avoid overriding semantic tokens with page-specific light/dark hacks.
 10. Let `orgStore.setOrganizations` preserve or reconcile workspace selection. Read the selected workspace from the store after reconciliation; only Zustand persistence should write `cloudatlas-org` (a JSON state envelope, not a bare ID).
 

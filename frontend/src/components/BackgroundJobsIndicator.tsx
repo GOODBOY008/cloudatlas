@@ -100,7 +100,7 @@ export default function BackgroundJobsIndicator() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 w-[340px] max-w-[90vw] bg-surface border border-strong rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute right-0 top-11 w-[340px] max-w-[90dvw] bg-surface border border-strong rounded-xl shadow-popover overflow-hidden z-50">
           <div className="px-4 py-3 border-b border-edge">
             <span className="text-sm font-semibold text-primary">{t('jobs.activeJobs')}</span>
           </div>

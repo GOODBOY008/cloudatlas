@@ -96,9 +96,8 @@ This spins up the full stack (`postgres → migrate → api → frontend`) plus 
 
 | Workflow trigger | Tests run |
 |---|---|
-| Every push / PR to `main`/`develop` | `@smoke` (chromium) |
+| Every push / PR to `main`/`develop` | `@smoke` (Chromium and iPhone WebKit) |
 | Merge to `main` | Full regression (chromium + firefox) |
-| Nightly schedule (02:00 UTC) | Full regression (chromium + firefox) |
 | `workflow_dispatch` | Configurable suite + browser |
 
 Test artifacts (HTML report, screenshots, traces) are uploaded as GitHub Actions artifacts and retained for 7–14 days.

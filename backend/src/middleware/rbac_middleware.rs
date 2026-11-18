@@ -52,7 +52,7 @@ pub fn required_permission(method: &Method, segments: &[&str]) -> Option<Permiss
 
     match resource {
         // ── Organization administration ─────────────────────────────────────
-        "members" if mutating => Some(AdminOrg), // invite / remove / role
+        "members" | "invites" if mutating => Some(AdminOrg), // invite / revoke / remove / role
         "cost-centers" if mutating => Some(AdminOrg),
 
         // ── Pools & budgets ─────────────────────────────────────────────────
@@ -80,12 +80,14 @@ pub fn required_permission(method: &Method, segments: &[&str]) -> Option<Permiss
         | "external-cmdb"
         | "service-templates"
         | "ci-apply-rules"
+        | "field-templates"
+        | "unique-constraints"
+        | "ci-drift"
             if mutating =>
         {
             Some(ManageCmdb)
         }
         "cmdb" if mutating => Some(ManageCmdb), // discovery, stats
-        "ci-drift" if rest.get(2).copied() == Some("acknowledge") => Some(ManageCmdb),
         "compliance" if mutating => Some(ManageCmdb), // run
 
         // ── FinOps governance ───────────────────────────────────────────────
@@ -194,6 +196,80 @@ mod tests {
         assert_eq!(
             required_permission(&Method::POST, &drift_ack),
             Some(Permission::ManageCmdb)
+        );
+    }
+
+    #[test]
+    fn model_and_drift_workflows_require_cmdb_editor_permissions() {
+        for (method, suffix) in [
+            (Method::POST, "field-templates"),
+            (Method::PUT, "field-templates/template"),
+            (Method::DELETE, "field-templates/template"),
+            (Method::POST, "field-templates/template/bind"),
+            (Method::DELETE, "field-templates/template/unbind"),
+            (Method::POST, "field-templates/template/apply"),
+            (Method::POST, "ci-types/type/unique-constraints"),
+            (Method::DELETE, "unique-constraints/constraint"),
+            (Method::POST, "ci-drift/drift/acknowledge"),
+            (Method::POST, "ci-drift/drift/resolve"),
+            (Method::POST, "ci-drift/drift/ignore"),
+            (Method::POST, "cmdb/discovery"),
+            (Method::POST, "external-cmdb/config/sync"),
+            (Method::POST, "compliance/run"),
+            (Method::POST, "cis/import"),
+            (Method::POST, "cis/bulk-import"),
+            (Method::POST, "cis/batch-update"),
+            (Method::POST, "cis/batch-delete"),
+            (Method::POST, "cis/ci/clone"),
+            (Method::PATCH, "cis/ci/lifecycle"),
+            (Method::POST, "ci-apply-rules/rule/execute"),
+        ] {
+            let path = format!("/api/v1/orgs/org-1/{suffix}");
+            assert_eq!(
+                required_permission(&method, &segs(&path)),
+                Some(Permission::ManageCmdb),
+                "{method} {path}"
+            );
+        }
+        for suffix in [
+            "field-templates",
+            "field-templates/template/types",
+            "field-templates/template/diff/type",
+            "ci-types/type/unique-constraints",
+            "ci-drift",
+            "external-cmdb/config/dry-run",
+        ] {
+            let path = format!("/api/v1/orgs/org-1/{suffix}");
+            assert_eq!(
+                required_permission(&Method::GET, &segs(&path)),
+                None,
+                "{path}"
+            );
+        }
+    }
+
+    #[test]
+    fn invitation_mutations_require_the_same_permission_as_member_management() {
+        for (method, path) in [
+            (Method::POST, "/api/v1/orgs/org-1/invites"),
+            (Method::POST, "/api/v1/orgs/org-1/invites/invite/revoke"),
+            (Method::POST, "/api/v1/organizations/org-1/members"),
+        ] {
+            assert_eq!(
+                required_permission(&method, &segs(path)),
+                Some(Permission::AdminOrg),
+                "{method} {path}"
+            );
+        }
+        assert_eq!(
+            required_permission(&Method::GET, &segs("/api/v1/orgs/org-1/invites")),
+            None
+        );
+        // Redemption is authenticated but cannot require membership in an org
+        // that the recipient has not joined yet.
+        assert_eq!(
+            required_permission(&Method::POST, &segs("/api/v1/auth/accept-invite")),
+            None
         );
     }
 

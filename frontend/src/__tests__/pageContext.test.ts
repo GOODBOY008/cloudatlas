@@ -8,8 +8,9 @@ describe('pageContext', () => {
     expect(chipsForRoute('/dashboard')).toContain('copilot.suggest2.openAnomalies')
   })
 
-  it('falls back to defaults and null label on unmatched routes', () => {
-    expect(pageLabelKeyForRoute('/settings')).toBeNull()
+  it('uses catalog labels while keeping default suggestions for other features', () => {
+    expect(pageLabelKeyForRoute('/settings')).toBe('nav.settings')
+    expect(pageLabelKeyForRoute('/not-a-page')).toBeNull()
     expect(chipsForRoute('/settings')).toContain('copilot.suggest.spend')
     expect(chipsForRoute('/cmdb')).toEqual(chipsForRoute('/anything-else'))
   })

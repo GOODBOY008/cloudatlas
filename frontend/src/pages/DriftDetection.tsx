@@ -1,3 +1,4 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../lib/api'
@@ -34,7 +35,7 @@ export default function DriftDetection() {
   const orgId = currentOrg?.id
 
   const [tab, setTab] = useState<'drift' | 'baselines'>('drift')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'acknowledged'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | DriftRecord['status']>('all')
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState<BaselineForm>(DEFAULT_FORM)
   const [formError, setFormError] = useState('')
@@ -116,40 +117,32 @@ export default function DriftDetection() {
     })
   }
 
-  const visibleDrift = drift.filter((d) => {
-    if (statusFilter === 'open') return !d.acknowledged_at
-    if (statusFilter === 'acknowledged') return !!d.acknowledged_at
-    return true
-  })
+  const visibleDrift = drift.filter(d => statusFilter === 'all' || d.status === statusFilter)
 
   const inputCls =
     'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('drift.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('drift.title')}</h1>
         <button
           onClick={() => {
             setShowModal(true)
             setFormError('')
           }}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+          className="btn-primary"
         >
           {t('drift.captureBaseline')}
         </button>
       </div>
 
-      <div className="flex gap-1 mb-4 border-b border-edge">
+      <div className="page-tabs mb-4">
         {(['drift', 'baselines'] as const).map((tabKey) => (
-          <button
+          <button aria-pressed={tab === tabKey}
             key={tabKey}
             onClick={() => setTab(tabKey)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === tabKey
-                ? 'border-accent text-primary'
-                : 'border-transparent text-muted hover:text-secondary'
-            }`}
+            className="page-tab"
           >
             {tabKey === 'drift' ? t('drift.tabDrift') : t('drift.tabBaselines')}
           </button>
@@ -158,8 +151,8 @@ export default function DriftDetection() {
 
       {tab === 'drift' ? (
         <>
-          <div className="flex items-center gap-2 mb-4">
-            {(['all', 'open', 'acknowledged'] as const).map((s) => (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {(['all', 'open', 'acknowledged', 'resolved', 'ignored'] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
@@ -169,7 +162,7 @@ export default function DriftDetection() {
                     : 'bg-subtle text-secondary hover:text-primary'
                 }`}
               >
-                {s === 'all' ? t('drift.filterAll') : s === 'open' ? t('drift.filterOpen') : t('drift.filterAcknowledged')}
+                {s === 'all' ? t('drift.filterAll') : t('drift.' + s)}
               </button>
             ))}
           </div>
@@ -190,7 +183,7 @@ export default function DriftDetection() {
             </div>
           ) : (
             <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-              <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
                 <thead className="border-b border-edge text-xs uppercase text-muted">
                   <tr>
                     <th className="px-4 py-3 font-medium">{t('cmdb.colCi')}</th>
@@ -221,26 +214,22 @@ export default function DriftDetection() {
                         {new Date(d.detected_at).toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
-                        {d.acknowledged_at ? (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-subtle text-secondary">
-                            {t('drift.acknowledged')}
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning">
-                            {t('drift.open')}
-                          </span>
-                        )}
+                        <span className={d.status === 'open'
+                          ? 'px-2 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning'
+                          : 'px-2 py-0.5 rounded-full text-xs font-medium bg-subtle text-secondary'}>
+                          {t('drift.' + d.status)}
+                        </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        {!d.acknowledged_at && (
+                        {(d.status === 'open' || d.status === 'acknowledged') && (
                           <>
-                            <button
+                            {d.status === 'open' && <button
                               onClick={() => acknowledgeMutation.mutate(d.id)}
                               disabled={acknowledgeMutation.isPending}
                               className="text-xs text-accent hover:text-accent disabled:opacity-50"
                             >
                               {t('drift.acknowledge')}
-                            </button>
+                            </button>}
                             <button
                               onClick={() => resolveMutation.mutate(d.id)}
                               disabled={resolveMutation.isPending}
@@ -275,7 +264,7 @@ export default function DriftDetection() {
             </div>
           ) : (
             <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-              <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
                 <thead className="border-b border-edge text-xs uppercase text-muted">
                   <tr>
                     <th className="px-4 py-3 font-medium">{t('drift.colLabel')}</th>
@@ -308,12 +297,9 @@ export default function DriftDetection() {
       )}
 
       {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setShowModal(false)}
-        >
+        <NativeDialog className="items-center justify-center p-4" label={t('drift.captureBaselineTitle')} onClose={() => setShowModal(false)}>
           <div
-            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="dialog-panel p-6 w-full max-w-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-primary mb-4">{t('drift.captureBaselineTitle')}</h3>
@@ -370,14 +356,14 @@ export default function DriftDetection() {
                 <button
                   type="submit"
                   disabled={createBaselineMutation.isPending}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {t('drift.capture')}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

@@ -215,6 +215,7 @@ pub async fn summary(
     let (start_date, end_date) =
         resolve_date_range(q.start_date.as_deref(), q.end_date.as_deref())?;
     let period_days = (end_date - start_date).num_days() as i32;
+    let currency = crate::modules::billing::fx::org_currency(&state.db, org_id).await;
 
     // Total cost + resource count.
     let totals_row = sqlx::query(
@@ -223,12 +224,13 @@ pub async fn summary(
             COALESCE(SUM(cost), 0)::float8 AS total_cost,
             COUNT(DISTINCT cloud_resource_id)          AS resource_count
         FROM expenses
-        WHERE organization_id = $1 AND date >= $2 AND date <= $3
+        WHERE organization_id = $1 AND date >= $2 AND date <= $3 AND currency = $4
         "#,
     )
     .bind(org_id)
     .bind(start_date)
     .bind(end_date)
+    .bind(&currency)
     .fetch_one(&state.db)
     .await?;
 
@@ -242,7 +244,7 @@ pub async fn summary(
             COALESCE(service_name, 'Unknown') AS service_name,
             SUM(cost)::float8                  AS cost
         FROM expenses
-        WHERE organization_id = $1 AND date >= $2 AND date <= $3
+        WHERE organization_id = $1 AND date >= $2 AND date <= $3 AND currency = $4
         GROUP BY service_name
         ORDER BY cost DESC
         LIMIT 20
@@ -251,6 +253,7 @@ pub async fn summary(
     .bind(org_id)
     .bind(start_date)
     .bind(end_date)
+    .bind(&currency)
     .fetch_all(&state.db)
     .await?;
 
@@ -277,7 +280,7 @@ pub async fn summary(
             COALESCE(cloud_region, 'global') AS region,
             SUM(cost)::float8                 AS cost
         FROM expenses
-        WHERE organization_id = $1 AND date >= $2 AND date <= $3
+        WHERE organization_id = $1 AND date >= $2 AND date <= $3 AND currency = $4
         GROUP BY cloud_region
         ORDER BY cost DESC
         LIMIT 20
@@ -286,6 +289,7 @@ pub async fn summary(
     .bind(org_id)
     .bind(start_date)
     .bind(end_date)
+    .bind(&currency)
     .fetch_all(&state.db)
     .await?;
 
@@ -308,7 +312,7 @@ pub async fn summary(
     Ok(Json(json!({
         "data": ExpenseSummaryResponse {
             total_cost,
-            currency: "USD".into(),
+            currency,
             period_days,
             resource_count,
             by_service,
@@ -339,7 +343,9 @@ pub async fn by_cloud(
             SUM(e.cost)::float8 AS cost
         FROM expenses e
         JOIN cloud_accounts ca ON ca.id = e.cloud_account_id
-        WHERE e.organization_id = $1 AND e.date >= $2 AND e.date <= $3
+        WHERE e.organization_id = $1
+          AND e.currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+          AND e.date >= $2 AND e.date <= $3
         GROUP BY ca.provider, ca.name
         ORDER BY cost DESC
         "#,
@@ -386,7 +392,9 @@ pub async fn by_pool(
             SUM(e.cost)::float8 AS cost
         FROM expenses e
         LEFT JOIN pools p ON p.id = e.pool_id
-        WHERE e.organization_id = $1 AND e.date >= $2 AND e.date <= $3
+        WHERE e.organization_id = $1
+          AND e.currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+          AND e.date >= $2 AND e.date <= $3
         GROUP BY p.id, p.name
         ORDER BY cost DESC
         "#,
@@ -431,7 +439,9 @@ pub async fn by_service(
             COALESCE(service_name, 'Unknown') AS service_name,
             SUM(cost)::float8                  AS cost
         FROM expenses
-        WHERE organization_id = $1 AND date >= $2 AND date <= $3
+        WHERE organization_id = $1
+          AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+          AND date >= $2 AND date <= $3
         GROUP BY service_name
         ORDER BY cost DESC
         "#,
@@ -475,7 +485,9 @@ pub async fn by_region(
             COALESCE(cloud_region, 'global') AS region,
             SUM(cost)::float8                 AS cost
         FROM expenses
-        WHERE organization_id = $1 AND date >= $2 AND date <= $3
+        WHERE organization_id = $1
+          AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+          AND date >= $2 AND date <= $3
         GROUP BY cloud_region
         ORDER BY cost DESC
         "#,
@@ -519,7 +531,9 @@ pub async fn trend(
             date::text         AS date,
             SUM(cost)::float8  AS cost
         FROM expenses
-        WHERE organization_id = $1 AND date >= $2 AND date <= $3
+        WHERE organization_id = $1
+          AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+          AND date >= $2 AND date <= $3
         GROUP BY date
         ORDER BY date ASC
         "#,
@@ -565,7 +579,9 @@ pub async fn top_resources(
             p.name                AS pool_name
         FROM expenses e
         LEFT JOIN pools p ON p.id = e.pool_id
-        WHERE e.organization_id = $1 AND e.date >= $2 AND e.date <= $3
+        WHERE e.organization_id = $1
+          AND e.currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+          AND e.date >= $2 AND e.date <= $3
         GROUP BY e.cloud_resource_id, e.resource_name, e.resource_type, p.name
         ORDER BY total_cost DESC
         LIMIT 10
@@ -608,7 +624,9 @@ pub async fn forecast_expenses(
     let rows = sqlx::query(
         r#"SELECT date::text AS date, SUM(cost)::float8 AS daily_cost
            FROM expenses
-           WHERE organization_id = $1 AND date >= $2
+           WHERE organization_id = $1
+             AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+             AND date >= $2
            GROUP BY date ORDER BY date"#,
     )
     .bind(org_id)
@@ -724,7 +742,9 @@ pub async fn expense_anomalies(
                SELECT cloud_resource_id, resource_name, resource_type::text AS resource_type,
                       AVG(cost) AS mean_cost, STDDEV(cost) AS stddev_cost
                FROM expenses
-               WHERE organization_id = $1 AND date >= $2
+               WHERE organization_id = $1
+                 AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+                 AND date >= $2
                GROUP BY cloud_resource_id, resource_name, resource_type
                HAVING STDDEV(cost) > 0
            ),
@@ -741,7 +761,9 @@ pub async fn expense_anomalies(
                         / NULLIF(s.mean_cost::float8, 0)) * 100.0 AS deviation_pct
                FROM expenses e
                JOIN stats s ON s.cloud_resource_id = e.cloud_resource_id
-               WHERE e.organization_id = $1 AND e.date >= $3
+               WHERE e.organization_id = $1
+                 AND e.currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+                 AND e.date >= $3
            )
            SELECT * FROM scored WHERE z_score > 2.5 ORDER BY z_score DESC LIMIT 50"#,
     )
@@ -874,7 +896,9 @@ pub async fn ri_coverage(
                COALESCE(SUM(cost::float8) FILTER (WHERE resource_type::text IN ('instance','rds_instance')), 0) AS on_demand_cost,
                COALESCE(SUM(cost::float8) FILTER (WHERE resource_type::text IN ('reserved_instance','savings_plan')), 0) AS commitment_cost
            FROM expenses
-           WHERE organization_id = $1 AND date >= CURRENT_DATE - INTERVAL '30 days'"#,
+           WHERE organization_id = $1
+             AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+             AND date >= CURRENT_DATE - INTERVAL '30 days'"#,
     )
     .bind(org_id)
     .fetch_one(&state.db)
@@ -1062,7 +1086,9 @@ pub async fn expense_heatmap(
             TO_CHAR(DATE_TRUNC('week', date), 'IYYY-"W"IW') AS week,
             SUM(cost)::float8                            AS cost
         FROM expenses
-        WHERE organization_id = $1 AND date >= $2 AND date <= $3
+        WHERE organization_id = $1
+          AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+          AND date >= $2 AND date <= $3
         GROUP BY resource_type, week
         ORDER BY resource_type, week
         "#,
@@ -1145,6 +1171,7 @@ pub async fn resource_expense_history(
             currency
         FROM expenses
         WHERE organization_id = $1 AND cloud_resource_id = $2
+          AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
           AND date >= $3 AND date <= $4
         GROUP BY date, currency
         ORDER BY date ASC
@@ -1180,6 +1207,7 @@ pub async fn resource_expense_history(
             COALESCE(SUM(cost) FILTER (WHERE date >= $5 AND date <= $6), 0)::float8 AS prev_cost
         FROM expenses
         WHERE organization_id = $1 AND cloud_resource_id = $2
+          AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
         "#,
     )
     .bind(org_id)
@@ -1283,7 +1311,9 @@ pub async fn expenses_by_tag_breakdown(
         FROM (
             SELECT jsonb_object_keys(tags) AS tag_key, cost
             FROM expenses
-            WHERE organization_id = $1 AND date >= $2 AND date <= $3
+            WHERE organization_id = $1
+              AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+              AND date >= $2 AND date <= $3
               AND tags != '{}'::jsonb
         ) sub
         GROUP BY tag_key
@@ -1310,7 +1340,9 @@ pub async fn expenses_by_tag_breakdown(
                 COALESCE(tags ->> $4, '(unset)') AS tag_value,
                 SUM(cost)::float8                 AS cost
             FROM expenses
-            WHERE organization_id = $1 AND date >= $2 AND date <= $3
+            WHERE organization_id = $1
+              AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+              AND date >= $2 AND date <= $3
             GROUP BY tag_value
             ORDER BY cost DESC
             LIMIT 20
@@ -1442,6 +1474,7 @@ pub async fn cost_map(
         LEFT JOIN cloud_accounts ca ON ca.id = e.cloud_account_id
         LEFT JOIN pools p ON p.id = e.pool_id
         WHERE e.organization_id = $1
+          AND e.currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
           AND e.date >= $2
           AND e.date <= $3
           {filter_clause}
@@ -1571,7 +1604,9 @@ pub async fn unit_economics(
             SUM(cost)::float8
                 / NULLIF(COUNT(DISTINCT cloud_resource_id), 0) AS avg_cost_per_resource
         FROM expenses
-        WHERE organization_id = $1 AND date >= $2 AND date <= $3
+        WHERE organization_id = $1
+          AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
+          AND date >= $2 AND date <= $3
         GROUP BY resource_type
         ORDER BY total_cost DESC
         "#,
@@ -1722,6 +1757,7 @@ pub async fn region_expenses(
         FROM expenses e
         LEFT JOIN cloud_accounts ca ON ca.id = e.cloud_account_id
         WHERE e.organization_id = $1
+          AND e.currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
           AND e.date >= $2
           AND e.date <= $3
         GROUP BY e.cloud_region, ca.provider

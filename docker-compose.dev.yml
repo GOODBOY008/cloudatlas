@@ -54,7 +54,7 @@ services:
         condition: service_completed_successfully
 
   frontend:
-    image: node:20-alpine
+    image: node:24-alpine
     container_name: cloudatlas-frontend-dev
     working_dir: /app
     environment:

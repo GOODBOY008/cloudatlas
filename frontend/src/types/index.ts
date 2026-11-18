@@ -27,6 +27,7 @@ export interface Organization {
   id: string
   name: string
   slug: string
+  settings?: { currency?: string }
 }
 
 export interface CloudAccount {
@@ -71,6 +72,7 @@ export interface CI {
   lifecycle_state: string
   cloud_provider: string
   cloud_region: string
+  cloud_resource_id?: string | null
   ci_type_id?: string
   parent_ci_id?: string | null
   meta: Record<string, unknown>
@@ -324,6 +326,7 @@ export interface DriftRecord {
   new_value: unknown
   detected_at: string
   acknowledged_at: string | null
+  status: 'open' | 'acknowledged' | 'resolved' | 'ignored'
 }
 
 export interface CIBaseline {

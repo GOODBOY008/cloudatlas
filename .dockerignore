@@ -1,0 +1,13 @@
+.git
+.codegraph
+**/node_modules
+**/target
+**/dist
+**/coverage
+**/playwright-report
+**/test-results
+**/*.tsbuildinfo
+.env
+.env.*
+**/.env
+**/.env.*

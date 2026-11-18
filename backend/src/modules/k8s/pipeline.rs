@@ -9,12 +9,12 @@ use std::collections::HashMap;
 
 use chrono::{Duration, Utc};
 use serde_json::Value;
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::error::AppResult;
 use crate::modules::cloud::adapters::{
-    kubernetes::{K8sNodeInfo, K8sWorkload, KubernetesAdapter},
+    kubernetes::{K8sNodeInfo, K8sWorkload, K8sWorkloadInventory, KubernetesAdapter},
     AnyAdapter,
 };
 
@@ -311,13 +311,16 @@ pub async fn sync_account(
         return Ok(());
     };
 
-    let cluster_name = config
+    let cluster_name = configured_cluster_name(k, config);
+    sync_cluster(db, org_id, account_id, k, &cluster_name, config).await
+}
+
+pub(crate) fn configured_cluster_name(adapter: &KubernetesAdapter, config: &Value) -> String {
+    config
         .get("cluster_name")
         .and_then(Value::as_str)
         .map(str::to_string)
-        .unwrap_or_else(|| k.server_host());
-
-    sync_cluster(db, org_id, account_id, k, &cluster_name, config).await
+        .unwrap_or_else(|| adapter.server_host())
 }
 
 /// Sync one k8s cluster's nodes + workloads into the rightsizing tables.
@@ -342,6 +345,8 @@ pub async fn sync_cluster(
         .unwrap_or(0.005);
 
     let nodes = k.discover_nodes().await?;
+    let inventory = k.discover_workloads().await?;
+    let workloads = &inventory.workloads;
     let cluster_id = upsert_cluster(
         db,
         org_id,
@@ -353,13 +358,12 @@ pub async fn sync_cluster(
     )
     .await?;
 
-    let workloads = k.discover_workloads().await?;
-    let workload_ids = upsert_workloads(db, org_id, cluster_id, &workloads).await?;
-    let inserted = record_samples(db, org_id, cluster_id, &workloads, &workload_ids).await?;
+    let workload_ids = upsert_workloads(db, org_id, cluster_id, workloads).await?;
+    let inserted = record_samples(db, org_id, cluster_id, workloads, &workload_ids).await?;
     let updated = recompute_recommendations(
         db,
         cluster_id,
-        &workloads,
+        workloads,
         &workload_ids,
         cpu_rate,
         mem_rate,
@@ -367,22 +371,15 @@ pub async fn sync_cluster(
     )
     .await?;
 
-    // T15: mirror the cluster into CMDB CIs (failure must not break the
-    // rightsizing pipeline — log and continue).
     let cis_created =
-        match sync_k8s_cis(db, org_id, account_id, cluster_name, &nodes, &workloads).await {
-            Ok(n) => n,
-            Err(e) => {
-                tracing::warn!(cluster = %cluster_name, error = %e, "K8s → CMDB CI sync failed");
-                0
-            }
-        };
+        sync_k8s_cis(db, org_id, account_id, cluster_name, &nodes, &inventory).await?;
 
     tracing::info!(
         account_id = %account_id,
         cluster = %cluster_name,
         nodes = nodes.len(),
         workloads = workloads.len(),
+        pods = inventory.pods.len(),
         samples = inserted,
         recomputed = updated,
         cis_created = cis_created,
@@ -460,17 +457,25 @@ mod tests {
 // ─── K8s → CMDB CI sync (gap closure T15) ────────────────────────────────────
 
 /// Builtin k8s CI type ids (migration 035).
-const K8S_TYPE_CLUSTER: Uuid = uuid::uuid!("20000000-0000-0000-0000-000000000011");
+pub(crate) const K8S_TYPE_CLUSTER: Uuid = uuid::uuid!("20000000-0000-0000-0000-000000000011");
 const K8S_TYPE_NAMESPACE: Uuid = uuid::uuid!("20000000-0000-0000-0000-000000000012");
 const K8S_TYPE_NODE: Uuid = uuid::uuid!("20000000-0000-0000-0000-000000000013");
 const K8S_TYPE_WORKLOAD: Uuid = uuid::uuid!("20000000-0000-0000-0000-000000000014");
-const K8S_TYPE_POD: Uuid = uuid::uuid!("20000000-0000-0000-0000-000000000015");
+pub(crate) const K8S_TYPE_POD: Uuid = uuid::uuid!("20000000-0000-0000-0000-000000000015");
+
+pub(crate) fn cluster_ci_resource_id(cluster: &str) -> String {
+    format!("k8s/cluster/{cluster}")
+}
+
+pub(crate) fn pod_ci_resource_id(cluster: &str, namespace: &str, pod: &str) -> String {
+    format!("k8s/pod/{cluster}/{namespace}/{pod}")
+}
 
 /// Upsert one CI row keyed by cloud_resource_id; returns (id, created).
 /// Created rows get a discovery-source audit entry.
 #[allow(clippy::too_many_arguments)]
 async fn upsert_k8s_ci(
-    db: &PgPool,
+    connection: &mut PgConnection,
     org_id: Uuid,
     account_id: Uuid,
     ci_type_id: Uuid,
@@ -488,7 +493,7 @@ async fn upsert_k8s_ci(
         ON CONFLICT (organization_id, cloud_account_id, cloud_resource_id) DO UPDATE SET
             name = EXCLUDED.name,
             cloud_region = COALESCE(EXCLUDED.cloud_region, cis.cloud_region),
-            meta = EXCLUDED.meta,
+            meta = cis.meta || EXCLUDED.meta,
             discovered_at = NOW(),
             updated_at = NOW()
         RETURNING id, (xmax = 0) AS created
@@ -501,13 +506,13 @@ async fn upsert_k8s_ci(
     .bind(region)
     .bind(name)
     .bind(&meta)
-    .fetch_one(db)
+    .fetch_one(&mut *connection)
     .await?;
 
     let id: Uuid = sqlx::Row::get(&row, "id");
     let created: bool = sqlx::Row::get(&row, "created");
     if created {
-        let _ = sqlx::query(
+        sqlx::query(
             r#"INSERT INTO ci_audit_logs (id, ci_id, organization_id, operation, field_changes, source, created_at)
                VALUES ($1, $2, $3, 'create', $4, 'discovery', NOW())"#,
         )
@@ -515,15 +520,15 @@ async fn upsert_k8s_ci(
         .bind(id)
         .bind(org_id)
         .bind(serde_json::json!({ "via": "k8s_pipeline", "resource": cloud_resource_id }))
-        .execute(db)
-        .await;
+        .execute(connection)
+        .await?;
     }
     Ok((id, created))
 }
 
 /// Link two CIs through a builtin object association (idempotent).
 async fn link_k8s_cis(
-    db: &PgPool,
+    connection: &mut PgConnection,
     org_id: Uuid,
     src: Uuid,
     dst: Uuid,
@@ -539,7 +544,7 @@ async fn link_k8s_cis(
     .bind(src_type)
     .bind(kind_id)
     .bind(dst_type)
-    .fetch_optional(db)
+    .fetch_optional(&mut *connection)
     .await?;
 
     let Some(obj_assoc) = obj_assoc else {
@@ -556,7 +561,7 @@ async fn link_k8s_cis(
     .bind(src)
     .bind(obj_assoc)
     .bind(dst)
-    .execute(db)
+    .execute(connection)
     .await?;
     Ok(())
 }
@@ -564,30 +569,25 @@ async fn link_k8s_cis(
 const KIND_CONTAINS: Uuid = uuid::uuid!("30000000-0000-0000-0000-000000000005");
 const KIND_RUN_ON: Uuid = uuid::uuid!("30000000-0000-0000-0000-000000000002");
 
-/// Mirror one cluster sync into CMDB CIs: cluster → namespaces → nodes →
-/// workloads → pods with `contains`/`run_on` associations (T15).
-pub async fn sync_k8s_cis(
+/// Mirror a cluster's inventory and discovered relationships together.
+async fn sync_k8s_cis(
     db: &PgPool,
     org_id: Uuid,
     account_id: Uuid,
     cluster_name: &str,
     nodes: &[K8sNodeInfo],
-    workloads: &[K8sWorkload],
+    inventory: &K8sWorkloadInventory,
 ) -> AppResult<usize> {
     let real_nodes = real_capacity_nodes(nodes);
-    let mut created = 0usize;
+    let mut transaction = db.begin().await?;
+    let mut created = 0;
+    let cluster_resource = cluster_ci_resource_id(cluster_name);
 
-    // Cluster CI.
-    let (cluster_ci, c) = upsert_k8s_ci(
-        db,
-        org_id,
-        account_id,
-        K8S_TYPE_CLUSTER,
-        &format!("k8s/cluster/{cluster_name}"),
-        cluster_name,
-        nodes.iter().find_map(|n| n.region.clone()).as_deref(),
+    let (cluster_ci, is_new) = upsert_k8s_ci(
+        &mut transaction, org_id, account_id, K8S_TYPE_CLUSTER, &cluster_resource, cluster_name,
+        nodes.iter().find_map(|n| n.region.as_deref()),
         serde_json::json!({
-            "region": nodes.iter().find_map(|n| n.region.clone()),
+            "region": nodes.iter().find_map(|n| n.region.as_deref()),
             "provider": real_nodes.iter().map(|n| n.provider.as_str()).find(|p| *p != "on-prem").unwrap_or("on-prem"),
             "node_count": real_nodes.len(),
             "total_vcpu": real_nodes.iter().map(|n| n.cpu_cores).sum::<f64>(),
@@ -595,58 +595,59 @@ pub async fn sync_k8s_cis(
         }),
     )
     .await?;
-    created += c as usize;
+    created += usize::from(is_new);
 
-    // Node CIs (linked run-inverse: node belongs to cluster via contains from
-    // cluster is not typed — use run_on is pod→node; nodes attach via contains
-    // cluster→node? No builtin assoc for that; keep nodes standalone CIs).
-    let mut node_ci_ids: std::collections::HashMap<String, Uuid> = std::collections::HashMap::new();
-    for n in nodes {
-        let (node_ci, c) = upsert_k8s_ci(
-            db,
+    let mut node_cis = HashMap::new();
+    for node in nodes {
+        let (node_ci, is_new) = upsert_k8s_ci(
+            &mut transaction,
             org_id,
             account_id,
             K8S_TYPE_NODE,
-            &format!("k8s/node/{cluster_name}/{}", n.name),
-            &n.name,
-            n.region.as_deref(),
+            &format!("k8s/node/{cluster_name}/{}", node.name),
+            &node.name,
+            node.region.as_deref(),
             serde_json::json!({
-                "cpu_cores": n.cpu_cores,
-                "memory_gb": n.memory_gb,
-                "region": n.region,
-                "provider": n.provider,
+                "cpu_cores": node.cpu_cores,
+                "memory_gb": node.memory_gb,
+                "region": node.region,
+                "provider": node.provider,
             }),
         )
         .await?;
-        created += c as usize;
-        node_ci_ids.insert(n.name.clone(), node_ci);
+        created += usize::from(is_new);
+        node_cis.insert(node.name.as_str(), node_ci);
     }
 
-    // Namespaces (derived from workload namespaces).
-    let mut ns_cis: std::collections::HashMap<String, Uuid> = std::collections::HashMap::new();
-    let mut namespaces: Vec<&str> = workloads.iter().map(|w| w.namespace.as_str()).collect();
+    let mut namespaces: Vec<&str> = inventory
+        .namespaces
+        .iter()
+        .map(String::as_str)
+        .chain(inventory.workloads.iter().map(|w| w.namespace.as_str()))
+        .chain(inventory.pods.iter().map(|p| p.namespace.as_str()))
+        .collect();
     namespaces.sort_unstable();
     namespaces.dedup();
-    for ns in namespaces {
-        let (ns_ci, c) = upsert_k8s_ci(
-            db,
+    let mut namespace_cis = HashMap::new();
+    for namespace in namespaces {
+        let (namespace_ci, is_new) = upsert_k8s_ci(
+            &mut transaction,
             org_id,
             account_id,
             K8S_TYPE_NAMESPACE,
-            &format!("k8s/ns/{cluster_name}/{ns}"),
-            ns,
+            &format!("k8s/ns/{cluster_name}/{namespace}"),
+            namespace,
             None,
             serde_json::json!({ "cluster_name": cluster_name }),
         )
         .await?;
-        created += c as usize;
-        ns_cis.insert(ns.to_string(), ns_ci);
-        // cluster contains namespace
+        created += usize::from(is_new);
+        namespace_cis.insert(namespace, namespace_ci);
         link_k8s_cis(
-            db,
+            &mut transaction,
             org_id,
             cluster_ci,
-            ns_ci,
+            namespace_ci,
             K8S_TYPE_CLUSTER,
             K8S_TYPE_NAMESPACE,
             KIND_CONTAINS,
@@ -654,92 +655,159 @@ pub async fn sync_k8s_cis(
         .await?;
     }
 
-    // Workloads (+ pods).
-    for wl in workloads {
-        let (wl_ci, c) = upsert_k8s_ci(
-            db,
+    let mut workload_cis = HashMap::new();
+    for workload in &inventory.workloads {
+        let (workload_ci, is_new) = upsert_k8s_ci(
+            &mut transaction,
             org_id,
             account_id,
             K8S_TYPE_WORKLOAD,
             &format!(
                 "k8s/wl/{cluster_name}/{}/{}/{}",
-                wl.namespace, wl.name, wl.kind
+                workload.namespace, workload.name, workload.kind
             ),
-            &wl.name,
+            &workload.name,
             None,
             serde_json::json!({
-                "workload_type": wl.kind,
-                "namespace": wl.namespace,
-                "replicas": wl.pod_names.len(),
-                "cpu_request_m": wl.cpu_request_m,
-                "mem_request_mi": wl.mem_request_mi,
-                "cpu_limit_m": wl.cpu_limit_m,
-                "mem_limit_mi": wl.mem_limit_mi,
+                "workload_type": workload.kind,
+                "namespace": workload.namespace,
+                "replicas": workload.pod_names.len(),
+                "cpu_request_m": workload.cpu_request_m,
+                "mem_request_mi": workload.mem_request_mi,
+                "cpu_limit_m": workload.cpu_limit_m,
+                "mem_limit_mi": workload.mem_limit_mi,
             }),
         )
         .await?;
-        created += c as usize;
+        created += usize::from(is_new);
+        workload_cis.insert(
+            (
+                workload.namespace.as_str(),
+                workload.kind.as_str(),
+                workload.name.as_str(),
+            ),
+            workload_ci,
+        );
+        link_k8s_cis(
+            &mut transaction,
+            org_id,
+            namespace_cis[workload.namespace.as_str()],
+            workload_ci,
+            K8S_TYPE_NAMESPACE,
+            K8S_TYPE_WORKLOAD,
+            KIND_CONTAINS,
+        )
+        .await?;
+    }
 
-        if let Some(ns_ci) = ns_cis.get(&wl.namespace) {
-            link_k8s_cis(
-                db,
-                org_id,
-                *ns_ci,
-                wl_ci,
-                K8S_TYPE_NAMESPACE,
-                K8S_TYPE_WORKLOAD,
-                KIND_CONTAINS,
-            )
-            .await?;
-        }
+    for pod in &inventory.pods {
+        let workload_ci = pod
+            .workload
+            .as_ref()
+            .and_then(|(kind, name)| {
+                workload_cis.get(&(pod.namespace.as_str(), kind.as_str(), name.as_str()))
+            })
+            .copied();
+        let node_ci = pod
+            .node_name
+            .as_deref()
+            .and_then(|name| node_cis.get(name))
+            .copied();
+        let (pod_ci, is_new) = upsert_k8s_ci(
+            &mut transaction,
+            org_id,
+            account_id,
+            K8S_TYPE_POD,
+            &pod_ci_resource_id(cluster_name, &pod.namespace, &pod.name),
+            &pod.name,
+            None,
+            serde_json::json!({
+                "namespace": pod.namespace,
+                "workload_name": pod.workload.as_ref().map(|(_, name)| name),
+                "node": pod.node_name,
+            }),
+        )
+        .await?;
+        created += usize::from(is_new);
 
-        for pod in &wl.pod_names {
-            let (pod_ci, c) = upsert_k8s_ci(
-                db,
-                org_id,
-                account_id,
-                K8S_TYPE_POD,
-                &format!("k8s/pod/{cluster_name}/{}/{pod}", wl.namespace),
-                pod,
-                None,
-                serde_json::json!({
-                    "namespace": wl.namespace,
-                    "workload_name": wl.name,
-                }),
-            )
-            .await?;
-            created += c as usize;
+        // A replacement Pod with the same name can have a different owner or node.
+        sqlx::query(
+            r#"DELETE FROM ci_instance_associations a
+               USING ci_object_associations o
+               WHERE a.organization_id = $1 AND a.source = 'discovery'
+                 AND a.object_association_id = o.id AND o.organization_id IS NULL
+                 AND ((a.dst_ci_id = $2 AND o.src_ci_type_id = $3 AND o.association_kind_id = $4
+                       AND a.src_ci_id IS DISTINCT FROM $5)
+                   OR (a.src_ci_id = $2 AND o.dst_ci_type_id = $6 AND o.association_kind_id = $7
+                       AND a.dst_ci_id IS DISTINCT FROM $8))"#,
+        )
+        .bind(org_id)
+        .bind(pod_ci)
+        .bind(K8S_TYPE_WORKLOAD)
+        .bind(KIND_CONTAINS)
+        .bind(workload_ci)
+        .bind(K8S_TYPE_NODE)
+        .bind(KIND_RUN_ON)
+        .bind(node_ci)
+        .execute(&mut *transaction)
+        .await?;
+
+        if let Some(workload_ci) = workload_ci {
             link_k8s_cis(
-                db,
+                &mut transaction,
                 org_id,
-                wl_ci,
+                workload_ci,
                 pod_ci,
                 K8S_TYPE_WORKLOAD,
                 K8S_TYPE_POD,
                 KIND_CONTAINS,
             )
             .await?;
-            // pod run_on node: k8s pod names embed the node name in some
-            // providers; without scheduling data we skip the link unless the
-            // pod name resolves to a known node prefix.
-            if let Some(node_ci) = node_ci_ids
-                .keys()
-                .find(|n| pod.starts_with(n.split('.').next().unwrap_or(n)))
-                .and_then(|n| node_ci_ids.get(n))
-            {
-                link_k8s_cis(
-                    db,
-                    org_id,
-                    pod_ci,
-                    *node_ci,
-                    K8S_TYPE_POD,
-                    K8S_TYPE_NODE,
-                    KIND_RUN_ON,
-                )
-                .await?;
-            }
+        }
+        if let Some(node_ci) = node_ci {
+            link_k8s_cis(
+                &mut transaction,
+                org_id,
+                pod_ci,
+                node_ci,
+                K8S_TYPE_POD,
+                K8S_TYPE_NODE,
+                KIND_RUN_ON,
+            )
+            .await?;
         }
     }
 
+    // Retain prior CIs for history while dropping discovery links to objects absent in this snapshot.
+    let prefixes: Vec<String> = ["node", "ns", "wl", "pod"]
+        .iter()
+        .map(|group| format!("k8s/{group}/{cluster_name}/"))
+        .collect();
+    sqlx::query(
+        r#"WITH cluster_cis AS (
+               SELECT c.id, c.discovered_at
+               FROM cis c WHERE c.organization_id = $1 AND c.cloud_account_id = $2
+                 AND (c.cloud_resource_id = $3 OR EXISTS (
+                   SELECT 1 FROM unnest($4::text[]) AS prefix WHERE starts_with(c.cloud_resource_id, prefix)
+                 ))
+           )
+           DELETE FROM ci_instance_associations a
+           USING cluster_cis src, cluster_cis dst, ci_object_associations o
+           WHERE a.organization_id = $1 AND a.source = 'discovery'
+             AND a.src_ci_id = src.id AND a.dst_ci_id = dst.id
+             AND a.object_association_id = o.id AND o.organization_id IS NULL
+             AND o.association_kind_id IN ($5, $6)
+             AND (src.discovered_at < NOW() OR dst.discovered_at < NOW())"#,
+    )
+    .bind(org_id)
+    .bind(account_id)
+    .bind(&cluster_resource)
+    .bind(&prefixes)
+    .bind(KIND_CONTAINS)
+    .bind(KIND_RUN_ON)
+    .execute(&mut *transaction)
+    .await?;
+
+    transaction.commit().await?;
     Ok(created)
 }

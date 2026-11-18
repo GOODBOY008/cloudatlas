@@ -10,6 +10,8 @@
 //! fetched kubeconfig into a [`Kubeconfig`], then [`KubernetesAdapter::from_kubeconfig`]
 //! builds a client with the cluster CA + client certificate (or bearer token).
 
+use std::collections::HashMap;
+
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use serde_json::{json, Value};
 use yaml_rust2::{Yaml, YamlLoader};
@@ -171,7 +173,11 @@ impl KubernetesAdapter {
     }
 
     async fn get(&self, path: &str) -> AppResult<Value> {
-        let mut req = self.http.get(format!("{}{}", self.server, path));
+        self.get_url(&format!("{}{}", self.server, path)).await
+    }
+
+    async fn get_url(&self, url: &str) -> AppResult<Value> {
+        let mut req = self.http.get(url);
         if let Some(tok) = &self.token {
             req = req.bearer_auth(tok);
         }
@@ -193,6 +199,34 @@ impl KubernetesAdapter {
             )));
         }
         Ok(body)
+    }
+
+    async fn get_list(&self, path: &str) -> AppResult<Value> {
+        let base = reqwest::Url::parse(&format!("{}{path}?limit=500", self.server))
+            .map_err(|e| AppError::Cloud(format!("Invalid Kubernetes list URL: {e}")))?;
+        let mut items = Vec::new();
+        let mut continuation = String::new();
+        loop {
+            let mut url = base.clone();
+            if !continuation.is_empty() {
+                url.query_pairs_mut().append_pair("continue", &continuation);
+            }
+            let mut page = self.get_url(url.as_str()).await?;
+            let batch = page["items"]
+                .as_array_mut()
+                .ok_or_else(|| AppError::Cloud(format!("Kubernetes list {path} has no items")))?;
+            items.append(batch);
+            let next = page["metadata"]["continue"].as_str().unwrap_or("");
+            if next.is_empty() {
+                return Ok(json!({ "items": items }));
+            }
+            if next == continuation {
+                return Err(AppError::Cloud(format!(
+                    "Kubernetes list {path} repeated a continuation token"
+                )));
+            }
+            continuation = next.to_string();
+        }
     }
 }
 
@@ -217,7 +251,7 @@ impl CloudAdapter for KubernetesAdapter {
             .as_deref()
             .map(|n| format!("/namespaces/{n}"))
             .unwrap_or_default();
-        let body = self.get(&format!("/api/v1{ns}/pods?limit=500")).await?;
+        let body = self.get_list(&format!("/api/v1{ns}/pods")).await?;
 
         let mut resources = Vec::new();
         if let Some(items) = body["items"].as_array() {
@@ -258,7 +292,7 @@ impl CloudAdapter for KubernetesAdapter {
     }
 
     async fn list_regions(&self) -> AppResult<Vec<String>> {
-        let body = self.get("/api/v1/namespaces?limit=200").await?;
+        let body = self.get_list("/api/v1/namespaces").await?;
         let namespaces = body["items"]
             .as_array()
             .map(|items| {
@@ -283,50 +317,53 @@ impl KubernetesAdapter {
 
     /// Nodes -> cluster capacity + topology.
     pub async fn discover_nodes(&self) -> AppResult<Vec<K8sNodeInfo>> {
-        let body = self.get("/api/v1/nodes?limit=500").await?;
+        let body = self.get_list("/api/v1/nodes").await?;
         Ok(parse_nodes(&body))
     }
 
-    /// Workloads of all five kinds, pods attributed via owner chain, and
-    /// per-workload current usage from metrics-server (None if unavailable).
-    pub async fn discover_workloads(&self) -> AppResult<Vec<K8sWorkload>> {
+    /// Workloads, Pod placement and ownership, with optional metrics-server usage.
+    pub(crate) async fn discover_workloads(&self) -> AppResult<K8sWorkloadInventory> {
         let ns = self
             .namespace
             .as_deref()
             .map(|n| format!("/namespaces/{n}"))
             .unwrap_or_default();
 
-        // ReplicaSet -> (kind, workload) map for owner-chain resolution.
+        // ReplicaSet names and Pod names are only unique within a namespace.
         let rs_body = self
-            .get(&format!("/apis/apps/v1{ns}/replicasets?limit=500"))
+            .get_list(&format!("/apis/apps/v1{ns}/replicasets"))
             .await?;
-        let mut rs_map = std::collections::HashMap::new();
+        let mut rs_map = ReplicaSetOwners::new();
         if let Some(items) = rs_body["items"].as_array() {
             for rs in items {
                 if let Some((kind, wl_name)) = owner_ref(rs) {
                     if let Some(rs_name) = rs["metadata"]["name"].as_str() {
-                        rs_map.insert(rs_name.to_string(), (kind, wl_name));
+                        rs_map.insert(
+                            (namespace_of(rs).to_string(), rs_name.to_string()),
+                            (kind, wl_name),
+                        );
                     }
                 }
             }
         }
 
-        // Pods -> attribute to workloads.
-        let pods_body = self.get(&format!("/api/v1{ns}/pods?limit=500")).await?;
-        let mut pod_workload: std::collections::HashMap<String, (String, String)> =
-            std::collections::HashMap::new();
+        let pods_body = self.get_list(&format!("/api/v1{ns}/pods")).await?;
+        let mut pods = Vec::new();
         if let Some(items) = pods_body["items"].as_array() {
             for pod in items {
                 if let Some(pod_name) = pod["metadata"]["name"].as_str() {
-                    if let Some(wl) = resolve_workload(pod, &rs_map) {
-                        pod_workload.insert(pod_name.to_string(), wl);
-                    }
+                    pods.push(K8sPodInfo {
+                        name: pod_name.to_string(),
+                        namespace: namespace_of(pod).to_string(),
+                        node_name: pod["spec"]["nodeName"].as_str().map(str::to_string),
+                        workload: resolve_workload(pod, &rs_map),
+                    });
                 }
             }
         }
 
         // Current usage (metrics-server); degrade to None on 404/403.
-        let usage: Option<Vec<(String, f64, f64)>> = match self
+        let usage = match self
             .get(&format!("/apis/metrics.k8s.io/v1beta1{ns}/pods"))
             .await
         {
@@ -337,46 +374,65 @@ impl KubernetesAdapter {
             }
             Err(e) => return Err(e),
         };
-        let usage_map: std::collections::HashMap<String, (f64, f64)> = usage
+        let usage_map: HashMap<(String, String), (f64, f64)> = usage
             .unwrap_or_default()
             .into_iter()
-            .map(|(n, c, m)| (n, (c, m)))
+            .map(|(namespace, name, cpu, memory)| ((namespace, name), (cpu, memory)))
             .collect();
 
         // Fetch + parse all five kinds.
         let mut workloads = Vec::new();
         for (path, kind) in [
-            ("/apis/apps/v1{ns}/deployments?limit=500", "Deployment"),
-            ("/apis/apps/v1{ns}/statefulsets?limit=500", "StatefulSet"),
-            ("/apis/apps/v1{ns}/daemonsets?limit=500", "DaemonSet"),
-            ("/apis/batch/v1{ns}/jobs?limit=500", "Job"),
-            ("/apis/batch/v1{ns}/cronjobs?limit=500", "CronJob"),
+            ("/apis/apps/v1{ns}/deployments", "Deployment"),
+            ("/apis/apps/v1{ns}/statefulsets", "StatefulSet"),
+            ("/apis/apps/v1{ns}/daemonsets", "DaemonSet"),
+            ("/apis/batch/v1{ns}/jobs", "Job"),
+            ("/apis/batch/v1{ns}/cronjobs", "CronJob"),
         ] {
             let path = path.replace("{ns}", &ns);
-            match self.get(&path).await {
-                Ok(body) => workloads.extend(parse_workloads(&body, kind)),
-                Err(e) => tracing::warn!(kind, error = %e, "workload discovery failed"),
-            }
+            workloads.extend(parse_workloads(&self.get_list(&path).await?, kind));
         }
 
         // Attach pod names + usage.
         for wl in &mut workloads {
-            wl.pod_names = pod_workload
+            wl.pod_names = pods
                 .iter()
-                .filter(|(_, (k, n))| k == &wl.kind && n == &wl.name)
-                .map(|(p, _)| p.clone())
+                .filter(|pod| {
+                    pod.namespace == wl.namespace
+                        && pod
+                            .workload
+                            .as_ref()
+                            .is_some_and(|(kind, name)| kind == &wl.kind && name == &wl.name)
+                })
+                .map(|pod| pod.name.clone())
                 .collect();
-            let usage_sum = wl
+            wl.usage = wl
                 .pod_names
                 .iter()
-                .filter_map(|p| usage_map.get(p))
-                .fold((0.0f64, 0.0f64), |acc, (c, m)| (acc.0 + c, acc.1 + m));
-            if wl.pod_names.iter().any(|p| usage_map.contains_key(p)) {
-                wl.usage = Some(usage_sum);
-            }
+                .filter_map(|name| {
+                    usage_map
+                        .get(&(wl.namespace.clone(), name.clone()))
+                        .copied()
+                })
+                .reduce(|left, right| (left.0 + right.0, left.1 + right.1));
         }
 
-        Ok(workloads)
+        let namespaces = if let Some(namespace) = &self.namespace {
+            vec![namespace.clone()]
+        } else {
+            match self.list_regions().await {
+                Ok(names) => names,
+                Err(error) => {
+                    tracing::warn!(%error, "Using namespaces observed on Kubernetes workloads and Pods");
+                    Vec::new()
+                }
+            }
+        };
+        Ok(K8sWorkloadInventory {
+            workloads,
+            pods,
+            namespaces,
+        })
     }
 }
 
@@ -416,6 +472,19 @@ pub struct K8sWorkload {
     pub pod_names: Vec<String>,
     /// Current usage from metrics-server (None when metrics-server absent).
     pub usage: Option<(f64, f64)>, // (cpu_m, mem_mi)
+}
+
+pub(crate) struct K8sPodInfo {
+    pub name: String,
+    pub namespace: String,
+    pub node_name: Option<String>,
+    pub workload: Option<(String, String)>,
+}
+
+pub(crate) struct K8sWorkloadInventory {
+    pub workloads: Vec<K8sWorkload>,
+    pub pods: Vec<K8sPodInfo>,
+    pub namespaces: Vec<String>,
 }
 
 // ── Unit parsers ─────────────────────────────────────────────────────────────
@@ -465,26 +534,30 @@ pub fn parse_memory_mib(s: &str) -> Option<i64> {
     Some((bytes / (1024.0 * 1024.0)).round() as i64)
 }
 
-/// First ownerReference of a k8s object: (kind, name).
+fn namespace_of(item: &Value) -> &str {
+    item["metadata"]["namespace"].as_str().unwrap_or("default")
+}
+
+/// Controlling owner of a Kubernetes object, with a fallback for older payloads.
 fn owner_ref(item: &Value) -> Option<(String, String)> {
     let refs = item["metadata"]["ownerReferences"].as_array()?;
-    let first = refs.first()?;
-    let kind = first["kind"].as_str()?.to_string();
-    let name = first["name"].as_str()?.to_string();
+    let owner = refs
+        .iter()
+        .find(|entry| entry["controller"].as_bool() == Some(true))
+        .or_else(|| refs.first())?;
+    let kind = owner["kind"].as_str()?.to_string();
+    let name = owner["name"].as_str()?.to_string();
     Some((kind, name))
 }
 
-/// Resolve a pod to its workload (kind, name) via the owner chain:
-/// ReplicaSet -> Deployment/StatefulSet/DaemonSet; Job/CronJob direct.
-/// `rs_map` maps ReplicaSet name -> (kind, workload name).
-fn resolve_workload(
-    pod: &Value,
-    rs_map: &std::collections::HashMap<String, (String, String)>,
-) -> Option<(String, String)> {
+type ReplicaSetOwners = HashMap<(String, String), (String, String)>;
+
+/// Resolve a Pod's workload, following a ReplicaSet to its controller.
+fn resolve_workload(pod: &Value, rs_map: &ReplicaSetOwners) -> Option<(String, String)> {
     let (kind, name) = owner_ref(pod)?;
     match kind.as_str() {
-        "ReplicaSet" => rs_map.get(&name).cloned(),
-        "Job" | "CronJob" => Some((kind, name)),
+        "ReplicaSet" => rs_map.get(&(namespace_of(pod).to_string(), name)).cloned(),
+        "Deployment" | "StatefulSet" | "DaemonSet" | "Job" | "CronJob" => Some((kind, name)),
         _ => None,
     }
 }
@@ -610,7 +683,7 @@ fn parse_workloads(body: &Value, kind: &str) -> Vec<K8sWorkload> {
 }
 
 /// metrics-server pod list -> per-pod (name, cpu_m, mem_mi) usage.
-fn parse_pod_usage(body: &Value) -> Vec<(String, f64, f64)> {
+fn parse_pod_usage(body: &Value) -> Vec<(String, String, f64, f64)> {
     let empty = vec![];
     let items = body["items"].as_array().unwrap_or(&empty);
     items
@@ -629,7 +702,7 @@ fn parse_pod_usage(body: &Value) -> Vec<(String, f64, f64)> {
                     }
                 }
             }
-            Some((name, cpu_m, mem_mi))
+            Some((namespace_of(p).to_string(), name, cpu_m, mem_mi))
         })
         .collect()
 }
@@ -739,15 +812,23 @@ mod tests {
         });
         let usage = parse_pod_usage(&body);
         assert_eq!(usage.len(), 1);
-        assert_eq!(usage[0].0, "web-7d8f9-abc12");
-        assert_eq!(usage[0].1, 133.0); // 123m + 10m
-        assert_eq!(usage[0].2, 144.0); // 128Mi + 16Mi
+        assert_eq!(usage[0].1, "web-7d8f9-abc12");
+        assert_eq!(usage[0].2, 133.0); // 123m + 10m
+        assert_eq!(usage[0].3, 144.0); // 128Mi + 16Mi
     }
 
     #[test]
     fn resolve_workload_owner_chain() {
-        let mut rs_map = std::collections::HashMap::new();
-        rs_map.insert("web-7d8f9".into(), ("Deployment".into(), "web".into()));
+        let rs_map = ReplicaSetOwners::from([
+            (
+                ("default".into(), "web-7d8f9".into()),
+                ("Deployment".into(), "web".into()),
+            ),
+            (
+                ("other".into(), "web-7d8f9".into()),
+                ("Deployment".into(), "other-web".into()),
+            ),
+        ]);
 
         let pod_rs = json!({ "metadata": { "name": "web-7d8f9-abc12", "ownerReferences": [
             { "kind": "ReplicaSet", "name": "web-7d8f9" }
@@ -766,6 +847,23 @@ mod tests {
 
         let pod_bare = json!({ "metadata": { "ownerReferences": [] }});
         assert_eq!(resolve_workload(&pod_bare, &rs_map), None);
+        let other_namespace = json!({ "metadata": { "namespace": "other", "ownerReferences": [
+            { "kind": "ReplicaSet", "name": "web-7d8f9", "controller": true }
+        ]}});
+        assert_eq!(
+            resolve_workload(&other_namespace, &rs_map),
+            Some(("Deployment".into(), "other-web".into()))
+        );
+        for kind in ["DaemonSet", "StatefulSet"] {
+            let pod = json!({ "metadata": { "ownerReferences": [
+                { "kind": "Other", "name": "ignore" },
+                { "kind": kind, "name": "agent", "controller": true }
+            ]}});
+            assert_eq!(
+                resolve_workload(&pod, &rs_map),
+                Some((kind.into(), "agent".into()))
+            );
+        }
     }
 
     #[test]

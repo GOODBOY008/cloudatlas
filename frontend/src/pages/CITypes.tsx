@@ -1,3 +1,4 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -312,11 +313,11 @@ export default function CITypes() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('ciTypes.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('ciTypes.title')}</h1>
         <button
           onClick={openCreateType}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+          className="btn-primary"
         >
           {t('ciTypes.newType')}
         </button>
@@ -444,7 +445,7 @@ export default function CITypes() {
                         setAttrFormError('')
                         setShowAttrModal(true)
                       }}
-                      className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-xs font-medium rounded-lg transition-colors"
+                      className="btn-primary"
                     >
                       {t('ciTypes.addAttribute')}
                     </button>
@@ -457,7 +458,7 @@ export default function CITypes() {
                     {t('ciTypes.noAttributes')}
                   </div>
                 ) : (
-                  <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+                  <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
                     <thead className="border-b border-edge text-xs uppercase text-muted">
                       <tr>
                         <th className="px-4 py-3 font-medium">{t('common.name')}</th>
@@ -523,7 +524,7 @@ export default function CITypes() {
                       setConstraintError('')
                       setShowConstraintModal(true)
                     }}
-                    className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-xs font-medium rounded-lg transition-colors"
+                    className="btn-primary"
                   >
                     {t('ciTypes.addConstraint')}
                   </button>
@@ -533,7 +534,7 @@ export default function CITypes() {
                     {t('ciTypes.noConstraints')}
                   </div>
                 ) : (
-                  <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+                  <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
                     <thead className="border-b border-edge text-xs uppercase text-muted">
                       <tr>
                         <th className="px-4 py-3 font-medium">{t('common.name')}</th>
@@ -579,12 +580,9 @@ export default function CITypes() {
 
       {/* New CI type modal */}
       {showTypeModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setShowTypeModal(false)}
-        >
+        <NativeDialog className="items-center justify-center p-4" label={t('ciTypes.newTypeTitle')} onClose={() => setShowTypeModal(false)}>
           <div
-            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="dialog-panel p-6 w-full max-w-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-primary mb-4">{t('ciTypes.newTypeTitle')}</h3>
@@ -695,24 +693,21 @@ export default function CITypes() {
                 <button
                   type="submit"
                   disabled={createTypeMutation.isPending}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {t('ciTypes.createType')}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </NativeDialog>
       )}
 
       {/* New attribute modal */}
       {showAttrModal && selected && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setShowAttrModal(false)}
-        >
+        <NativeDialog className="items-center justify-center p-4" label={t('ciTypes.addAttrTo', { name: selected.display_name })} onClose={() => setShowAttrModal(false)}>
           <div
-            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="dialog-panel p-6 w-full max-w-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-primary mb-4">
@@ -811,23 +806,20 @@ export default function CITypes() {
                 <button
                   type="submit"
                   disabled={createAttrMutation.isPending}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {t('ciTypes.addAttributeSubmit')}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </NativeDialog>
       )}
       {/* New unique constraint modal (T2) */}
       {showConstraintModal && selected && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setShowConstraintModal(false)}
-        >
+        <NativeDialog className="items-center justify-center p-4" label={t('ciTypes.addConstraintTo', { name: selected.display_name })} onClose={() => setShowConstraintModal(false)}>
           <div
-            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-md shadow-xl"
+            className="dialog-panel p-6 w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-primary mb-4">
@@ -885,14 +877,14 @@ export default function CITypes() {
                 <button
                   type="submit"
                   disabled={createConstraintMutation.isPending}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {t('ciTypes.createConstraint')}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

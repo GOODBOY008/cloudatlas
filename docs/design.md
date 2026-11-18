@@ -1,7 +1,9 @@
 # CloudAtlas — Technical Design Document
 
 > Unified FinOps + CMDB Platform  
-> Version 1.0 · May 2026
+> Original design: Version 1.0 · May 2026
+> Current UI: [2026-11-17 UI design system](ui-design-system.md).
+> Current implementation review: [2026-11-04 product and architecture review](product-architecture-review.md). The historical schema and capability descriptions below are design context, not current verification results.
 
 ---
 
