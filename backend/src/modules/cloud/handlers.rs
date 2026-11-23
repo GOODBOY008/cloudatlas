@@ -283,9 +283,14 @@ async fn archive_legacy_kubernetes_cis(
     org_id: Uuid,
     account_id: Uuid,
 ) -> AppResult<u64> {
-    let result = sqlx::query(
-        r#"UPDATE cis legacy SET deleted_at = NOW()
-           FROM resources r
+    let archived = sqlx::query_as::<_, crate::modules::cmdb::models::Ci>(
+        r#"WITH archived AS (
+           UPDATE cis legacy SET deleted_at = NOW()
+           FROM resources r JOIN cis replacement ON replacement.id = r.ci_id
+             AND replacement.organization_id = r.organization_id
+             AND replacement.cloud_account_id = r.cloud_account_id AND replacement.deleted_at IS NULL
+             AND ((r.resource_type = 'k8s_pod' AND replacement.ci_type_id = $3)
+               OR (r.resource_type = 'k8s_cluster' AND replacement.ci_type_id = $4))
            WHERE legacy.organization_id = $1 AND legacy.cloud_account_id = $2
              AND legacy.deleted_at IS NULL AND legacy.discovered_at IS NOT NULL
              AND legacy.lifecycle_state = 'active' AND legacy.parent_ci_id IS NULL
@@ -294,19 +299,35 @@ async fn archive_legacy_kubernetes_cis(
              AND r.organization_id = legacy.organization_id
              AND r.cloud_account_id = legacy.cloud_account_id
              AND r.cloud_resource_id = legacy.cloud_resource_id
-             AND r.resource_type IN ('k8s_cluster', 'k8s_pod')
              AND NOT EXISTS (SELECT 1 FROM ci_instance_associations a
                WHERE a.src_ci_id = legacy.id OR a.dst_ci_id = legacy.id)
              AND NOT EXISTS (SELECT 1 FROM service_cis sc WHERE sc.ci_id = legacy.id)
              AND NOT EXISTS (SELECT 1 FROM cis child WHERE child.parent_ci_id = legacy.id)
              AND NOT EXISTS (SELECT 1 FROM ci_baselines b WHERE b.ci_id = legacy.id)
-             AND NOT EXISTS (SELECT 1 FROM ci_audit_logs l WHERE l.ci_id = legacy.id AND l.user_id IS NOT NULL)"#,
+             AND NOT EXISTS (SELECT 1 FROM ci_audit_logs l WHERE l.ci_id = legacy.id AND l.user_id IS NOT NULL)
+           RETURNING legacy.*, replacement.id AS replacement_ci_id
+        ), audited AS (
+           INSERT INTO ci_audit_logs (organization_id, ci_id, operation, source, resource_id, resource_name, field_changes)
+           SELECT organization_id, id, 'delete', 'discovery', id::text, COALESCE(display_name, name),
+                  jsonb_build_object('reason', 'legacy_kubernetes_reconciliation',
+                                     'cloud_resource_id', cloud_resource_id, 'replacement_ci_id', replacement_ci_id)
+           FROM archived RETURNING ci_id
+        )
+        SELECT id, organization_id, ci_type_id, cloud_account_id, cloud_resource_id,
+               cloud_provider::text, cloud_region, name, display_name, meta, tags, lifecycle_state::text,
+               parent_ci_id, pool_id, discovered_at, created_at, updated_at
+        FROM archived JOIN audited ON audited.ci_id = archived.id"#,
     )
     .bind(org_id)
     .bind(account_id)
-    .execute(db)
+    .bind(k8s::K8S_TYPE_POD)
+    .bind(k8s::K8S_TYPE_CLUSTER)
+    .fetch_all(db)
     .await?;
-    Ok(result.rows_affected())
+    for ci in &archived {
+        crate::modules::cmdb::events::emit_ci_deleted(db, org_id, ci).await;
+    }
+    Ok(archived.len() as u64)
 }
 
 // ─── list_accounts ────────────────────────────────────────────────────────────
@@ -1359,9 +1380,12 @@ mod tests {
         )
         .await
         .unwrap();
-        archive_legacy_kubernetes_cis(&db, org, account)
-            .await
-            .unwrap();
+        assert_eq!(
+            archive_legacy_kubernetes_cis(&db, org, account)
+                .await
+                .unwrap(),
+            0
+        );
 
         let after: Vec<Uuid> = sqlx::query_scalar(expense_links)
             .bind(org)
@@ -1391,12 +1415,6 @@ mod tests {
         .await
         .unwrap();
 
-        sqlx::query("DELETE FROM organizations WHERE id = $1")
-            .bind(org)
-            .execute(&db)
-            .await
-            .unwrap();
-
         assert_eq!(before, vec![legacy_ci], "legacy expense must start linked");
         assert_eq!(raw_cost, 7.0, "discovery must not change imported cost");
         assert_ne!(
@@ -1407,6 +1425,57 @@ mod tests {
             after, before,
             "archiving a legacy CI without a verified replacement must not unmatch historical cost"
         );
+
+        // Only a discovery of the old provider UID establishes an alternate billing link.
+        let rediscovered = DiscoveredResource {
+            cloud_resource_id: previous.cloud_resource_id.clone(),
+            ..replacement
+        };
+        upsert_discovered_resource(
+            &db,
+            org,
+            account,
+            "alibaba",
+            &rediscovered,
+            Utc::now(),
+            Some("prod"),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            archive_legacy_kubernetes_cis(&db, org, account)
+                .await
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            archive_legacy_kubernetes_cis(&db, org, account)
+                .await
+                .unwrap(),
+            0
+        );
+        let linked: Vec<Uuid> = sqlx::query_scalar(expense_links)
+            .bind(org)
+            .bind(account)
+            .bind(&previous.cloud_resource_id)
+            .fetch_all(&db)
+            .await
+            .unwrap();
+        assert_eq!(linked, vec![replacement_ci]);
+        let audited_replacements: Vec<Uuid> = sqlx::query_scalar(
+            "SELECT (field_changes->>'replacement_ci_id')::uuid FROM ci_audit_logs
+             WHERE organization_id = $1 AND ci_id = $2 AND operation = 'delete' AND source = 'discovery'"
+        ).bind(org).bind(legacy_ci).fetch_all(&db).await.unwrap();
+        assert_eq!(audited_replacements, vec![replacement_ci]);
+        let events: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM ci_events WHERE organization_id = $1 AND ci_id = $2 AND event_type = 'ci.deleted'"
+        ).bind(org).bind(legacy_ci).fetch_one(&db).await.unwrap();
+        assert_eq!(events, 1);
+        sqlx::query("DELETE FROM organizations WHERE id = $1")
+            .bind(org)
+            .execute(&db)
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
