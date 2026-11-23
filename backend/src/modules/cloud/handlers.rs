@@ -1275,6 +1275,141 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn first_upgraded_scan_preserves_expense_link_for_replaced_legacy_pod() {
+        let Some((db, org, account)) = discovery_fixture().await else {
+            return;
+        };
+        let previous = DiscoveredResource {
+            cloud_resource_id: "pod-uid-old".into(),
+            resource_type: "instance".into(),
+            resource_name: "web".into(),
+            region: None,
+            tags: json!({}),
+            meta: json!({"namespace": "default"}),
+        };
+        upsert_discovered_resource(&db, org, account, "alibaba", &previous, Utc::now(), None)
+            .await
+            .unwrap();
+
+        // Model pre-upgrade inventory: a generic CI keyed by the old provider UID,
+        // and a Kubernetes resource that migration 003 could not link to a topology CI.
+        let legacy_ci: Uuid = sqlx::query_scalar(
+            "SELECT id FROM cis WHERE organization_id = $1 AND cloud_account_id = $2
+             AND cloud_resource_id = $3",
+        )
+        .bind(org)
+        .bind(account)
+        .bind(&previous.cloud_resource_id)
+        .fetch_one(&db)
+        .await
+        .unwrap();
+        sqlx::query(
+            "UPDATE resources SET resource_type = 'k8s_pod', ci_id = NULL
+             WHERE organization_id = $1 AND cloud_account_id = $2 AND cloud_resource_id = $3",
+        )
+        .bind(org)
+        .bind(account)
+        .bind(&previous.cloud_resource_id)
+        .execute(&db)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO expenses (organization_id, cloud_account_id, cloud_resource_id, date, cost)
+             VALUES ($1, $2, $3, CURRENT_DATE, 7)",
+        )
+        .bind(org)
+        .bind(account)
+        .bind(&previous.cloud_resource_id)
+        .execute(&db)
+        .await
+        .unwrap();
+
+        let expense_links = "SELECT link.ci_id
+             FROM expenses e JOIN ci_finops_resource_ids link
+               ON link.organization_id = e.organization_id
+              AND link.cloud_account_id = e.cloud_account_id
+              AND link.cloud_resource_id = e.cloud_resource_id
+             WHERE e.organization_id = $1 AND e.cloud_account_id = $2
+               AND e.cloud_resource_id = $3";
+        let before: Vec<Uuid> = sqlx::query_scalar(expense_links)
+            .bind(org)
+            .bind(account)
+            .bind(&previous.cloud_resource_id)
+            .fetch_all(&db)
+            .await
+            .unwrap();
+
+        // Discovery sees only the same-name replacement, not the old provider UID.
+        let replacement = DiscoveredResource {
+            cloud_resource_id: "pod-uid-new".into(),
+            resource_type: "k8s_pod".into(),
+            region: previous.region.clone(),
+            resource_name: previous.resource_name.clone(),
+            tags: previous.tags.clone(),
+            meta: previous.meta.clone(),
+        };
+        upsert_discovered_resource(
+            &db,
+            org,
+            account,
+            "alibaba",
+            &replacement,
+            Utc::now(),
+            Some("prod"),
+        )
+        .await
+        .unwrap();
+        archive_legacy_kubernetes_cis(&db, org, account)
+            .await
+            .unwrap();
+
+        let after: Vec<Uuid> = sqlx::query_scalar(expense_links)
+            .bind(org)
+            .bind(account)
+            .bind(&previous.cloud_resource_id)
+            .fetch_all(&db)
+            .await
+            .unwrap();
+        let raw_cost: f64 = sqlx::query_scalar(
+            "SELECT COALESCE(SUM(cost), 0)::float8 FROM expenses
+             WHERE organization_id = $1 AND cloud_account_id = $2 AND cloud_resource_id = $3",
+        )
+        .bind(org)
+        .bind(account)
+        .bind(&previous.cloud_resource_id)
+        .fetch_one(&db)
+        .await
+        .unwrap();
+        let replacement_ci: Uuid = sqlx::query_scalar(
+            "SELECT ci_id FROM ci_finops_resource_ids WHERE organization_id = $1
+             AND cloud_account_id = $2 AND cloud_resource_id = $3",
+        )
+        .bind(org)
+        .bind(account)
+        .bind(&replacement.cloud_resource_id)
+        .fetch_one(&db)
+        .await
+        .unwrap();
+
+        sqlx::query("DELETE FROM organizations WHERE id = $1")
+            .bind(org)
+            .execute(&db)
+            .await
+            .unwrap();
+
+        assert_eq!(before, vec![legacy_ci], "legacy expense must start linked");
+        assert_eq!(raw_cost, 7.0, "discovery must not change imported cost");
+        assert_ne!(
+            replacement_ci, legacy_ci,
+            "a reused Pod name is not lineage"
+        );
+        assert_eq!(
+            after, before,
+            "archiving a legacy CI without a verified replacement must not unmatch historical cost"
+        );
+    }
+
+    #[tokio::test]
     async fn discovery_rolls_back_failed_mirrors_and_keeps_managed_lifecycle() {
         let Some((db, org, account)) = discovery_fixture().await else {
             return;
