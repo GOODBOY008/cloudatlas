@@ -213,6 +213,17 @@ async fn upsert_discovered_resource(
     .bind(canonical_id.is_some())
     .fetch_one(&mut *tx)
     .await?;
+    let created = stored_ci_id == new_ci_id;
+    if created && canonical_id.is_some() {
+        k8s::audit_ci_creation(
+            &mut tx,
+            org_id,
+            stored_ci_id,
+            resource_id,
+            "cloud_discovery",
+        )
+        .await?;
+    }
 
     // FinOps mirror: same discovery result into the `resources` table so cost
     // pages / assignment rules / tag policies have data (AGENTS.md §15).
@@ -274,7 +285,7 @@ async fn upsert_discovered_resource(
 
     tx.commit().await?;
 
-    Ok(stored_ci_id == new_ci_id)
+    Ok(created)
 }
 
 // Earlier discoveries stored Kubernetes provider IDs as cloud-instance CIs.
@@ -1288,6 +1299,20 @@ mod tests {
                 ("pod-uid-two".into(), "k8s/pod/prod/default/web".into()),
             ]
         );
+        let audited: Vec<(String, i64)> = sqlx::query_as(
+            "SELECT c.cloud_resource_id, COUNT(a.id) FROM cis c LEFT JOIN ci_audit_logs a
+             ON a.ci_id = c.id AND a.organization_id = c.organization_id
+             AND a.operation = 'create' AND a.source = 'discovery'
+             AND a.field_changes->>'resource' = c.cloud_resource_id
+             WHERE c.organization_id = $1 GROUP BY c.cloud_resource_id ORDER BY c.cloud_resource_id",
+        ).bind(org).fetch_all(&db).await.unwrap();
+        assert_eq!(
+            audited,
+            vec![
+                ("k8s/cluster/prod".into(), 1),
+                ("k8s/pod/prod/default/web".into(), 1)
+            ]
+        );
         sqlx::query("DELETE FROM organizations WHERE id=$1")
             .bind(org)
             .execute(&db)
@@ -1501,6 +1526,31 @@ mod tests {
         };
         let failed =
             upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now(), None).await;
+        let pod = DiscoveredResource {
+            resource_type: "k8s_pod".into(),
+            ..res.clone()
+        };
+        assert!(upsert_discovered_resource(
+            &db,
+            org,
+            account,
+            "mock",
+            &pod,
+            Utc::now(),
+            Some("prod")
+        )
+        .await
+        .is_err());
+        let audits: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM ci_audit_logs WHERE organization_id = $1")
+                .bind(org)
+                .fetch_one(&db)
+                .await
+                .unwrap();
+        assert_eq!(
+            audits, 0,
+            "a failed mirror must roll back the creation audit"
+        );
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM cis WHERE organization_id=$1")
             .bind(org)
             .fetch_one(&db)

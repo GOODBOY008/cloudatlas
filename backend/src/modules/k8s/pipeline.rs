@@ -471,6 +471,25 @@ pub(crate) fn pod_ci_resource_id(cluster: &str, namespace: &str, pod: &str) -> S
     format!("k8s/pod/{cluster}/{namespace}/{pod}")
 }
 
+pub(crate) async fn audit_ci_creation(
+    connection: &mut PgConnection,
+    org_id: Uuid,
+    ci_id: Uuid,
+    resource_id: &str,
+    via: &str,
+) -> AppResult<()> {
+    sqlx::query(
+        "INSERT INTO ci_audit_logs (ci_id, organization_id, operation, field_changes, source)
+         VALUES ($1, $2, 'create', $3, 'discovery')",
+    )
+    .bind(ci_id)
+    .bind(org_id)
+    .bind(serde_json::json!({ "via": via, "resource": resource_id }))
+    .execute(connection)
+    .await?;
+    Ok(())
+}
+
 /// Upsert one CI row keyed by cloud_resource_id; returns (id, created).
 /// Created rows get a discovery-source audit entry.
 #[allow(clippy::too_many_arguments)]
@@ -512,16 +531,7 @@ async fn upsert_k8s_ci(
     let id: Uuid = sqlx::Row::get(&row, "id");
     let created: bool = sqlx::Row::get(&row, "created");
     if created {
-        sqlx::query(
-            r#"INSERT INTO ci_audit_logs (id, ci_id, organization_id, operation, field_changes, source, created_at)
-               VALUES ($1, $2, $3, 'create', $4, 'discovery', NOW())"#,
-        )
-        .bind(Uuid::new_v4())
-        .bind(id)
-        .bind(org_id)
-        .bind(serde_json::json!({ "via": "k8s_pipeline", "resource": cloud_resource_id }))
-        .execute(connection)
-        .await?;
+        audit_ci_creation(connection, org_id, id, cloud_resource_id, "k8s_pipeline").await?;
     }
     Ok((id, created))
 }
