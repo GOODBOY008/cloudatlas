@@ -262,8 +262,7 @@ pub async fn cost_center_expenses(
                  JOIN services svc ON svc.name = bc.name
                      AND svc.organization_id = bc.organization_id AND svc.deleted_at IS NULL
                  JOIN service_cis sc ON sc.service_id = svc.id
-                 JOIN cis c ON c.id = sc.ci_id AND c.organization_id = svc.organization_id
-                     AND c.deleted_at IS NULL
+                 JOIN ci_finops_resource_ids c ON c.ci_id = sc.ci_id AND c.organization_id = svc.organization_id
                  WHERE bc.cost_center_id = $1 AND bc.organization_id = e.organization_id
                    AND c.cloud_resource_id = e.cloud_resource_id
                    AND (c.cloud_account_id IS NULL OR c.cloud_account_id = e.cloud_account_id)

@@ -151,7 +151,7 @@ async fn upsert_discovered_resource(
     now: chrono::DateTime<Utc>,
     cluster_name: Option<&str>,
 ) -> AppResult<bool> {
-    let ci_id = Uuid::new_v4();
+    let new_ci_id = Uuid::new_v4();
     let ci_type_id = resource_type_to_ci_type_id(&res.resource_type);
     let canonical_id = match res.resource_type.as_str() {
         "k8s_cluster" => Some(k8s::cluster_ci_resource_id(&res.resource_name)),
@@ -173,7 +173,7 @@ async fn upsert_discovered_resource(
         .execute(&mut *tx)
         .await?;
 
-    let result = sqlx::query_scalar::<_, bool>(
+    let stored_ci_id = sqlx::query_scalar::<_, Uuid>(
         r#"
         INSERT INTO cis
             (id, organization_id, ci_type_id, cloud_account_id,
@@ -196,10 +196,10 @@ async fn upsert_discovered_resource(
             tags          = EXCLUDED.tags,
             discovered_at = EXCLUDED.discovered_at,
             updated_at    = EXCLUDED.updated_at
-        RETURNING id = $1
+        RETURNING id
         "#,
     )
-    .bind(ci_id)
+    .bind(new_ci_id)
     .bind(org_id)
     .bind(ci_type_id)
     .bind(account_id)
@@ -213,21 +213,20 @@ async fn upsert_discovered_resource(
     .bind(canonical_id.is_some())
     .fetch_one(&mut *tx)
     .await?;
-    let created = result;
 
     // FinOps mirror: same discovery result into the `resources` table so cost
     // pages / assignment rules / tag policies have data (AGENTS.md §15).
     sqlx::query(
         r#"
         INSERT INTO resources
-            (organization_id, cloud_account_id, cloud_resource_id,
+            (organization_id, cloud_account_id, cloud_resource_id, ci_id,
              resource_type, service_name, name, cloud_region,
              tags, meta, pool_id, owner_id,
              first_seen, last_seen, active,
              total_cost, last_month_cost, recommendations, dismissed_recs,
              created_at, updated_at)
         VALUES
-            ($1, $2, $3,
+            ($1, $2, $3, $11,
              CASE WHEN $4 IN ('instance','rds_instance','k8s_pod','k8s_cluster','volume','snapshot',
                               'bucket','snapshot_chain','image','ip_address',
                               'load_balancer','reserved_instance','savings_plan')
@@ -246,6 +245,7 @@ async fn upsert_discovered_resource(
              $10, $10)
         ON CONFLICT (organization_id, cloud_account_id, cloud_resource_id)
         DO UPDATE SET
+            ci_id         = EXCLUDED.ci_id,
             name          = EXCLUDED.name,
             service_name  = EXCLUDED.service_name,
             cloud_region  = EXCLUDED.cloud_region,
@@ -268,12 +268,13 @@ async fn upsert_discovered_resource(
     .bind(&res.tags)
     .bind(&res.meta)
     .bind(now)
+    .bind(stored_ci_id)
     .execute(&mut *tx)
     .await?;
 
     tx.commit().await?;
 
-    Ok(created)
+    Ok(stored_ci_id == new_ci_id)
 }
 
 // Earlier discoveries stored Kubernetes provider IDs as cloud-instance CIs.
@@ -1201,11 +1202,8 @@ mod tests {
             "Aliyun ACK"
         );
     }
-    #[tokio::test]
-    async fn discovery_rolls_back_failed_mirrors_and_keeps_managed_lifecycle() {
-        let Ok(url) = std::env::var("TEST_DATABASE_URL") else {
-            return;
-        };
+    async fn discovery_fixture() -> Option<(sqlx::PgPool, Uuid, Uuid)> {
+        let url = std::env::var("TEST_DATABASE_URL").ok()?;
         let db = sqlx::PgPool::connect(&url).await.expect("test database");
         sqlx::migrate!("./migrations")
             .run(&db)
@@ -1220,6 +1218,67 @@ mod tests {
         .unwrap();
         let account: Uuid = sqlx::query_scalar("INSERT INTO cloud_accounts (organization_id, name, provider, credentials_enc) VALUES ($1,'Atomic','mock','test') RETURNING id")
             .bind(org).fetch_one(&db).await.unwrap();
+        Some((db, org, account))
+    }
+
+    #[tokio::test]
+    async fn kubernetes_discovery_links_provider_ids_to_stable_topology_cis() {
+        let Some((db, org, account)) = discovery_fixture().await else {
+            return;
+        };
+        for (kind, name, provider_id, created) in [
+            ("k8s_cluster", "prod", "ack:cluster-one", true),
+            ("k8s_pod", "web", "pod-uid-one", true),
+            ("k8s_pod", "web", "pod-uid-two", false),
+            ("k8s_pod", "web", "pod-uid-two", false),
+        ] {
+            let res = DiscoveredResource {
+                cloud_resource_id: provider_id.into(),
+                resource_type: kind.into(),
+                resource_name: name.into(),
+                region: None,
+                tags: json!({}),
+                meta: json!({"namespace":"default"}),
+            };
+            assert_eq!(
+                upsert_discovered_resource(
+                    &db,
+                    org,
+                    account,
+                    "alibaba",
+                    &res,
+                    Utc::now(),
+                    Some("prod")
+                )
+                .await
+                .unwrap(),
+                created
+            );
+        }
+        let links: Vec<(String, String)> = sqlx::query_as(
+            "SELECT r.cloud_resource_id, c.cloud_resource_id FROM resources r JOIN cis c ON c.id = r.ci_id
+             WHERE r.organization_id = $1 AND r.cloud_account_id = $2 ORDER BY r.cloud_resource_id"
+        ).bind(org).bind(account).fetch_all(&db).await.unwrap();
+        assert_eq!(
+            links,
+            vec![
+                ("ack:cluster-one".into(), "k8s/cluster/prod".into()),
+                ("pod-uid-one".into(), "k8s/pod/prod/default/web".into()),
+                ("pod-uid-two".into(), "k8s/pod/prod/default/web".into()),
+            ]
+        );
+        sqlx::query("DELETE FROM organizations WHERE id=$1")
+            .bind(org)
+            .execute(&db)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn discovery_rolls_back_failed_mirrors_and_keeps_managed_lifecycle() {
+        let Some((db, org, account)) = discovery_fixture().await else {
+            return;
+        };
         // Inject a failure only into this fixture's FinOps mirror. The CI write
         // succeeds first, so a surviving CI would reveal a broken transaction.
         let trigger_name = format!("reject_mirror_{}", org.simple());

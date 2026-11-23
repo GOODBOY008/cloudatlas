@@ -483,24 +483,28 @@ pub async fn get_service_costs(
     let service_name: String = service.try_get("name").unwrap_or_default();
     let currency = crate::modules::billing::fx::org_currency(&state.db, org_id).await;
 
-    // Match the workspace and the discovery account when the CI has one.
+    // A retained legacy CI and its topology CI can both belong to this service.
+    // Count each expense once, preferring its discovered CI over a legacy match.
     let rows = sqlx::query(
-        r#"SELECT
+        r#"WITH members AS (
+               SELECT c.id, c.name, c.cloud_resource_id FROM service_cis sc
+               JOIN cis c ON c.id = sc.ci_id AND c.deleted_at IS NULL
+               WHERE sc.service_id = $1 AND c.organization_id = $2
+           ), matched AS (
+               SELECT DISTINCT ON (e.id) e.id, c.id AS ci_id, e.cost
+               FROM members c JOIN ci_finops_resource_ids i ON i.ci_id = c.id
+               JOIN expenses e ON e.organization_id = i.organization_id AND e.cloud_resource_id = i.cloud_resource_id
+                   AND (i.cloud_account_id IS NULL OR e.cloud_account_id = i.cloud_account_id)
+               WHERE e.currency = $3 AND e.date >= (CURRENT_DATE - INTERVAL '30 days')
+               ORDER BY e.id, (i.cloud_account_id IS NOT NULL) DESC,
+                   (i.cloud_resource_id IS DISTINCT FROM c.cloud_resource_id) DESC, c.id
+           ) SELECT
                c.id AS ci_id,
                c.name AS ci_name,
                c.cloud_resource_id,
                COALESCE(SUM(e.cost), 0)::float8 AS total_cost,
                COUNT(e.id) AS expense_rows
-           FROM service_cis sc
-           JOIN cis c ON c.id = sc.ci_id AND c.deleted_at IS NULL
-           LEFT JOIN expenses e
-               ON e.cloud_resource_id = c.cloud_resource_id
-               AND e.organization_id = c.organization_id
-               AND (c.cloud_account_id IS NULL OR e.cloud_account_id = c.cloud_account_id)
-               AND e.currency = $3
-               AND e.date >= (CURRENT_DATE - INTERVAL '30 days')
-           WHERE sc.service_id = $1
-             AND c.organization_id = $2
+           FROM members c LEFT JOIN matched e ON e.ci_id = c.id
            GROUP BY c.id, c.name, c.cloud_resource_id
            ORDER BY total_cost DESC"#,
     )

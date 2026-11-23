@@ -242,7 +242,7 @@ async fn ci(state: &AppState, org: Uuid, account: Uuid, name: &str) -> Uuid {
     sqlx::query_scalar("INSERT INTO cis (organization_id, cloud_account_id, cloud_resource_id, name, ci_type_id) VALUES ($1,$2,$3,$3,'20000000-0000-0000-0000-000000000001') RETURNING id")
         .bind(org).bind(account).bind(name).fetch_one(&state.db).await.unwrap()
 }
-async fn map_service(state: &AppState, org: Uuid, center: Uuid, ci: Uuid, name: &str) {
+async fn map_service(state: &AppState, org: Uuid, center: Uuid, ci: Uuid, name: &str) -> Uuid {
     sqlx::query("INSERT INTO business_capabilities (organization_id, name, cost_center_id) VALUES ($1,$2,$3)")
         .bind(org).bind(name).bind(center).execute(&state.db).await.unwrap();
     let service: Uuid = sqlx::query_scalar(
@@ -259,6 +259,7 @@ async fn map_service(state: &AppState, org: Uuid, center: Uuid, ci: Uuid, name: 
         .execute(&state.db)
         .await
         .unwrap();
+    service
 }
 async fn get(state: &AppState, uri: &str, user: Option<Uuid>) -> (StatusCode, Value) {
     let mut request = Request::builder().uri(uri);
@@ -275,6 +276,74 @@ async fn get(state: &AppState, uri: &str, user: Option<Uuid>) -> (StatusCode, Va
     let status = response.status();
     let bytes = to_bytes(response.into_body(), 1_000_000).await.unwrap();
     (status, serde_json::from_slice(&bytes).unwrap())
+}
+
+#[tokio::test]
+async fn topology_provider_ids_link_inventory_and_attribute_expenses_once() {
+    let Some((state, org, discovery_account, user)) = fixture().await else {
+        return;
+    };
+    let other = account(&state, org, "Account B").await;
+    let topology_ci = ci(&state, org, discovery_account, "k8s/pod/prod/default/web").await;
+    let center: Uuid = sqlx::query_scalar(
+        "INSERT INTO cost_centers (organization_id,name,code) VALUES ($1,'Web','WEB') RETURNING id",
+    )
+    .bind(org)
+    .fetch_one(&state.db)
+    .await
+    .unwrap();
+    let svc = map_service(&state, org, center, topology_ci, "Web").await;
+    for (acct, provider_id, ci_id, cost) in [
+        (discovery_account, "pod-old", Some(topology_ci), 7.0),
+        (discovery_account, "pod-new", Some(topology_ci), 11.0),
+        (other, "pod-new", None, 100.0),
+    ] {
+        sqlx::query("INSERT INTO resources (organization_id,cloud_account_id,cloud_resource_id,ci_id) VALUES ($1,$2,$3,$4)")
+            .bind(org).bind(acct).bind(provider_id).bind(ci_id).execute(&state.db).await.unwrap();
+        expense(&state, org, acct, provider_id, cost, 0, "CNY", None).await;
+    }
+    // A manually retained legacy CI can already be attached to the same service.
+    let legacy = ci(&state, org, discovery_account, "pod-old").await;
+    sqlx::query("INSERT INTO service_cis (service_id,ci_id) VALUES ($1,$2)")
+        .bind(svc)
+        .bind(legacy)
+        .execute(&state.db)
+        .await
+        .unwrap();
+
+    let (status, flow) = get(&state, &format!("/api/v1/orgs/{org}/data-flow"), Some(user)).await;
+    assert_eq!(status, StatusCode::OK, "{flow}");
+    let accounts = flow["data"]["accounts"].as_array().unwrap();
+    assert_eq!(accounts[0]["linked_resources"], 2);
+    assert_eq!(accounts[0]["expense_rows"], 2);
+    assert_eq!(accounts[0]["unmatched_cost"], 0.0);
+    assert_eq!(accounts[1]["linked_resources"], 0);
+    assert_eq!(accounts[1]["unmatched_cost"], 100.0);
+    let report = reporting::showback(&state.db, org).await.unwrap();
+    assert_eq!(report["by_cost_center"][0]["cost"], 18.0);
+    assert_eq!(report["cost_center_unallocated_cost"], 100.0);
+    let (status, center_cost) = get(
+        &state,
+        &format!("/api/v1/cost-centers/{center}/expenses"),
+        Some(user),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{center_cost}");
+    assert_eq!(center_cost["data"]["total_cost"], 18.0);
+    let (status, service) = get(
+        &state,
+        &format!("/api/v1/orgs/{org}/services/{svc}/costs"),
+        Some(user),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{service}");
+    assert_eq!(service["data"]["total_cost"], 18.0);
+    let cis = service["data"]["ci_costs"].as_array().unwrap();
+    assert_eq!(cis[0]["ci_id"], topology_ci.to_string());
+    assert_eq!(cis[0]["expense_rows"], 2);
+    assert_eq!(cis[1]["ci_id"], legacy.to_string());
+    assert_eq!(cis[1]["total_cost"], 0.0);
+    cleanup(&state, org, user).await;
 }
 
 #[tokio::test]
