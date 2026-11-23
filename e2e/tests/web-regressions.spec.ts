@@ -101,10 +101,14 @@ test('desktop Copilot floats, remembers drag and resize, and stays beneath searc
   // Cross the dialog boundary inside the document, away from browser chrome.
   const minimizeLauncher = page.getByRole('button', { name: 'Minimize Copilot', exact: true, expanded: true });
   await grip.focus();
-  await page.keyboard.press('Shift+Tab');
-  await expect(minimizeLauncher).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(grip).toBeFocused();
+  for (const [key, target] of [['Shift+Tab', minimizeLauncher], ['Tab', grip]] as const) {
+    await page.keyboard.press(key);
+    // Firefox includes the native dialog itself in the tab order.
+    if (await dialog.evaluate(element => element === document.activeElement)) {
+      await page.keyboard.press(key);
+    }
+    await expect(target).toBeFocused();
+  }
   await page.reload();
   await expect(dialog).toHaveCount(0);
   await launcher.click();
@@ -175,11 +179,21 @@ test('resource details restore keyboard focus and take precedence over desktop C
   const button = page.getByRole('button', { name: resource.name });
   await button.press('Enter');
   const drawer = page.getByRole('dialog', { name: resource.name });
-  await expect(drawer.getByRole('button', { name: 'Close' })).toBeFocused();
+  const close = drawer.getByRole('button', { name: 'Close' });
+  const search = page.getByRole('dialog', { name: 'Search', includeHidden: true });
+  await expect(close).toBeFocused();
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(search).toHaveCount(0);
+  await expect(close).toBeFocused();
   await page.keyboard.press('Escape');
   // Native dismissal hides the drawer before its queued close event unmounts it.
   await expect(page.locator('dialog:not(#copilot-window)')).toHaveCount(0);
   await expect(copilot).toBeVisible();
+  await expect(button).toBeFocused();
+  await expect(search).toHaveCount(0);
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(search.getByRole('combobox')).toBeFocused();
+  await page.keyboard.press('Escape');
   await expect(button).toBeFocused();
   await page.keyboard.press('Space');
   await expect(drawer).toBeVisible();
