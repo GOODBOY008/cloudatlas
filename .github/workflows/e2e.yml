@@ -27,6 +27,11 @@ on:
           - firefox
           - all
 
+concurrency:
+  # Give each manually requested test run its own group.
+  group: e2e-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
+  cancel-in-progress: true
+
 env:
   # Playwright version must match e2e/package.json
   PLAYWRIGHT_VERSION: '1.63.0'

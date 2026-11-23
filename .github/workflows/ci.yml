@@ -7,6 +7,11 @@ on:
     branches: [main, develop]
   workflow_call:  # allow reuse from release.yml
 
+concurrency:
+  # Give each release run its own group when it calls CI.
+  group: ci-${{ github.workflow == 'CI' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
