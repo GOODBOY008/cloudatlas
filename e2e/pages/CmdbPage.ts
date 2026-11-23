@@ -32,9 +32,8 @@ export class CmdbPage extends BasePage {
     this.providerSelect = page.locator('select').nth(1);
     this.regionInput = page.getByPlaceholder(/us-east|region/i);
     this.createCiBtn = page.getByRole('button', { name: /create ci/i });
-    this.firstCiRow = page.locator('main table tbody tr').first();
-    // Drawer panel: the CIDrawer uses a fixed right-side panel
-    this.drawer = page.locator('main aside, [class*="fixed"][class*="right-0"]').first();
+    this.firstCiRow = this.ciTable.getByRole('row').filter({ has: page.getByRole('checkbox') }).first();
+    this.drawer = page.getByRole('dialog').filter({ has: page.getByRole('button', { name: 'Close drawer', exact: true }) });
     this.tagsEditBtn = page.getByTestId('ci-tags-edit');
     this.tagsEditor = page.getByTestId('ci-tags-editor');
     this.tagsSaveBtn = page.getByTestId('ci-tags-save');
@@ -98,7 +97,7 @@ export class CmdbPage extends BasePage {
   }
 
   async closeDrawer(): Promise<void> {
-    const closeBtn = this.drawer.getByRole('button', { name: /close|✕/i }).first();
-    await closeBtn.click();
+    await this.drawer.getByRole('button', { name: 'Close drawer', exact: true }).click();
+    await this.drawer.waitFor({ state: 'hidden' });
   }
 }

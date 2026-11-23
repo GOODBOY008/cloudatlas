@@ -98,10 +98,13 @@ test('desktop Copilot floats, remembers drag and resize, and stays beneath searc
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Search' })).toHaveCount(0);
   await expect(dialog).toBeVisible();
-  await dialog.getByRole('textbox').fill('draft');
-  await dialog.getByRole('button', { name: 'Send', exact: true }).focus();
+  // Cross the dialog boundary inside the document, away from browser chrome.
+  const minimizeLauncher = page.getByRole('button', { name: 'Minimize Copilot', exact: true, expanded: true });
+  await grip.focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(minimizeLauncher).toBeFocused();
   await page.keyboard.press('Tab');
-  expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(false);
+  await expect(grip).toBeFocused();
   await page.reload();
   await expect(dialog).toHaveCount(0);
   await launcher.click();
