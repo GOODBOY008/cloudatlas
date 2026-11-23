@@ -1,3 +1,4 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -203,19 +204,19 @@ export default function Rules() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('rules.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('rules.title')}</h1>
         <div className="flex gap-3">
           <button
             onClick={() => applyMutation.mutate()}
             disabled={applyMutation.isPending}
-            className="px-4 py-2 bg-emphasis hover:bg-emphasis disabled:opacity-60 text-primary text-sm font-medium rounded-lg transition-colors"
+            className="btn-secondary"
           >
             {applyMutation.isPending ? t('rules.applying') : t('rules.applyRules')}
           </button>
           <button
             onClick={openCreate}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+            className="btn-primary"
           >
             {t('rules.newRule')}
           </button>
@@ -235,7 +236,7 @@ export default function Rules() {
       )}
 
       <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-        <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
           <thead>
             <tr className="border-b border-edge text-secondary text-left">
               <th className="px-4 py-3 font-medium">{t('common.name')}</th>
@@ -318,8 +319,8 @@ export default function Rules() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-surface rounded-xl p-6 w-full max-w-lg border border-edge shadow-xl max-h-[90vh] overflow-y-auto">
+        <NativeDialog className="items-center justify-center p-4" label={editingId ? t('rules.editTitle') : t('rules.newTitle')} onClose={closeModal}>
+          <div className="dialog-panel p-6 w-full max-w-lg">
             <h3 className="text-base font-semibold text-primary mb-4">
               {editingId ? t('rules.editTitle') : t('rules.newTitle')}
             </h3>
@@ -420,14 +421,14 @@ export default function Rules() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary border border-strong rounded-lg transition-colors"
+                  className="btn-secondary"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm font-medium rounded-lg transition-colors"
+                  className="btn-primary"
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? t('rules.saving')
@@ -438,7 +439,7 @@ export default function Rules() {
               </div>
             </form>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

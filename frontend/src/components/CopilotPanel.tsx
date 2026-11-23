@@ -1,127 +1,97 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { X } from 'lucide-react'
+import { ChevronDown, GripVertical, Minus, MoveUpLeft, Sparkles } from 'lucide-react'
 import { useCopilotStore } from '../store/copilotStore'
 import { useIsDesktop } from './copilot/useMediaQuery'
+import { useWindowControls } from './copilot/useWindowControls'
+import { WindowControls } from './copilot/WindowControls'
 import CopilotChat from './copilot/CopilotChat'
+import { NativeDialog } from './shared/NativeDialog'
 
-/** Drag + keyboard resize handle on the panel's left edge (spec §4.1). */
-function ResizeHandle() {
+function readViewport(desktop: boolean) {
+  const visible = desktop ? null : window.visualViewport
+  return { width: window.innerWidth, height: visible?.height ?? window.innerHeight, top: visible?.offsetTop ?? 0 }
+}
+
+function CopilotWindow({ open, desktop }: { open: boolean; desktop: boolean }) {
   const { t } = useTranslation()
-  const width = useCopilotStore((s) => s.width)
-  const setWidth = useCopilotStore((s) => s.setWidth)
-  const dragging = useRef(false)
+  const setOpen = useCopilotStore((state) => state.setOpen)
+  const [viewport, setViewport] = useState(() => readViewport(desktop))
+  const { rect, grip, expanded, step, feedback } = useWindowControls(viewport, desktop && open)
 
-  useEffect(() => {
-    function onMove(e: PointerEvent) {
-      if (!dragging.current) return
-      // Panel docks right: pointer x from the right edge = panel width.
-      setWidth(window.innerWidth - e.clientX)
-    }
-    function onUp() {
-      dragging.current = false
-      document.body.style.userSelect = ''
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
+  useLayoutEffect(() => {
+    if (!open) return
+    const update = () => setViewport(readViewport(desktop))
+    update()
+    window.addEventListener('resize', update)
+    // Mobile keyboards can shrink and pan the visual viewport independently of the layout viewport.
+    const visible = desktop ? null : window.visualViewport
+    visible?.addEventListener('resize', update)
+    visible?.addEventListener('scroll', update)
     return () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('resize', update)
+      visible?.removeEventListener('resize', update)
+      visible?.removeEventListener('scroll', update)
     }
-  }, [setWidth])
+  }, [desktop, open])
 
+  const moveLabel = t('copilot.moveHandle')
+  const resizeLabel = t('copilot.resize')
+  const minimizeLabel = t('copilot.minimize')
   return (
-    <div
-      role="separator"
-      aria-orientation="vertical"
-      aria-label={t('copilot.resize')}
-      title={t('copilot.resize')}
-      tabIndex={0}
-      onPointerDown={() => {
-        dragging.current = true
-        document.body.style.userSelect = 'none'
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'ArrowLeft') setWidth(width + 16) // wider
-        if (e.key === 'ArrowRight') setWidth(width - 16) // narrower
-      }}
-      className="absolute left-0 inset-y-0 w-1 z-10 cursor-col-resize hover:bg-accent-hover/40 active:bg-accent/60"
-    />
+    <NativeDialog id="copilot-window" open={open} modal={!desktop} label={t('copilot.title')}
+      className={desktop ? 'copilot-window' : 'items-end'}
+      style={desktop ? { ...rect } : { top: viewport.top, height: viewport.height }}
+      onClose={() => setOpen(false)}>
+      <div className={desktop ? 'copilot-window-body' : 'copilot-sheet'}>
+        {desktop && <button type="button" className="copilot-resize-grip" aria-label={resizeLabel} title={resizeLabel} {...grip('resize')}>
+          <MoveUpLeft size={12} />
+        </button>}
+        <CopilotChat
+          presentation={open ? (desktop ? 'floating' : 'sheet') : 'hidden'}
+          titleSlot={desktop && (
+            <button type="button" className="copilot-move-grip" aria-label={moveLabel} title={moveLabel} {...grip('move')}>
+              <Sparkles size={17} className="text-accent" />
+              <span>{t('copilot.title')}</span>
+              <GripVertical size={14} className="text-muted" />
+            </button>
+          )}
+          tools={desktop && expanded && <WindowControls size={rect} step={step} />}
+          rightSlot={<button type="button" className="icon-button" aria-label={minimizeLabel} title={minimizeLabel} onClick={() => setOpen(false)}>
+            {desktop ? <Minus size={17} /> : <ChevronDown size={19} />}
+          </button>}
+        />
+        {desktop && <div className="sr-only" aria-live="polite" aria-atomic="true">
+          <span key={feedback.revision}>{feedback.message}</span>
+        </div>}
+      </div>
+    </NativeDialog>
   )
 }
 
-function closeButton(onClose: () => void, label: string) {
-  return (
-    <button
-      onClick={onClose}
-      aria-label={label}
-      className="w-8 h-8 flex items-center justify-center rounded-lg text-secondary hover:bg-subtle hover:text-primary transition-colors"
-    >
-      <X size={18} />
-    </button>
-  )
-}
-
-/**
- * Copilot shells (spec §4.1): a non-modal docked aside on desktop (≥1024 px)
- * and a modal bottom sheet below that. Conversation UI lives in CopilotChat.
- */
+/** One dialog and chat instance per workspace, from first use until leaving the workspace. */
 export default function CopilotPanel() {
-  const { t } = useTranslation()
-  const open = useCopilotStore((s) => s.open)
-  const setOpen = useCopilotStore((s) => s.setOpen)
-  const toggle = useCopilotStore((s) => s.toggle)
-  const width = useCopilotStore((s) => s.width)
-  const isDesktop = useIsDesktop()
-  const lastFocused = useRef<HTMLElement | null>(null)
+  const open = useCopilotStore((state) => state.open)
+  const setOpen = useCopilotStore((state) => state.setOpen)
+  const toggle = useCopilotStore((state) => state.toggle)
+  const desktop = useIsDesktop()
+  const [started, setStarted] = useState(open)
+  useEffect(() => { if (open) setStarted(true) }, [open])
 
-  // Cmd/Ctrl+I toggles (GlobalSearch owns Cmd-K). Esc closes.
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'i') {
-        e.preventDefault()
-        toggle()
-      }
-      if (e.key === 'Escape') setOpen(false)
+    function onKey(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return
+      const shortcut = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'i'
+      const dismiss = open && desktop && event.key === 'Escape'
+      if (!shortcut && !dismiss) return
+      if (document.querySelector('dialog:modal:not(#copilot-window), [role="dialog"][aria-modal="true"]')) return
+      event.preventDefault()
+      if (shortcut) toggle()
+      else setOpen(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [toggle, setOpen])
+  }, [desktop, open, setOpen, toggle])
 
-  // Focus management: restore focus to the launcher on close.
-  useEffect(() => {
-    if (open) {
-      lastFocused.current = document.activeElement as HTMLElement | null
-    } else if (lastFocused.current) {
-      lastFocused.current.focus?.()
-      lastFocused.current = null
-    }
-  }, [open])
-
-  if (!open) return null
-
-  const close = () => setOpen(false)
-
-  if (isDesktop) {
-    return (
-      <aside
-        role="complementary"
-        aria-label={t('copilot.title')}
-        style={{ width }}
-        className="relative hidden lg:flex flex-col flex-shrink-0 h-full bg-surface border-l border-edge transition-colors"
-      >
-        <ResizeHandle />
-        <CopilotChat rightSlot={closeButton(close, t('common.cancel'))} />
-      </aside>
-    )
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label={t('copilot.title')}>
-      <div className="absolute inset-0 bg-black/40" onClick={close} />
-      <div className="absolute inset-x-0 bottom-0 h-[75dvh] bg-surface rounded-t-2xl border-t border-edge flex flex-col shadow-2xl">
-        <CopilotChat rightSlot={closeButton(close, t('common.cancel'))} />
-      </div>
-    </div>
-  )
+  return open || started ? <CopilotWindow open={open} desktop={desktop} /> : null
 }

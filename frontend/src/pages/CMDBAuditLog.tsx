@@ -131,7 +131,7 @@ export default function CMDBAuditLog() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="page-heading">
         <h1 className="page-title">{t('cmdbAuditLog.title')}</h1>
         <p className="text-sm text-secondary mt-0.5">
           {t('cmdbAuditLog.subtitle')}
@@ -178,7 +178,7 @@ export default function CMDBAuditLog() {
             />
             <button
               onClick={applySearch}
-              className="px-3 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg"
+              className="btn-primary"
             >{t('common.search')}</button>
           </div>
         </div>
@@ -212,7 +212,7 @@ export default function CMDBAuditLog() {
         </div>
       ) : (
         <div className="bg-surface rounded-xl border border-edge overflow-hidden">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-muted border-b border-edge">
                 <th className="text-left px-4 py-3">{t('cmdbAuditLog.colCiName')}</th>

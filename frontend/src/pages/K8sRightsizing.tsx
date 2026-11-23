@@ -1,3 +1,5 @@
+import { chartPalette, chartAxis, chartTooltipStyle } from '../lib/chartTheme'
+import { fmtMoney } from '../lib/format'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -28,14 +30,17 @@ interface Workload {
 }
 interface Summary { cluster_count: number; namespace_count: number; workload_count: number; total_savings: number; total_cost: number; top_namespaces: { namespace: string; cluster_id: string; workload_count: number; potential_savings: number }[] }
 
-function fmt(v: number) { return `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }
+function formatEstimate(amount: number) {
+  return fmtMoney(amount, 'USD')
+}
+
 function pct(rec?: number, req?: number) {
   if (!rec || !req || req === 0) return null
   const p = Math.round((1 - rec / req) * 100)
   return p > 0 ? `-${p}%` : `+${Math.abs(p)}%`
 }
 
-const COLORS = ['#299d87','#7b87c2','#c983a0','#f43f5e','#f97316','#eab308','#22d3ee','#10b981','#3b82f6','#a78bfa']
+const COLORS = chartPalette
 
 const K8S_COLUMN_KEYS: Record<string, string> = {
   Workload: 'k8sRightsizing.colWorkload',
@@ -96,7 +101,7 @@ export default function K8sRightsizing() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="page-heading">
         <h1 className="page-title">{t('k8sRightsizing.title')}</h1>
         <p className="text-sm text-secondary mt-1">{t('k8sRightsizing.subtitle')}</p>
       </div>
@@ -105,20 +110,20 @@ export default function K8sRightsizing() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('k8sRightsizing.clusters')}</p>
-          <p className="text-2xl font-bold text-primary mt-1">{sum.cluster_count}</p>
+          <p className="text-2xl font-semibold text-primary mt-1">{sum.cluster_count}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('k8sRightsizing.workloads')}</p>
-          <p className="text-2xl font-bold text-primary mt-1">{sum.workload_count}</p>
+          <p className="text-2xl font-semibold text-primary mt-1">{sum.workload_count}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('k8sRightsizing.potentialSavingsPerMo')}</p>
-          <p className="text-2xl font-bold text-success mt-1">{fmt(sum.total_savings)}</p>
+          <p className="text-2xl font-semibold text-success mt-1">{formatEstimate(sum.total_savings)}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('k8sRightsizing.savingsOpportunity')}</p>
-          <p className="text-2xl font-bold text-accent mt-1">{savingsPct}%</p>
-          <p className="text-xs text-muted mt-1">{t('k8sRightsizing.ofTotalPerMo', { amount: fmt(sum.total_cost) })}</p>
+          <p className="text-2xl font-semibold text-accent mt-1">{savingsPct}%</p>
+          <p className="text-xs text-muted mt-1">{t('k8sRightsizing.ofTotalPerMo', { amount: formatEstimate(sum.total_cost) })}</p>
         </div>
       </div>
 
@@ -154,13 +159,13 @@ export default function K8sRightsizing() {
             ) : (
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={nsChartData} layout="vertical" margin={{ left: 8, right: 16 }}>
-                  <XAxis type="number" tickFormatter={v => `$${v}`} tick={{ fill: 'rgb(var(--text-muted))', fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" width={100} tick={{ fill: 'rgb(var(--text-secondary))', fontSize: 11 }} />
+                  <XAxis {...chartAxis} type="number" tickFormatter={formatEstimate} tick={{ fill: 'rgb(var(--text-muted))', fontSize: 11 }} />
+                  <YAxis {...chartAxis} type="category" dataKey="name" width={100} tick={{ fill: 'rgb(var(--text-secondary))', fontSize: 11 }} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: 'rgb(var(--subtle))', border: '1px solid rgb(var(--border))', borderRadius: 8 }}
-                    formatter={(v: number) => [fmt(v), t('k8sRightsizing.potentialSavings')]}
+                    contentStyle={chartTooltipStyle}
+                    formatter={(v: number) => [formatEstimate(v), t('k8sRightsizing.potentialSavings')]}
                   />
-                  <Bar dataKey="savings" radius={[0, 4, 4, 0]}>
+                  <Bar isAnimationActive={false} maxBarSize={32} dataKey="savings" radius={[0, 4, 4, 0]}>
                     {nsChartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Bar>
                 </BarChart>
@@ -181,7 +186,7 @@ export default function K8sRightsizing() {
                   <p className="text-xs text-muted">{t('k8sRightsizing.workloadsTracked', { count: c.workload_count })}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-success font-semibold text-sm">{fmt(c.total_savings)}</p>
+                  <p className="text-success font-semibold text-sm">{formatEstimate(c.total_savings)}</p>
                   <p className="text-xs text-muted">{t('k8sRightsizing.savingsOpportunityHint')}</p>
                 </div>
               </div>
@@ -192,7 +197,7 @@ export default function K8sRightsizing() {
 
       {view === 'table' && (
         <div className="bg-surface rounded-xl border border-strong overflow-x-auto">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead><tr className="border-b border-strong">
               {['Workload', 'Namespace', 'Cluster', 'CPU Req→Rec', 'Mem Req→Rec', 'Savings/mo', 'P95 CPU', 'P95 Mem'].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">{t(K8S_COLUMN_KEYS[h])}</th>
@@ -233,7 +238,7 @@ export default function K8sRightsizing() {
                   </td>
                   <td className="px-4 py-3">
                     {w.potential_savings != null && w.potential_savings > 0
-                      ? <span className="text-success font-semibold">{fmt(w.potential_savings)}</span>
+                      ? <span className="text-success font-semibold">{formatEstimate(w.potential_savings)}</span>
                       : <span className="text-muted">—</span>}
                   </td>
                   <td className="px-4 py-3 text-secondary text-xs">{w.cpu_p95_m != null ? `${Math.round(w.cpu_p95_m)}m` : '—'}</td>

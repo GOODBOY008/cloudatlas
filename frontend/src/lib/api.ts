@@ -1,74 +1,106 @@
-import axios, { AxiosError } from 'axios'
+import axios, { AxiosError, CanceledError, type InternalAxiosRequestConfig } from 'axios'
 import { auth } from './auth'
-import type { AuthResponse, ApiResponse } from '../types'
+import type { ApiResponse } from '../types'
 
 const api = axios.create({
   baseURL: '/api/v1',
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Attach Bearer token to every request
-api.interceptors.request.use((config) => {
+interface SessionRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean
+  _sessionVersion?: number
+}
+
+const publicAuthPaths = new Set([
+  '/auth/login', '/auth/register', '/auth/refresh', '/auth/forgot-password',
+  '/auth/reset-password', '/auth/verify-email', '/auth/oidc/config',
+])
+
+function sessionChanged(config: SessionRequestConfig) {
+  return config._sessionVersion !== auth.getSessionVersion()
+}
+
+// A request keeps its original session even when retried. Never send an old
+// user's queued request with a new user's credentials.
+api.interceptors.request.use((config: SessionRequestConfig) => {
+  config._sessionVersion ??= auth.getSessionVersion()
+  if (sessionChanged(config)) throw new CanceledError('Session changed')
   const token = auth.getAccessToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  else delete config.headers.Authorization
   return config
 })
 
-let isRefreshing = false
-let refreshQueue: Array<(token: string) => void> = []
+let pendingRefresh: { version: number; promise: Promise<void> } | undefined
 
-// Handle 401: attempt token refresh once, then redirect to login
+interface RefreshResponse {
+  access_token: string
+  refresh_token?: string
+}
+
+function refreshSession(version: number, refreshToken: string): Promise<void> {
+  if (pendingRefresh?.version === version) return pendingRefresh.promise
+
+  const promise = axios.post<ApiResponse<RefreshResponse>>('/api/v1/auth/refresh', {
+    refresh_token: refreshToken,
+  }).then(({ data: res }) => {
+    if (!auth.refreshTokens(res.data.access_token, res.data.refresh_token ?? refreshToken, version, refreshToken)) {
+      throw new CanceledError('Session changed')
+    }
+  }).catch((error: unknown) => {
+    // A late refresh failure must not sign out a newer login.
+    if (version === auth.getSessionVersion() && auth.getRefreshToken() === refreshToken) {
+      auth.logout()
+    }
+    throw error
+  }).finally(() => {
+    if (pendingRefresh?.promise === promise) pendingRefresh = undefined
+  })
+  pendingRefresh = { version, promise }
+  return promise
+}
+
+// All callers await the same promise, so refresh failure rejects every waiter.
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (sessionChanged(response.config as SessionRequestConfig)) {
+      throw new CanceledError('Session changed')
+    }
+    return response
+  },
   async (error: AxiosError) => {
-    const original = error.config as typeof error.config & { _retry?: boolean }
+    const original = error.config as SessionRequestConfig | undefined
+    if (!original) throw error
+    if (sessionChanged(original)) throw new CanceledError('Session changed')
+    if (error.response?.status !== 401 || publicAuthPaths.has(original.url ?? '')) throw error
 
-    if (error.response?.status === 401 && !original?._retry) {
-      const refreshToken = auth.getRefreshToken()
-      if (!refreshToken) {
-        auth.logout()
-        return Promise.reject(error)
-      }
+    if (original._retry) {
+      auth.logout()
+      throw error
+    }
+    original._retry = true
 
-      if (isRefreshing) {
-        return new Promise((resolve) => {
-          refreshQueue.push((newToken: string) => {
-            if (original) {
-              original.headers = original.headers ?? {}
-              original.headers.Authorization = `Bearer ${newToken}`
-              resolve(api(original))
-            }
-          })
-        })
-      }
-
-      original!._retry = true
-      isRefreshing = true
-
-      try {
-        const { data: res } = await axios.post<ApiResponse<AuthResponse>>('/api/v1/auth/refresh', {
-          refresh_token: refreshToken,
-        })
-        auth.setTokens(res.data.access_token, res.data.refresh_token)
-        refreshQueue.forEach((cb) => cb(res.data.access_token))
-        refreshQueue = []
-        if (original) {
-          original.headers = original.headers ?? {}
-          original.headers.Authorization = `Bearer ${res.data.access_token}`
-          return api(original)
-        }
-      } catch {
-        auth.logout()
-        return Promise.reject(error)
-      } finally {
-        isRefreshing = false
-      }
+    // Another request may have refreshed while this 401 was in flight.
+    const currentAccess = auth.getAccessToken()
+    if (currentAccess && original.headers.Authorization !== `Bearer ${currentAccess}`) {
+      return api(original)
     }
 
-    return Promise.reject(error)
-  }
+    if (auth.hasSsoSession()) {
+      if (await auth.restoreSsoSession() && !sessionChanged(original)) return api(original)
+      throw new CanceledError('Session changed')
+    }
+
+    const refreshToken = auth.getRefreshToken()
+    if (!refreshToken) {
+      auth.logout()
+      throw error
+    }
+    await refreshSession(auth.getSessionVersion(), refreshToken)
+    if (sessionChanged(original)) throw new CanceledError('Session changed')
+    return api(original)
+  },
 )
 
 export default api

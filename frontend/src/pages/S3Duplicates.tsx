@@ -1,3 +1,5 @@
+import { useMoneyFormatter } from '../lib/format'
+import PaginationBar from '../components/PaginationBar'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -30,6 +32,7 @@ interface Analysis {
   buckets: Bucket[]
   matrix: MatrixPair[]
   duplicate_groups: DupGroup[]
+  matrix_meta?: { total: number; returned: number; limit: number; truncated: boolean }
   summary: {
     bucket_count: number
     pair_count: number
@@ -38,31 +41,34 @@ interface Analysis {
   }
 }
 
-const fmt = (v: number) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
 
 export default function S3Duplicates() {
+  const fmt = useMoneyFormatter()
   const { t } = useTranslation()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id
   const [tab, setTab] = useState<'groups' | 'matrix' | 'buckets'>('groups')
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(20)
+  const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set())
 
   const { data: analysis, isLoading, isError, refetch, isFetching } = useQuery<Analysis>({
     queryKey: ['s3-duplicates', orgId],
     enabled: !!orgId,
     queryFn: async () => {
-      const { data: res } = await api.get<{ data: Analysis }>(`/orgs/${orgId}/s3-duplicates`)
+      const { data: res } = await api.get<{ data: Analysis }>(`/orgs/${orgId}/s3-duplicates?matrix_limit=200`)
       return res.data
     },
   })
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('s3Duplicates.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('s3Duplicates.title')}</h1>
         <button
-          onClick={() => refetch()}
+          onClick={() => { setPage(1); setExpandedGroups(new Set()); void refetch() }}
           disabled={isFetching}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+          className="btn-primary"
         >
           {isFetching ? t('s3Duplicates.scanning') : t('s3Duplicates.scanNow')}
         </button>
@@ -102,16 +108,12 @@ export default function S3Duplicates() {
             </div>
           </div>
 
-          <div className="flex gap-1 mb-4 border-b border-edge">
+          <div className="page-tabs mb-4">
             {(['groups', 'matrix', 'buckets'] as const).map((tb) => (
-              <button
+              <button aria-pressed={tab === tb}
                 key={tb}
-                onClick={() => setTab(tb)}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  tab === tb
-                    ? 'border-accent text-primary'
-                    : 'border-transparent text-muted hover:text-secondary'
-                }`}
+                onClick={() => { setTab(tb); setPage(1) }}
+                className="page-tab"
               >
                 {tb === 'groups' ? t('s3Duplicates.tabGroups') : tb === 'matrix' ? t('s3Duplicates.tabMatrix') : t('s3Duplicates.tabBuckets')}
               </button>
@@ -133,7 +135,7 @@ export default function S3Duplicates() {
                         {t('s3Duplicates.redundantSummary', { count: g.redundant_count, cost: fmt(g.redundant_cost) })}
                       </span>
                     </div>
-                    <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
                       <thead className="border-b border-edge text-xs uppercase text-muted">
                         <tr>
                           <th className="px-4 py-2 font-medium">{t('s3Duplicates.colBucket')}</th>
@@ -143,7 +145,7 @@ export default function S3Duplicates() {
                         </tr>
                       </thead>
                       <tbody>
-                        {g.buckets.map((b) => (
+                        {(expandedGroups.has(i) ? g.buckets : g.buckets.slice(0, 20)).map((b) => (
                           <tr key={b.id} className="border-b border-strong last:border-0">
                             <td className="px-4 py-2 text-sm text-primary font-mono">{b.name}</td>
                             <td className="px-4 py-2 text-sm text-secondary">{b.region ?? '—'}</td>
@@ -153,11 +155,15 @@ export default function S3Duplicates() {
                         ))}
                       </tbody>
                     </table></div>
+                    {g.buckets.length > 20 && <button className="text-link m-4" aria-expanded={expandedGroups.has(i)} onClick={() => setExpandedGroups(previous => { const next = new Set(previous); if (next.has(i)) next.delete(i); else next.add(i); return next })}>
+                      {t(expandedGroups.has(i) ? 's3Duplicates.collapseGroup' : 's3Duplicates.expandGroup', { count: g.buckets.length })}
+                    </button>}
                   </div>
                 ))}
               </div>
             ))}
 
+          {tab === 'matrix' && analysis.matrix_meta?.truncated && <p className="mb-4 rounded border border-info/25 bg-info/10 p-3 text-sm text-info" role="status">{t('s3Duplicates.matrixLimit', { shown: analysis.matrix_meta.returned, total: analysis.matrix_meta.total })}</p>}
           {tab === 'matrix' &&
             (analysis.matrix.length === 0 ? (
               <div className="bg-surface border border-edge rounded-xl px-5 py-8 text-center text-muted text-sm">
@@ -165,7 +171,7 @@ export default function S3Duplicates() {
               </div>
             ) : (
               <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-                <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
                   <thead className="border-b border-edge text-xs uppercase text-muted">
                     <tr>
                       <th className="px-4 py-3 font-medium">{t('s3Duplicates.colBucketA')}</th>
@@ -177,6 +183,7 @@ export default function S3Duplicates() {
                     {analysis.matrix
                       .slice()
                       .sort((a, b) => b.similarity - a.similarity)
+                      .slice((page - 1) * perPage, page * perPage)
                       .map((p, i) => (
                         <tr key={i} className="border-b border-strong last:border-0">
                           <td className="px-4 py-2 text-sm text-primary font-mono">{p.bucket_a}</td>
@@ -203,7 +210,7 @@ export default function S3Duplicates() {
 
           {tab === 'buckets' && (
             <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-              <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
                 <thead className="border-b border-edge text-xs uppercase text-muted">
                   <tr>
                     <th className="px-4 py-3 font-medium">{t('s3Duplicates.colBucket')}</th>
@@ -213,7 +220,7 @@ export default function S3Duplicates() {
                   </tr>
                 </thead>
                 <tbody>
-                  {analysis.buckets.map((b) => (
+                  {analysis.buckets.slice((page - 1) * perPage, page * perPage).map((b) => (
                     <tr key={b.id} className="border-b border-strong last:border-0">
                       <td className="px-4 py-3 text-sm text-primary font-mono">{b.name}</td>
                       <td className="px-4 py-3 text-sm text-secondary">{b.region ?? '—'}</td>
@@ -225,6 +232,7 @@ export default function S3Duplicates() {
               </table></div>
             </div>
           )}
+          {tab !== 'groups' && <PaginationBar page={page} totalPages={Math.max(1, Math.ceil((tab === 'matrix' ? analysis.matrix.length : analysis.buckets.length) / perPage))} total={tab === 'matrix' ? analysis.matrix.length : analysis.buckets.length} perPage={perPage} onPageChange={setPage} onPerPageChange={value => { setPerPage(value); setPage(1) }} />}
         </>
       )}
     </div>

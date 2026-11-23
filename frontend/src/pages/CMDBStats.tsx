@@ -1,3 +1,4 @@
+import { chartColors, chartAxis, chartGrid, chartTooltipStyle } from '../lib/chartTheme'
 import { useQuery } from '@tanstack/react-query'
 import {
   BarChart,
@@ -61,10 +62,10 @@ interface CMDBStats {
 }
 
 const LIFECYCLE_COLORS: Record<string, string> = {
-  active: '#22c55e',
-  stopped: '#f59e0b',
-  terminated: '#ef4444',
-  unknown: '#64748b',
+  active: chartColors.green,
+  stopped: chartColors.orange,
+  terminated: chartColors.danger,
+  unknown: chartColors.muted,
 }
 
 const OPERATION_COLORS: Record<string, string> = {
@@ -81,7 +82,7 @@ function StatCard({ label, value, sub, color = 'text-primary' }: {
   return (
     <div className="bg-surface rounded-xl border border-edge p-4">
       <p className="text-xs text-muted mb-1">{label}</p>
-      <p className={`text-3xl font-bold ${color}`}>{value}</p>
+      <p className={`text-[28px] font-semibold ${color}`}>{value}</p>
       {sub && <p className="text-xs text-muted mt-1">{sub}</p>}
     </div>
   )
@@ -155,7 +156,7 @@ export default function CMDBStats() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="page-heading">
         <h1 className="page-title">{t('cmdbStats.title')}</h1>
         <p className="text-sm text-secondary mt-0.5">
           {t('cmdbStats.subtitle')}
@@ -211,30 +212,30 @@ export default function CMDBStats() {
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={stats.lifecycle_distribution} barCategoryGap="30%">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--subtle))" />
-                <XAxis
+                <CartesianGrid {...chartGrid}  vertical={false} />
+                <XAxis {...chartAxis}
                   dataKey="state"
                   tick={{ fill: 'rgb(var(--text-muted))', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) => t(`lifecycle.${v}`, { defaultValue: v })}
                 />
-                <YAxis
+                <YAxis {...chartAxis}
                   tick={{ fill: 'rgb(var(--text-muted))', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   allowDecimals={false}
                 />
                 <Tooltip
-                  contentStyle={{ background: 'rgb(var(--subtle))', border: '1px solid rgb(var(--border))', borderRadius: 8 }}
-                  labelStyle={{ color: '#fff' }}
+                  contentStyle={chartTooltipStyle}
+                  labelStyle={{ color: 'rgb(var(--text-secondary))' }}
                   itemStyle={{ color: 'rgb(var(--text-secondary))' }}
                 />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                <Bar isAnimationActive={false} maxBarSize={32} dataKey="count" radius={[4, 4, 0, 0]}>
                   {stats.lifecycle_distribution.map((entry, idx) => (
                     <Cell
                       key={`lc-${idx}`}
-                      fill={LIFECYCLE_COLORS[entry.state ?? entry.lifecycle_state ?? 'unknown'] ?? '#299d87'}
+                      fill={LIFECYCLE_COLORS[entry.state ?? entry.lifecycle_state ?? 'unknown'] ?? chartColors.blue}
                     />
                   ))}
                 </Bar>
@@ -255,15 +256,15 @@ export default function CMDBStats() {
                 layout="vertical"
                 barCategoryGap="20%"
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--subtle))" horizontal={false} />
-                <XAxis
+                <CartesianGrid {...chartGrid} horizontal={false} />
+                <XAxis {...chartAxis}
                   type="number"
                   tick={{ fill: 'rgb(var(--text-muted))', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   allowDecimals={false}
                 />
-                <YAxis
+                <YAxis {...chartAxis}
                   type="category"
                   dataKey="type_display"
                   tick={{ fill: 'rgb(var(--text-muted))', fontSize: 10 }}
@@ -272,11 +273,11 @@ export default function CMDBStats() {
                   width={90}
                 />
                 <Tooltip
-                  contentStyle={{ background: 'rgb(var(--subtle))', border: '1px solid rgb(var(--border))', borderRadius: 8 }}
-                  labelStyle={{ color: '#fff' }}
+                  contentStyle={chartTooltipStyle}
+                  labelStyle={{ color: 'rgb(var(--text-secondary))' }}
                   itemStyle={{ color: 'rgb(var(--text-secondary))' }}
                 />
-                <Bar dataKey="count" fill="#299d87" radius={[0, 4, 4, 0]} />
+                <Bar isAnimationActive={false} maxBarSize={32} dataKey="count" fill={chartColors.blue} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -291,7 +292,7 @@ export default function CMDBStats() {
         {stats.recent_audit.length === 0 ? (
           <p className="text-muted text-sm text-center py-8">{t('cmdbStats.noRecentActivity')}</p>
         ) : (
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-muted border-b border-edge">
                 <th className="text-left px-4 py-2">{t('cmdb.colCi')}</th>
@@ -327,14 +328,14 @@ export default function CMDBStats() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trends.points}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
-                  <XAxis dataKey="date" stroke="rgb(var(--text-muted))" fontSize={11} />
-                  <YAxis stroke="rgb(var(--text-muted))" fontSize={11} />
+                  <CartesianGrid {...chartGrid}  vertical={false} />
+                  <XAxis {...chartAxis} dataKey="date" stroke="rgb(var(--text-muted))" fontSize={11} />
+                  <YAxis {...chartAxis} stroke="rgb(var(--text-muted))" fontSize={11} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: 'rgb(var(--surface))', border: '1px solid rgb(var(--border))', borderRadius: '0.5rem' }}
+                    contentStyle={chartTooltipStyle}
                     labelStyle={{ color: 'rgb(var(--text-muted))' }}
                   />
-                  <Line type="monotone" dataKey="total_cis" name={t('cmdbStats.totalCis')} stroke="#818cf8" strokeWidth={2} dot={false} />
+                  <Line isAnimationActive={false} type="linear" dataKey="total_cis" name={t('cmdbStats.totalCis')} stroke={chartColors.purple} strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -344,14 +345,14 @@ export default function CMDBStats() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trends.points}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
-                  <XAxis dataKey="date" stroke="rgb(var(--text-muted))" fontSize={11} />
-                  <YAxis stroke="rgb(var(--text-muted))" fontSize={11} allowDecimals={false} />
+                  <CartesianGrid {...chartGrid}  vertical={false} />
+                  <XAxis {...chartAxis} dataKey="date" stroke="rgb(var(--text-muted))" fontSize={11} />
+                  <YAxis {...chartAxis} stroke="rgb(var(--text-muted))" fontSize={11} allowDecimals={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: 'rgb(var(--surface))', border: '1px solid rgb(var(--border))', borderRadius: '0.5rem' }}
+                    contentStyle={chartTooltipStyle}
                     labelStyle={{ color: 'rgb(var(--text-muted))' }}
                   />
-                  <Line type="monotone" dataKey="change_count" name={t('cmdbStats.changesDaily')} stroke="#34d399" strokeWidth={2} dot={false} />
+                  <Line isAnimationActive={false} type="linear" dataKey="change_count" name={t('cmdbStats.changesDaily')} stroke={chartColors.green} strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

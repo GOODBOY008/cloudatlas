@@ -25,7 +25,7 @@ setup('authenticate', async ({ page }) => {
   const emailInput = page.locator('input[type="text"], input[type="email"], input[placeholder*="email" i]').first();
   await emailInput.fill(ADMIN_EMAIL);
   await page.locator('input[type="password"]').first().fill(ADMIN_PASS);
-  await page.getByRole('button', { name: /sign in/i }).click();
+  await page.getByRole('button', { name: 'Sign In', exact: true }).click();
 
   // Wait for successful redirect to dashboard
   await page.waitForURL(/\/dashboard/, { timeout: 20_000 });

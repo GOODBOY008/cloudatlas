@@ -1,3 +1,4 @@
+import { MetricCard } from '../components/shared/MetricCard'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -5,27 +6,6 @@ import { fmtMoney } from '../lib/format'
 import api from '../lib/api'
 import { useOrgStore } from '../store/orgStore'
 import type { ShowbackReport } from '../types'
-
-function StatCard({
-  label,
-  value,
-  detail,
-  accent,
-}: {
-  label: string
-  value: string
-  detail: string
-  accent: string
-}) {
-  return (
-    <div className="bg-surface border border-edge rounded-xl p-5 relative overflow-hidden">
-      <div className={`absolute inset-x-0 top-0 h-1 ${accent}`} />
-      <p className="text-xs uppercase tracking-wider text-muted">{label}</p>
-      <p className="mt-2 text-2xl font-bold text-primary">{value}</p>
-      <p className="mt-1 text-sm text-secondary">{detail}</p>
-    </div>
-  )
-}
 
 function BucketRow({
   name,
@@ -57,7 +37,7 @@ function BucketRow({
       </div>
       <div className="h-2 rounded-full bg-subtle overflow-hidden">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-info to-accent"
+          className="h-full rounded-full bg-accent"
           style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
         />
       </div>
@@ -105,9 +85,9 @@ export default function Showback() {
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4 mb-6">
+      <div className="page-header">
         <div>
-          <h2 className="page-title">{t('showback.title')}</h2>
+          <h1 className="page-title">{t('showback.title')}</h1>
           <p className="text-sm text-muted mt-1">
             {t('showback.subtitle')}
           </p>
@@ -115,7 +95,7 @@ export default function Showback() {
         <button
           onClick={() => refetch()}
           disabled={isFetching}
-          className="px-4 py-2 bg-subtle hover:bg-emphasis disabled:opacity-60 text-primary text-sm font-medium rounded-lg border border-strong transition-colors"
+          className="btn-secondary"
         >
           {isFetching ? t('showback.refreshing') : t('showback.refresh')}
         </button>
@@ -127,30 +107,26 @@ export default function Showback() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <MetricCard
           label={t('showback.totalSpend')}
           value={fmtMoney(report.total_cost, report.currency)}
           detail={t('showback.periodDays', { days: report.period_days })}
-          accent="bg-gradient-to-r from-success to-info"
         />
-        <StatCard
+        <MetricCard
           label={t('showback.allocated')}
           value={`${allocated_pct.toFixed(1)}%`}
           detail={t('showback.allocatedDetail')}
-          accent="bg-gradient-to-r from-accent to-violet-500"
         />
-        <StatCard
+        <MetricCard
           label={t('showback.unallocatedCost')}
           value={fmtMoney(report.unallocated_cost, report.currency)}
           detail={t('showback.unallocatedDetail', { pct: report.unallocated_pct.toFixed(1) })}
-          accent="bg-gradient-to-r from-amber-500 to-warning"
         />
-        <StatCard
+        <MetricCard
           label={t('showback.currency')}
           value={report.currency}
           detail={t('showback.currencyDetail')}
-          accent="bg-gradient-to-r from-fuchsia-500 to-pink-500"
         />
       </div>
 

@@ -18,12 +18,11 @@ pub async fn showback(db: &sqlx::PgPool, org_id: Uuid) -> AppResult<Value> {
            ), spend AS MATERIALIZED (SELECT * FROM period WHERE currency = $2),
            owners AS (
                SELECT DISTINCT c.cloud_account_id, c.cloud_resource_id, cc.id AS cost_center_id
-               FROM cis c JOIN service_cis sc ON sc.ci_id = c.id
+               FROM ci_finops_resource_ids c JOIN service_cis sc ON sc.ci_id = c.ci_id
                JOIN services s ON s.id = sc.service_id AND s.organization_id = $1 AND s.deleted_at IS NULL
                JOIN business_capabilities bc ON bc.organization_id = $1 AND bc.name = s.name
                JOIN cost_centers cc ON cc.id = bc.cost_center_id AND cc.organization_id = $1
-               WHERE c.organization_id = $1 AND c.deleted_at IS NULL
-                   AND c.cloud_account_id IS NOT NULL AND c.cloud_resource_id IS NOT NULL
+               WHERE c.organization_id = $1 AND c.cloud_account_id IS NOT NULL
            ), ownership AS (
                SELECT cloud_account_id, cloud_resource_id, COUNT(*) AS owner_count,
                       (array_agg(cost_center_id ORDER BY cost_center_id))[1] AS cost_center_id
@@ -91,13 +90,15 @@ pub async fn data_flow(
     // Aggregate each relation once; joining raw bills to expenses would multiply
     // costs. Every identity match includes organization, account and resource.
     let accounts: Vec<Value> = sqlx::query_scalar(
-        r#"WITH inventory AS (
+        r#"WITH linked AS (
+               SELECT DISTINCT cloud_account_id, cloud_resource_id FROM ci_finops_resource_ids
+               WHERE organization_id = $1 AND cloud_account_id IS NOT NULL
+           ), inventory AS (
                SELECT r.cloud_account_id, COUNT(*) AS resources,
-                      COUNT(*) FILTER (WHERE EXISTS (
-                          SELECT 1 FROM cis c WHERE c.organization_id = $1 AND c.deleted_at IS NULL
-                              AND c.cloud_account_id = r.cloud_account_id AND c.cloud_resource_id = r.cloud_resource_id
-                      )) AS linked_resources
-               FROM resources r WHERE r.organization_id = $1 AND r.active GROUP BY r.cloud_account_id
+                      COUNT(l.cloud_resource_id) AS linked_resources
+               FROM resources r LEFT JOIN linked l ON l.cloud_account_id = r.cloud_account_id
+                   AND l.cloud_resource_id = r.cloud_resource_id
+               WHERE r.organization_id = $1 AND r.active GROUP BY r.cloud_account_id
            ), ci_counts AS (
                SELECT cloud_account_id, COUNT(*) AS cis FROM cis
                WHERE organization_id = $1 AND deleted_at IS NULL GROUP BY cloud_account_id
@@ -108,12 +109,12 @@ pub async fn data_flow(
            ), costs AS (
                SELECT e.cloud_account_id, COUNT(*) AS expense_rows, MAX(e.date) AS latest_expense_date,
                       COUNT(*) FILTER (WHERE currency <> $2) AS currency_mismatch_rows,
-                      COUNT(*) FILTER (WHERE c.id IS NULL) AS unmatched_rows,
+                      COUNT(*) FILTER (WHERE l.cloud_resource_id IS NULL) AS unmatched_rows,
                       COALESCE(SUM(e.cost) FILTER (WHERE e.currency = $2), 0) AS total_cost,
-                      COALESCE(SUM(e.cost) FILTER (WHERE c.id IS NULL AND e.currency = $2), 0) AS unmatched_cost,
+                      COALESCE(SUM(e.cost) FILTER (WHERE l.cloud_resource_id IS NULL AND e.currency = $2), 0) AS unmatched_cost,
                       COALESCE(SUM(e.cost) FILTER (WHERE p.id IS NULL AND e.currency = $2), 0) AS unallocated_cost
-               FROM expenses e LEFT JOIN cis c ON c.organization_id = $1 AND c.deleted_at IS NULL
-                   AND c.cloud_account_id = e.cloud_account_id AND c.cloud_resource_id = e.cloud_resource_id
+               FROM expenses e LEFT JOIN linked l ON l.cloud_account_id = e.cloud_account_id
+                   AND l.cloud_resource_id = e.cloud_resource_id
                LEFT JOIN pools p ON p.id = e.pool_id AND p.organization_id = $1 AND p.deleted_at IS NULL
                WHERE e.organization_id = $1 AND e.date BETWEEN CURRENT_DATE - 29 AND CURRENT_DATE
                GROUP BY e.cloud_account_id

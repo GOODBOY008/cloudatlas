@@ -9,20 +9,20 @@ describe('CopilotFab', () => {
     act(() => useCopilotStore.getState().setOpen(false))
   })
 
-  it('opens the copilot and is mobile-only', () => {
+  it('toggles the global window and exposes the open state', () => {
     render(<CopilotFab />)
     const fab = screen.getByRole('button', { name: 'Open Copilot' })
-    expect(fab.className).toContain('lg:hidden')
-    expect(fab.className).toContain('bottom-5')
-    expect(fab.className).toContain('right-5')
     fireEvent.click(fab)
     expect(useCopilotStore.getState().open).toBe(true)
+    expect(fab).toHaveAttribute('aria-controls', 'copilot-window')
+    fireEvent.click(fab)
+    expect(useCopilotStore.getState().open).toBe(false)
   })
 
-  it('hides when the panel is open', () => {
+  it('keeps the launcher mounted for focus restoration', () => {
     render(<CopilotFab />)
     act(() => useCopilotStore.getState().setOpen(true))
-    expect(screen.queryByRole('button', { name: 'Open Copilot' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Minimize Copilot' })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('label is localized in Chinese', async () => {

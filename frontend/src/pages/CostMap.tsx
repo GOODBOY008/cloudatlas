@@ -1,3 +1,4 @@
+import { chartColors, chartPalette, chartAxis, chartTooltipStyle, providerChartColors } from '../lib/chartTheme'
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -18,12 +19,13 @@ import {
   Treemap,
 } from 'recharts'
 import { useTranslation } from 'react-i18next'
+import worldGeographyUrl from 'world-atlas/countries-110m.json?url'
 import api from '../lib/api'
+import { billingDateRange } from '../lib/billingDates'
+import { fmtMoney, useOrgCurrency } from '../lib/format'
+import { ReportQueryState } from '../components/shared/ReportQueryState'
 import { useOrgStore } from '../store/orgStore'
 import { useThemeStore } from '../store/themeStore'
-
-// World atlas topojson (hosted by unpkg / jsdelivr — no build-time dependency needed)
-const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
 
 const DATE_RANGES = [
   { label: '7d', days: 7 },
@@ -32,30 +34,11 @@ const DATE_RANGES = [
   { label: 'MTD', days: null },
 ]
 
-const PROVIDER_COLORS: Record<string, string> = {
-  aws:     '#f59e0b',
-  azure:   '#3b82f6',
-  gcp:     '#10b981',
-  unknown: '#6b7280',
-}
+const PROVIDER_COLORS = providerChartColors
 
-const TREEMAP_COLORS = [
-  '#299d87', '#7b87c2', '#c983a0', '#f59e0b',
-  '#10b981', '#3b82f6', '#ef4444', '#14b8a6',
-]
+const TREEMAP_COLORS = chartPalette
 
 const VIEW_TABS = ['World Map', 'Treemap', 'Unit Economics', 'Budget Matrix']
-
-function getDateRange(days: number | null): { startDate: string; endDate: string } {
-  const end = new Date()
-  const endDate = end.toISOString().slice(0, 10)
-  if (days === null) {
-    const startDate = new Date(end.getFullYear(), end.getMonth(), 1).toISOString().slice(0, 10)
-    return { startDate, endDate }
-  }
-  const start = new Date(Date.now() - (days - 1) * 86_400_000)
-  return { startDate: start.toISOString().slice(0, 10), endDate }
-}
 
 // Scale bubble radius based on sqrt of cost fraction — clamp to [6, 48]
 function bubbleRadius(cost: number, maxCost: number): number {
@@ -130,9 +113,11 @@ const DIM_OPTIONS = [
 function MapTooltip({
   entry,
   position,
+  currency,
 }: {
   entry: RegionExpense | null
   position: { x: number; y: number }
+  currency: string
 }) {
   const { t } = useTranslation()
   if (!entry) return null
@@ -145,7 +130,7 @@ function MapTooltip({
       <p className="text-secondary">{entry.region}</p>
       <p className="text-secondary mt-1">
         <span className="text-muted">{t('costMap.cost')}: </span>
-        <span className="text-accent font-medium">${entry.total_cost.toLocaleString()}</span>
+        <span className="text-accent font-medium">{fmtMoney(entry.total_cost, currency)}</span>
       </p>
       <p className="text-secondary">
         <span className="text-muted">{t('costMap.resources')}: </span>
@@ -159,8 +144,8 @@ function MapTooltip({
         <span
           className="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium"
           style={{
-            background: `${PROVIDER_COLORS[entry.cloud_type] ?? '#6b7280'}20`,
-            color: PROVIDER_COLORS[entry.cloud_type] ?? '#9ca3af',
+            background: `color-mix(in srgb, ${PROVIDER_COLORS[entry.cloud_type] ?? chartColors.muted} 12%, transparent)`,
+            color: PROVIDER_COLORS[entry.cloud_type] ?? chartColors.muted,
           }}
         >
           {entry.cloud_type.toUpperCase()}
@@ -194,19 +179,20 @@ function TreemapCell(props: {
   x?: number; y?: number; width?: number; height?: number
   name?: string; value?: number; depth?: number; index?: number
   isDark?: boolean
+  currency: string
 }) {
-  const { x = 0, y = 0, width = 0, height = 0, name = '', value = 0, depth = 0, index = 0, isDark = true } = props
+  const { x = 0, y = 0, width = 0, height = 0, name = '', value = 0, depth = 0, index = 0, isDark = true, currency } = props
   if (width < 30 || height < 20) return null
   const color = TREEMAP_COLORS[index % TREEMAP_COLORS.length]
-  const cellStroke = isDark ? '#1f2937' : '#f3f4f6'
-  const labelFill = '#fff'
-  const subLabelFill = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.85)'
+  const cellStroke = 'rgb(var(--surface))'
+  const labelFill = 'rgb(var(--text-primary))'
+  const subLabelFill = 'rgb(var(--text-secondary))'
   return (
     <g>
       <rect
         x={x + 1} y={y + 1} width={width - 2} height={height - 2}
         rx={4}
-        style={{ fill: color, opacity: depth === 1 ? 0.85 : 0.6, stroke: cellStroke, strokeWidth: 2 }}
+        style={{ fill: color, fillOpacity: isDark ? 0.22 : depth === 1 ? 0.16 : 0.1, stroke: cellStroke, strokeWidth: 2 }}
       />
       {width > 60 && height > 30 && (
         <>
@@ -215,7 +201,7 @@ function TreemapCell(props: {
           </text>
           {height > 44 && (
             <text x={x + 8} y={y + 32} fill={subLabelFill} fontSize={10} textAnchor="start">
-              ${(value as number).toLocaleString()}
+              {fmtMoney(value, currency)}
             </text>
           )}
         </>
@@ -230,6 +216,8 @@ export default function CostMap() {
   const { t } = useTranslation()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id
+  const currency = useOrgCurrency()
+  const formatCost = (amount: number) => fmtMoney(amount, currency)
   const { theme } = useThemeStore()
   const isDark = theme === 'dark'
 
@@ -251,25 +239,15 @@ export default function CostMap() {
   }
 
   // Theme-dependent style tokens
-  const mapTheme = isDark
-    ? {
-        mapBg:       '#0f1620',
-        geoFill:     '#273547',
-        geoStroke:   '#334155',
-        geoHover:    '#334155',
-        labelFill:   '#e2e8f0',
-        tooltip:     { background: '#111827', border: '1px solid #374151', borderRadius: 8, color: '#f9fafb' } as React.CSSProperties,
-        axisTickStyle: { fill: '#9ca3af', fontSize: 11 } as Record<string, unknown>,
-      }
-    : {
-        mapBg:       '#f2f5f8',
-        geoFill:     '#dce5ec',
-        geoStroke:   '#b9c9d4',
-        geoHover:    '#a8bfc9',
-        labelFill:   '#0f172a',
-        tooltip:     { background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 8, color: '#111827' } as React.CSSProperties,
-        axisTickStyle: { fill: '#6b7280', fontSize: 11 } as Record<string, unknown>,
-      }
+  const mapTheme = {
+    mapBg: 'rgb(var(--surface))',
+    geoFill: 'rgb(var(--map-land))',
+    geoStroke: 'rgb(var(--map-edge))',
+    geoHover: 'rgb(var(--border-strong))',
+    labelFill: 'rgb(var(--text-primary))',
+    tooltip: chartTooltipStyle,
+    axisTickStyle: chartAxis.tick,
+  }
 
   const [activeRange, setActiveRange] = useState(1)
   const [activeTab, setActiveTab] = useState('World Map')
@@ -281,27 +259,45 @@ export default function CostMap() {
   const [mapZoom, setMapZoom] = useState(1.0)
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 20])
 
-  const { startDate, endDate } = getDateRange(DATE_RANGES[activeRange].days)
+  const { startDate, endDate } = billingDateRange(DATE_RANGES[activeRange].days)
 
   // ── Region Expenses (world map tab) ─────────────────────────────────────────
 
-  const { data: regionData, isLoading: regionLoading } = useQuery<RegionExpensesResponse>({
+  const regionQuery = useQuery({
     queryKey: ['region-expenses', orgId, startDate, endDate],
     enabled: !!orgId && activeTab === 'World Map',
-    queryFn: async () => {
-      const { data: res } = await api.get(`/orgs/${orgId}/expenses/region-expenses`, {
+    queryFn: async ({ signal }) => {
+      const { data: res } = await api.get<RegionExpensesResponse>(`/orgs/${orgId}/expenses/region-expenses`, {
         params: { start_date: startDate, end_date: endDate },
+        signal,
       })
       return res
+    },
+  })
+  const regionData = regionQuery.data
+  const geographyQuery = useQuery({
+    queryKey: ['world-geography', worldGeographyUrl],
+    enabled: !!orgId && activeTab === 'World Map',
+    staleTime: Infinity,
+    queryFn: async ({ signal }) => {
+      const response = await fetch(worldGeographyUrl, { signal })
+      if (!response.ok) throw new Error('World geography could not be loaded')
+      const geography: unknown = await response.json()
+      if (!geography || typeof geography !== 'object' || !('type' in geography) || geography.type !== 'Topology'
+        || !('objects' in geography) || !geography.objects || typeof geography.objects !== 'object'
+        || !('countries' in geography.objects)) {
+        throw new Error('Invalid world geography')
+      }
+      return geography
     },
   })
 
   // ── Cost Map (treemap tab) ───────────────────────────────────────────────────
 
-  const { data: costMapData, isLoading: costMapLoading } = useQuery<CostMapResponse>({
+  const costMapQuery = useQuery({
     queryKey: ['cost-map', orgId, startDate, endDate, primaryDim, secondaryDim, drillFilter],
     enabled: !!orgId && activeTab === 'Treemap',
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const params: Record<string, string> = {
         start_date: startDate,
         end_date: endDate,
@@ -312,34 +308,38 @@ export default function CostMap() {
         params.filter_dim = drillFilter.dim
         params.filter_val = drillFilter.val
       }
-      const { data: res } = await api.get(`/orgs/${orgId}/expenses/cost-map`, { params })
+      const { data: res } = await api.get<CostMapResponse>(`/orgs/${orgId}/expenses/cost-map`, { params, signal })
       return res
     },
   })
+  const costMapData = costMapQuery.data
 
   // ── Unit Economics ───────────────────────────────────────────────────────────
 
-  const { data: unitEcon, isLoading: unitEconLoading } = useQuery<{ data: UnitEcon[]; total_cost: number }>({
+  const unitEconQuery = useQuery({
     queryKey: ['unit-economics', orgId, startDate, endDate],
     enabled: !!orgId && activeTab === 'Unit Economics',
-    queryFn: async () => {
-      const { data: res } = await api.get(`/orgs/${orgId}/expenses/unit-economics`, {
+    queryFn: async ({ signal }) => {
+      const { data: res } = await api.get<{ data: UnitEcon[]; total_cost: number }>(`/orgs/${orgId}/expenses/unit-economics`, {
         params: { start_date: startDate, end_date: endDate },
+        signal,
       })
       return res
     },
   })
+  const unitEcon = unitEconQuery.data
 
   // ── Budget Matrix ────────────────────────────────────────────────────────────
 
-  const { data: budgetMatrix, isLoading: budgetLoading } = useQuery<{ data: BudgetRow[] }>({
+  const budgetQuery = useQuery({
     queryKey: ['cost-map-budget-matrix', orgId],
     enabled: !!orgId && activeTab === 'Budget Matrix',
-    queryFn: async () => {
-      const { data: res } = await api.get(`/orgs/${orgId}/pools/budget-matrix`)
+    queryFn: async ({ signal }) => {
+      const { data: res } = await api.get<{ data: BudgetRow[] }>(`/orgs/${orgId}/pools/budget-matrix`, { signal })
       return res
     },
   })
+  const budgetMatrix = budgetQuery.data
 
   const handleMapMouseMove = useCallback((e: React.MouseEvent<SVGElement>) => {
     setTooltipPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY })
@@ -391,6 +391,8 @@ export default function CostMap() {
     index: i,
   }))
 
+  if (!orgId) return <div className="empty-state">{t('dashboard.selectWorkspace')}</div>
+
   return (
     <div className="flex flex-col text-primary">
       {/* Header */}
@@ -401,16 +403,12 @@ export default function CostMap() {
         </div>
 
         {/* Date range */}
-        <div className="flex gap-1 ml-auto">
+        <div className="segmented-control ml-auto">
           {DATE_RANGES.map((r, i) => (
-            <button
+            <button aria-pressed={activeRange === i}
               key={r.label}
               onClick={() => setActiveRange(i)}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                activeRange === i
-                  ? 'bg-accent text-on-accent'
-                  : 'bg-subtle text-secondary hover:bg-emphasis'
-              }`}
+              className="segment"
             >
               {r.label}
             </button>
@@ -419,18 +417,18 @@ export default function CostMap() {
       </div>
 
       {/* Total cost banner */}
-      {regionData && activeTab === 'World Map' && (
-        <div className="mt-1 px-5 py-4 bg-surface rounded-lg flex items-center gap-6 border border-edge">
+      {regionQuery.isSuccess && regionData && activeTab === 'World Map' && (
+        <div className="map-summary">
           <div>
             <p className="text-xs text-muted">{t('costMap.totalSpend')}</p>
-            <p className="text-2xl font-bold text-primary">${regionData.total_cost.toLocaleString()}</p>
+            <p className="text-2xl font-semibold text-primary">{formatCost(regionData.total_cost)}</p>
           </div>
-          <div className="h-8 w-px bg-emphasis" />
+          <div className="map-summary-divider" />
           <div>
             <p className="text-xs text-muted">{t('costMap.regions')}</p>
             <p className="text-lg font-semibold text-accent">{expenses.length}</p>
           </div>
-          <div className="h-8 w-px bg-emphasis" />
+          <div className="map-summary-divider" />
           <div>
             <p className="text-xs text-muted">{t('costMap.period')}</p>
             <p className="text-sm text-secondary">{regionData.start_date} → {regionData.end_date}</p>
@@ -439,16 +437,12 @@ export default function CostMap() {
       )}
 
       {/* View tabs */}
-      <div className="mt-5 flex gap-1 overflow-x-auto border-b border-edge pb-0">
+      <div className="page-tabs mt-5">
         {VIEW_TABS.map((tab) => (
-          <button
+          <button aria-pressed={activeTab === tab}
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab
-                ? 'border-accent text-accent'
-                : 'border-transparent text-muted hover:text-secondary'
-            }`}
+            className="page-tab"
           >
             {viewTabLabels[tab]}
           </button>
@@ -460,15 +454,13 @@ export default function CostMap() {
         {/* ── World Map ───────────────────────────────────────────────────── */}
         {activeTab === 'World Map' && (
           <div className="space-y-6">
-            {regionLoading ? (
-              <div className="flex items-center justify-center h-64 text-muted text-sm">{t('common.loading')}</div>
-            ) : (
+            <ReportQueryState query={regionQuery}>
               <>
                 {/* Map */}
                 <div className="bg-surface rounded-xl border border-edge p-2 relative">
-                  <div className="flex items-center justify-between px-3 py-2">
-                    <p className="text-xs font-semibold text-secondary uppercase tracking-wider">{t('costMap.cloudRegionSpend')}</p>
-                    <div className="flex gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
+                    <p className="text-xs font-medium text-secondary">{t('costMap.cloudRegionSpend')}</p>
+                    <div className="flex flex-wrap gap-x-3 gap-y-2">
                       {Object.entries(PROVIDER_COLORS).filter(([k]) => k !== 'unknown').map(([k, c]) => (
                         <span key={k} className="flex items-center gap-1.5 text-xs text-secondary">
                           <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: c }} />
@@ -477,99 +469,107 @@ export default function CostMap() {
                       ))}
                     </div>
                   </div>
-                  <div
-                    className="relative overflow-hidden rounded-lg"
-                    onMouseMove={handleMapMouseMove as unknown as React.MouseEventHandler<HTMLDivElement>}
+                  <ReportQueryState
+                    query={geographyQuery}
+                    errorMessage={t('costMap.geographyLoadFailed')}
+                    loadingPlaceholder={<div className="skeleton h-[420px]" role="status" aria-label={t('common.loading')} />}
                   >
-                    <ComposableMap
-                      projection="geoMercator"
-                      projectionConfig={{ scale: 130, center: [0, 20] }}
-                      style={{ width: '100%', height: '420px', background: mapTheme.mapBg, transition: 'background 0.2s' }}
-                    >
-                      <ZoomableGroup
-                        zoom={mapZoom}
-                        center={mapCenter}
-                        onMoveEnd={({ zoom, coordinates }: { zoom: number; coordinates: [number, number] }) => {
-                          setMapZoom(zoom)
-                          setMapCenter(coordinates)
-                        }}
+                    {geographyQuery.data && (
+                      <div
+                        className="relative overflow-hidden rounded-lg"
+                        onMouseMove={handleMapMouseMove as unknown as React.MouseEventHandler<HTMLDivElement>}
                       >
-                        <Geographies geography={GEO_URL}>
-                          {({ geographies }: { geographies: object[] }) =>
-                            geographies.map((geo: object) => (
-                              <Geography
-                                key={(geo as { rsmKey: string }).rsmKey}
-                                geography={geo}
-                                fill={mapTheme.geoFill}
-                                stroke={mapTheme.geoStroke}
-                                strokeWidth={0.5}
-                                style={{
-                                  default: { outline: 'none' },
-                                  hover: { fill: mapTheme.geoHover, outline: 'none' },
-                                  pressed: { outline: 'none' },
-                                }}
-                              />
-                            ))
-                          }
-                        </Geographies>
-
-                        {expenses.map((entry) => {
-                          const r = bubbleRadius(entry.total_cost, maxCost)
-                          const color = PROVIDER_COLORS[entry.cloud_type] ?? '#6b7280'
-                          return (
-                            <Marker
-                              key={`${entry.region}-${entry.cloud_type}`}
-                              coordinates={[entry.coordinates.lon, entry.coordinates.lat]}
-                              onMouseEnter={() => setHoveredRegion(entry)}
-                              onMouseLeave={() => setHoveredRegion(null)}
-                            >
-                              <circle
-                                r={r / mapZoom}
-                                fill={color}
-                                fillOpacity={0.75}
-                                stroke={color}
-                                strokeWidth={1.5 / mapZoom}
-                                strokeOpacity={0.9}
-                                style={{ cursor: 'pointer' }}
-                              />
-                              {r > 18 && (
-                                <text
-                                  textAnchor="middle"
-                                  y={(r / mapZoom) + (10 / mapZoom)}
-                                  style={{ fontFamily: 'sans-serif', fill: mapTheme.labelFill, fontSize: `${10 / mapZoom}px` }}
-                                >
-                                  {entry.label || entry.region}
-                                </text>
-                              )}
-                            </Marker>
-                          )
-                        })}
-                      </ZoomableGroup>
-                    </ComposableMap>
-
-                    {/* Tooltip */}
-                    <MapTooltip entry={hoveredRegion} position={tooltipPos} />
-
-                    {/* Zoom controls */}
-                    <div className="absolute bottom-3 right-3 flex flex-col gap-1">
-                      {[{ label: '+', delta: 0.5 }, { label: '−', delta: -0.5 }].map(({ label, delta }) => (
-                        <button
-                          key={label}
-                          onClick={() => setMapZoom((z) => Math.max(0.8, Math.min(8, z + delta)))}
-                          className="w-7 h-7 bg-subtle hover:bg-emphasis border border-strong rounded text-secondary text-sm font-bold flex items-center justify-center"
+                        <ComposableMap
+                          projection="geoMercator"
+                          projectionConfig={{ scale: 130, center: [0, 20] }}
+                          style={{ width: '100%', height: '420px', background: mapTheme.mapBg, transition: 'background 0.2s' }}
                         >
-                          {label}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() => { setMapZoom(autoZoom); setMapCenter(autoCenter) }}
-                        title={t('costMap.resetFit')}
-                        className="w-7 h-7 bg-subtle hover:bg-emphasis border border-strong rounded text-muted text-[10px] flex items-center justify-center"
-                      >
-                        ⊕
-                      </button>
-                    </div>
-                  </div>
+                          <ZoomableGroup
+                            zoom={mapZoom}
+                            center={mapCenter}
+                            onMoveEnd={({ zoom, coordinates }: { zoom: number; coordinates: [number, number] }) => {
+                              setMapZoom(zoom)
+                              setMapCenter(coordinates)
+                            }}
+                          >
+                            <Geographies geography={geographyQuery.data}>
+                              {({ geographies }: { geographies: object[] }) =>
+                                geographies.map((geo: object) => (
+                                  <Geography
+                                    key={(geo as { rsmKey: string }).rsmKey}
+                                    geography={geo}
+                                    fill={mapTheme.geoFill}
+                                    stroke={mapTheme.geoStroke}
+                                    strokeWidth={0.5}
+                                    style={{
+                                      default: { outline: 'none' },
+                                      hover: { fill: mapTheme.geoHover, outline: 'none' },
+                                      pressed: { outline: 'none' },
+                                    }}
+                                  />
+                                ))
+                              }
+                            </Geographies>
+
+                            {expenses.map((entry) => {
+                              const r = bubbleRadius(entry.total_cost, maxCost)
+                              const color = PROVIDER_COLORS[entry.cloud_type] ?? chartColors.muted
+                              return (
+                                <Marker
+                                  key={`${entry.region}-${entry.cloud_type}`}
+                                  coordinates={[entry.coordinates.lon, entry.coordinates.lat]}
+                                  onMouseEnter={() => setHoveredRegion(entry)}
+                                  onMouseLeave={() => setHoveredRegion(null)}
+                                >
+                                  <circle
+                                    r={r / mapZoom}
+                                    fill={color}
+                                    fillOpacity={0.75}
+                                    stroke={color}
+                                    strokeWidth={1.5 / mapZoom}
+                                    strokeOpacity={0.9}
+                                    style={{ cursor: 'pointer' }}
+                                  />
+                                  {r > 18 && (
+                                    <text
+                                      textAnchor="middle"
+                                      y={(r / mapZoom) + (10 / mapZoom)}
+                                      style={{ fontFamily: 'sans-serif', fill: mapTheme.labelFill, fontSize: `${10 / mapZoom}px` }}
+                                    >
+                                      {entry.label || entry.region}
+                                    </text>
+                                  )}
+                                </Marker>
+                              )
+                            })}
+                          </ZoomableGroup>
+                        </ComposableMap>
+
+                        {/* Tooltip */}
+                        <MapTooltip entry={hoveredRegion} position={tooltipPos} currency={currency} />
+
+                        {/* Zoom controls */}
+                        <div className="absolute bottom-3 right-3 flex flex-col gap-1">
+                          {[{ label: '+', delta: 0.5 }, { label: '−', delta: -0.5 }].map(({ label, delta }) => (
+                            <button
+                              key={label}
+                              onClick={() => setMapZoom((z) => Math.max(0.8, Math.min(8, z + delta)))}
+                              className="w-7 h-7 bg-subtle hover:bg-emphasis border border-strong rounded text-secondary text-sm font-bold flex items-center justify-center"
+                            >
+                              {label}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => { setMapZoom(autoZoom); setMapCenter(autoCenter) }}
+                            title={t('costMap.resetFit')}
+                            className="w-7 h-7 bg-subtle hover:bg-emphasis border border-strong rounded text-muted text-[10px] flex items-center justify-center"
+                          >
+                            ⊕
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </ReportQueryState>
                 </div>
 
                 {/* Provider breakdown bar chart */}
@@ -578,17 +578,17 @@ export default function CostMap() {
                     <p className="text-sm font-semibold text-secondary mb-4">{t('costMap.spendByProvider')}</p>
                     <ResponsiveContainer width="100%" height={120}>
                       <BarChart data={byProvider} layout="vertical" margin={{ left: 16, right: 24 }}>
-                        <XAxis type="number" tick={mapTheme.axisTickStyle} tickFormatter={(v: number) => `$${v.toLocaleString()}`} />
-                        <YAxis type="category" dataKey="name" tick={mapTheme.axisTickStyle} width={70} />
+                        <XAxis {...chartAxis} type="number" tick={mapTheme.axisTickStyle} tickFormatter={formatCost} />
+                        <YAxis {...chartAxis} type="category" dataKey="name" tick={mapTheme.axisTickStyle} width={70} />
                         <Tooltip
                           contentStyle={mapTheme.tooltip}
-                          formatter={(v: number) => [`$${v.toLocaleString()}`, t('costMap.cost')]}
+                          formatter={(v: number) => [formatCost(v), t('costMap.cost')]}
                         />
-                        <Bar dataKey="cost" radius={[0, 4, 4, 0]}>
+                        <Bar isAnimationActive={false} maxBarSize={32} dataKey="cost" radius={[0, 4, 4, 0]}>
                           {byProvider.map((entry) => (
                             <Cell
                               key={entry.name}
-                              fill={PROVIDER_COLORS[entry.name.toLowerCase()] ?? '#299d87'}
+                              fill={PROVIDER_COLORS[entry.name.toLowerCase()] ?? chartColors.blue}
                             />
                           ))}
                         </Bar>
@@ -603,7 +603,7 @@ export default function CostMap() {
                     <p className="text-sm font-semibold text-secondary">{t('costMap.regionBreakdown')}</p>
                   </div>
                   <div className="overflow-x-auto">
-                    <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-edge text-xs text-muted uppercase tracking-wider">
                           <th className="px-5 py-3 text-left">{t('cmdb.region')}</th>
@@ -630,8 +630,8 @@ export default function CostMap() {
                                 <span
                                   className="inline-block rounded px-2 py-0.5 text-xs font-medium"
                                   style={{
-                                    background: `${PROVIDER_COLORS[e.cloud_type] ?? '#6b7280'}20`,
-                                    color: PROVIDER_COLORS[e.cloud_type] ?? '#9ca3af',
+                                    background: `color-mix(in srgb, ${PROVIDER_COLORS[e.cloud_type] ?? chartColors.muted} 12%, transparent)`,
+                                    color: PROVIDER_COLORS[e.cloud_type] ?? chartColors.muted,
                                   }}
                                 >
                                   {e.cloud_type.toUpperCase()}
@@ -639,7 +639,7 @@ export default function CostMap() {
                               </td>
                               <td className="px-5 py-3 text-right text-secondary">{e.resource_count}</td>
                               <td className="px-5 py-3 text-right font-semibold text-primary">
-                                ${e.total_cost.toLocaleString()}
+                                {formatCost(e.total_cost)}
                               </td>
                               <td className="px-5 py-3 text-right">
                                 <div className="flex items-center justify-end gap-2">
@@ -660,7 +660,7 @@ export default function CostMap() {
                   </div>
                 </div>
               </>
-            )}
+            </ReportQueryState>
           </div>
         )}
 
@@ -711,9 +711,7 @@ export default function CostMap() {
               )}
             </div>
 
-            {costMapLoading ? (
-              <div className="flex items-center justify-center h-64 text-muted text-sm">{t('common.loading')}</div>
-            ) : !costMapData || costMapData.nodes.length === 0 ? (
+            <ReportQueryState query={costMapQuery}>{!costMapData || costMapData.nodes.length === 0 ? (
               <div className="flex items-center justify-center h-64 text-muted text-sm">{t('costMap.noData')}</div>
             ) : (
               <>
@@ -724,14 +722,14 @@ export default function CostMap() {
                       {costMapData.dims.secondary ? t('costMap.drillArrow', { dim: dimLabels[costMapData.dims.secondary] ?? costMapData.dims.secondary }) : ''}
                     </p>
                     <p className="text-xs text-muted">
-                      {t('costMap.total')}: <span className="text-primary font-semibold">${costMapData.total_cost.toLocaleString()}</span>
+                      {t('costMap.total')}: <span className="text-primary font-semibold">{formatCost(costMapData.total_cost)}</span>
                     </p>
                   </div>
                   <ResponsiveContainer width="100%" height={400}>
-                    <Treemap
+                    <Treemap isAnimationActive={false}
                       data={treemapNodes}
                       dataKey="value"
-                      content={<TreemapCell isDark={isDark} />}
+                      content={<TreemapCell isDark={isDark} currency={currency} />}
                     />
                   </ResponsiveContainer>
                 </div>
@@ -741,7 +739,7 @@ export default function CostMap() {
                   <div className="px-5 py-3 border-b border-edge">
                     <p className="text-xs text-muted">{t('costMap.clickToDrill')}</p>
                   </div>
-                  <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+                  <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-edge text-xs text-muted uppercase tracking-wider">
                         <th className="px-5 py-3 text-left">{t('common.name')}</th>
@@ -760,7 +758,7 @@ export default function CostMap() {
                           <td className="px-5 py-3 text-primary">{n.label}</td>
                           <td className="px-5 py-3 text-right text-secondary">{n.resource_count}</td>
                           <td className="px-5 py-3 text-right font-semibold text-primary">
-                            ${n.cost.toLocaleString()}
+                            {formatCost(n.cost)}
                           </td>
                           <td className="px-5 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
@@ -779,16 +777,14 @@ export default function CostMap() {
                   </table></div>
                 </div>
               </>
-            )}
+            )}</ReportQueryState>
           </div>
         )}
 
         {/* ── Unit Economics ───────────────────────────────────────────────── */}
         {activeTab === 'Unit Economics' && (
           <div className="space-y-4">
-            {unitEconLoading ? (
-              <div className="flex items-center justify-center h-64 text-muted text-sm">{t('common.loading')}</div>
-            ) : !unitEcon || unitEcon.data.length === 0 ? (
+            <ReportQueryState query={unitEconQuery}>{!unitEcon || unitEcon.data.length === 0 ? (
               <div className="flex items-center justify-center h-64 text-muted text-sm">{t('costMap.noData')}</div>
             ) : (
               <>
@@ -797,13 +793,13 @@ export default function CostMap() {
                   <p className="text-sm font-semibold text-secondary mb-4">{t('costMap.totalCostByType')}</p>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={unitEcon.data} margin={{ left: 8, right: 16 }}>
-                      <XAxis dataKey="resource_type" tick={mapTheme.axisTickStyle} />
-                      <YAxis tick={mapTheme.axisTickStyle} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} />
+                      <XAxis {...chartAxis} dataKey="resource_type" tick={mapTheme.axisTickStyle} />
+                      <YAxis {...chartAxis} width={92} tick={mapTheme.axisTickStyle} tickFormatter={formatCost} />
                       <Tooltip
                         contentStyle={mapTheme.tooltip}
-                        formatter={(v: number) => [`$${v.toLocaleString()}`, t('resources.colTotalCost')]}
+                        formatter={(v: number) => [formatCost(v), t('resources.colTotalCost')]}
                       />
-                      <Bar dataKey="total_cost" radius={[4, 4, 0, 0]}>
+                      <Bar isAnimationActive={false} maxBarSize={32} dataKey="total_cost" radius={[4, 4, 0, 0]}>
                         {unitEcon.data.map((_, i) => (
                           <Cell key={i} fill={TREEMAP_COLORS[i % TREEMAP_COLORS.length]} />
                         ))}
@@ -818,7 +814,7 @@ export default function CostMap() {
                     <p className="text-sm font-semibold text-secondary">{t('costMap.perResourceTypeEconomics')}</p>
                   </div>
                   <div className="overflow-x-auto">
-                    <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-edge text-xs text-muted uppercase tracking-wider">
                           <th className="px-5 py-3 text-left">{t('costMap.resourceType')}</th>
@@ -841,13 +837,13 @@ export default function CostMap() {
                             </td>
                             <td className="px-5 py-3 text-right text-secondary">{row.resource_count}</td>
                             <td className="px-5 py-3 text-right font-semibold text-primary">
-                              ${row.total_cost.toLocaleString()}
+                              {formatCost(row.total_cost)}
                             </td>
                             <td className="px-5 py-3 text-right text-secondary">
-                              ${row.avg_daily_cost.toLocaleString()}
+                              {formatCost(row.avg_daily_cost)}
                             </td>
                             <td className="px-5 py-3 text-right text-secondary">
-                              ${row.avg_cost_per_resource.toLocaleString()}
+                              {formatCost(row.avg_cost_per_resource)}
                             </td>
                             <td className="px-5 py-3 text-right">
                               <div className="flex items-center justify-end gap-2">
@@ -870,16 +866,14 @@ export default function CostMap() {
                   </div>
                 </div>
               </>
-            )}
+            )}</ReportQueryState>
           </div>
         )}
 
         {/* ── Budget Matrix ────────────────────────────────────────────────── */}
         {activeTab === 'Budget Matrix' && (
           <div className="space-y-4">
-            {budgetLoading ? (
-              <div className="flex items-center justify-center h-64 text-muted text-sm">{t('common.loading')}</div>
-            ) : !budgetMatrix || budgetMatrix.data.length === 0 ? (
+            <ReportQueryState query={budgetQuery}>{!budgetMatrix || budgetMatrix.data.length === 0 ? (
               <div className="flex items-center justify-center h-64 text-muted text-sm">{t('costMap.noPools')}</div>
             ) : (
               <>
@@ -909,7 +903,7 @@ export default function CostMap() {
                   ].map((s) => (
                     <div key={s.label} className="bg-surface border border-edge rounded-xl p-4">
                       <p className="text-xs text-muted">{s.label}</p>
-                      <p className={`text-2xl font-bold ${s.cls}`}>{s.count}</p>
+                      <p className={`text-2xl font-semibold ${s.cls}`}>{s.count}</p>
                     </div>
                   ))}
                 </div>
@@ -920,7 +914,7 @@ export default function CostMap() {
                     <p className="text-sm font-semibold text-secondary">{t('costMap.poolBudgetVsActual')}</p>
                   </div>
                   <div className="overflow-x-auto">
-                    <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-edge text-xs text-muted uppercase tracking-wider">
                           <th className="px-5 py-3 text-left">{t('costMap.pool')}</th>
@@ -938,10 +932,10 @@ export default function CostMap() {
                             <td className="px-5 py-3 font-medium text-primary">{row.pool_name}</td>
                             <td className="px-5 py-3 text-muted text-xs capitalize">{row.pool_type}</td>
                             <td className="px-5 py-3 text-right text-secondary">
-                              {row.budget != null ? `$${row.budget.toLocaleString()}` : '—'}
+                              {row.budget != null ? formatCost(row.budget) : '—'}
                             </td>
                             <td className="px-5 py-3 text-right font-semibold text-primary">
-                              ${row.actual.toLocaleString()}
+                              {formatCost(row.actual)}
                             </td>
                             <td className={`px-5 py-3 text-right text-sm font-medium ${
                               row.variance == null ? 'text-muted'
@@ -949,7 +943,7 @@ export default function CostMap() {
                               : 'text-danger'
                             }`}>
                               {row.variance != null
-                                ? `${row.variance >= 0 ? '+' : ''}$${row.variance.toLocaleString()}`
+                                ? `${row.variance >= 0 ? '+' : ''}${formatCost(row.variance)}`
                                 : '—'}
                             </td>
                             <td className="px-5 py-3">
@@ -983,7 +977,7 @@ export default function CostMap() {
                   </div>
                 </div>
               </>
-            )}
+            )}</ReportQueryState>
           </div>
         )}
       </div>

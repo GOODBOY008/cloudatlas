@@ -30,35 +30,35 @@ export default function AuthShell({ children }: { children: ReactNode }) {
   ]
   return (
     <div className="auth-layout">
-      <aside className="auth-story auth-story-grid">
-        <Brand inverse />
+      <aside className="auth-story">
+        <Brand />
         <div className="relative my-16 max-w-[440px]">
           <div
             aria-hidden="true"
-            className="mb-9 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#51746a] bg-[#1a3b36] text-[#b4e8d4]"
+            className="mb-9 flex h-14 w-14 items-center justify-center rounded-md border border-edge bg-surface text-brand"
           >
             <ArrowUpRight size={28} strokeWidth={1.5} />
           </div>
-          <p className="mb-5 text-[11px] font-medium uppercase tracking-[0.17em] text-[#b4e8d4]">
+          <p className="mb-5 text-[11px] font-medium uppercase tracking-[0.17em] text-brand">
             {t('design.authEyebrow')}
           </p>
-          <h2 className="text-[48px] font-medium leading-[1.12] tracking-[-2px] xl:text-[56px]">
+          <h2 className="text-[36px] font-semibold leading-tight tracking-[-1px] xl:text-[42px]">
             {t('design.authTitle')}
           </h2>
-          <p className="mt-6 text-[15px] leading-relaxed text-[#a9c4bd]">
+          <p className="mt-6 text-[15px] leading-relaxed text-secondary">
             {t('design.authBody')}
           </p>
           <div className="mt-12 space-y-6">
             {features.map(({ icon: Icon, title, body }) => (
               <div key={title} className="flex items-start gap-3.5">
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#35574e] text-[#b4e8d4]">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-edge text-brand">
                   <Icon size={16} strokeWidth={1.6} />
                 </span>
                 <div>
-                  <h3 className="text-[13px] font-medium text-[#e4f1eb]">
+                  <h3 className="text-[13px] font-medium text-primary">
                     {t(title)}
                   </h3>
-                  <p className="mt-1.5 text-xs leading-relaxed text-[#9bb6ae]">
+                  <p className="mt-1.5 text-xs leading-relaxed text-muted">
                     {t(body)}
                   </p>
                 </div>
@@ -66,7 +66,7 @@ export default function AuthShell({ children }: { children: ReactNode }) {
             ))}
           </div>
         </div>
-        <div className="flex items-center justify-between gap-3 border-t border-[#35574e] pt-5 text-[10px] text-[#9bb6ae]">
+        <div className="flex items-center justify-between gap-3 border-t border-edge pt-5 text-[10px] text-muted">
           <span>CloudAtlas</span>
           <span>{t('design.allConnected')}</span>
         </div>

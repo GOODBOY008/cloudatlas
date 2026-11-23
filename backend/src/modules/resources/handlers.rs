@@ -313,13 +313,39 @@ fn resource_row_to_json(r: &sqlx::postgres::PgRow) -> Value {
 
 /// Analyze S3 buckets (from the resources table) for potential duplicates.
 ///
-/// Buckets are grouped when their normalized names share >= 80% of tokens;
-/// the cheaper bucket in each group is flagged as redundant. The matrix gives
-/// pairwise similarity scores for the UI.
+/// Optional bound for the display matrix; the complete analysis is retained.
+#[derive(Debug, Default, Deserialize)]
+pub struct DuplicateAnalysisQuery {
+    pub matrix_limit: Option<usize>,
+}
+
+/// Keep the response bounded without changing the full analysis or group totals.
+fn truncate_similarity_matrix(matrix: &mut Vec<Value>, requested: Option<usize>) -> Value {
+    let total = matrix.len();
+    let limit = requested.unwrap_or(200).clamp(1, 1000);
+    let order = |a: &Value, b: &Value| {
+        b["similarity"]
+            .as_f64()
+            .unwrap_or_default()
+            .total_cmp(&a["similarity"].as_f64().unwrap_or_default())
+            .then_with(|| a["bucket_a"].as_str().cmp(&b["bucket_a"].as_str()))
+            .then_with(|| a["bucket_b"].as_str().cmp(&b["bucket_b"].as_str()))
+    };
+    if total > limit {
+        matrix.select_nth_unstable_by(limit, order);
+        matrix.truncate(limit);
+    }
+    matrix.sort_unstable_by(order);
+    json!({ "total": total, "returned": matrix.len(), "limit": limit, "truncated": total > limit })
+}
+
+/// Analyze bucket-name similarity and return a bounded display matrix.
+/// Grouping and summary totals use all pairs, independently of `matrix_limit`.
 pub async fn s3_duplicate_analysis(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
     Path(org_id): Path<Uuid>,
+    Query(query): Query<DuplicateAnalysisQuery>,
 ) -> AppResult<Json<Value>> {
     ensure_org_member(&state.db, org_id, claims.user_id()?).await?;
 
@@ -457,14 +483,19 @@ pub async fn s3_duplicate_analysis(
         }));
     }
 
+    // Grouping and savings above deliberately use the complete pair set. Only
+    // the display matrix is limited; a million pairs must not reach the browser.
+    let matrix_meta = truncate_similarity_matrix(&mut matrix, query.matrix_limit);
+
     Ok(Json(json!({
         "data": {
             "buckets": buckets,
             "matrix": matrix,
+            "matrix_meta": matrix_meta,
             "duplicate_groups": dup_groups,
             "summary": {
                 "bucket_count": buckets.len(),
-                "pair_count": matrix.len(),
+                "pair_count": matrix_meta["total"],
                 "duplicate_group_count": dup_groups.len(),
                 "potential_savings": (potential_savings * 100.0).round() / 100.0,
             },
@@ -475,6 +506,35 @@ pub async fn s3_duplicate_analysis(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn similarity_response_keeps_strongest_pairs_and_full_total() {
+        let mut pairs: Vec<Value> = (0..5000)
+            .map(|i| json!({ "bucket_a": format!("bucket-{i}"), "bucket_b": "backup", "similarity": i as f64 / 5000.0 }))
+            .collect();
+        let meta = truncate_similarity_matrix(&mut pairs, Some(20));
+        assert_eq!(meta["total"], 5000);
+        assert_eq!(meta["returned"], 20);
+        assert_eq!(meta["truncated"], true);
+        assert_eq!(pairs[0]["bucket_a"], "bucket-4999");
+        assert_eq!(pairs[19]["bucket_a"], "bucket-4980");
+    }
+
+    #[test]
+    fn similarity_response_has_a_default_and_hard_limit() {
+        let pairs = vec![json!({ "bucket_a": "a", "bucket_b": "b", "similarity": 1.0 }); 2000];
+        for (requested, expected) in [(None, 200), (Some(0), 1), (Some(usize::MAX), 1000)] {
+            let mut response = pairs.clone();
+            let meta = truncate_similarity_matrix(&mut response, requested);
+            assert_eq!(response.len(), expected);
+            assert_eq!(meta["total"], 2000);
+        }
+        let mut empty = Vec::new();
+        assert_eq!(
+            truncate_similarity_matrix(&mut empty, None)["truncated"],
+            false
+        );
+    }
 
     #[test]
     fn jaccard_similarity() {

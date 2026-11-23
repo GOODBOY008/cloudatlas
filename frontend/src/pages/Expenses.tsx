@@ -1,7 +1,10 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
+import { chartColors, chartPalette, chartAxis, chartGrid, chartTooltipStyle } from '../lib/chartTheme'
 import { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api, { paginatedGet } from '../lib/api'
-import { fmtMoney, useOrgCurrency } from '../lib/format'
+import { fmtMoney, fmtMoneyShort, useOrgCurrency } from '../lib/format'
+import { billingDateRange } from '../lib/billingDates'
 import { usePagination } from '../lib/hooks/usePagination'
 import PaginationBar from '../components/PaginationBar'
 import {
@@ -42,7 +45,7 @@ const ANALYSIS_TABS = [
   'Trend', 'Top Resources', 'Forecast', 'Anomalies', 'RI Coverage', 'By Tag',
 ]
 
-const PIE_COLORS = ['#299d87', '#7b87c2', '#c983a0', '#f59e0b', '#10b981', '#3b82f6', '#ef4444']
+const PIE_COLORS = chartPalette
 
 interface AggItem { name: string; total_cost: number }
 interface TrendPoint { date: string; cost: number }
@@ -69,17 +72,6 @@ interface RiCoverage {
   coverage_pct: number; on_demand_cost: number; commitment_cost: number; potential_savings: number
 }
 interface ResourceHistoryPoint { date: string; cost: number }
-
-function getDateRange(days: number | null): { startDate: string; endDate: string } {
-  const end = new Date()
-  const endDate = end.toISOString().slice(0, 10)
-  if (days === null) {
-    const startDate = new Date(end.getFullYear(), end.getMonth(), 1).toISOString().slice(0, 10)
-    return { startDate, endDate }
-  }
-  const start = new Date(Date.now() - (days - 1) * 86400_000)
-  return { startDate: start.toISOString().slice(0, 10), endDate }
-}
 
 function aggregateByGranularity(points: Array<{ date: string; cost: number }>, granularity: 'daily' | 'weekly' | 'monthly') {
   const map = new Map<string, number>()
@@ -119,7 +111,7 @@ function previousPeriod(startDate: string, endDate: string) {
   }
 }
 
-const tooltipStyle = { background: 'rgb(var(--surface))', border: '1px solid rgb(var(--border))', borderRadius: 8 }
+const tooltipStyle = chartTooltipStyle
 const axisTickStyle = { fill: 'rgb(var(--text-muted))', fontSize: 11 }
 
 const META_FIELD_LABELS: Record<string, string> = {
@@ -182,9 +174,9 @@ function ResourceHistoryPanel({
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/60" onClick={onClose} />
-      <div className="w-[500px] bg-canvas border-l border-edge flex flex-col overflow-y-auto">
+    <NativeDialog className="justify-end" label={(data?.resource?.resource_name as string) ?? resourceId} onClose={onClose}>
+
+      <div className="drawer-panel max-w-[500px]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
           <div>
             <p className="text-sm font-semibold text-primary truncate max-w-[360px]">
@@ -192,7 +184,7 @@ function ResourceHistoryPanel({
             </p>
             <p className="text-xs text-muted mt-0.5 truncate max-w-[360px]">{resourceId}</p>
           </div>
-          <button onClick={onClose} className="text-secondary hover:text-primary text-xl leading-none">×</button>
+          <button onClick={onClose} aria-label={t('common.close')} className="icon-button">×</button>
         </div>
 
         {isLoading ? (
@@ -239,14 +231,14 @@ function ResourceHistoryPanel({
                   <AreaChart data={data.daily}>
                     <defs>
                       <linearGradient id="rhGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#299d87" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#299d87" stopOpacity={0} />
+                        <stop offset="5%" stopColor={chartColors.blue} stopOpacity={0.14} />
+                        <stop offset="95%" stopColor={chartColors.blue} stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="date" tick={{ fill: 'rgb(var(--text-muted))', fontSize: 10 }} tickFormatter={(v: string) => v.slice(5)} />
-                    <YAxis tick={{ fill: 'rgb(var(--text-muted))', fontSize: 10 }} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
+                    <XAxis {...chartAxis} dataKey="date" tick={{ fill: 'rgb(var(--text-muted))', fontSize: 10 }} tickFormatter={(v: string) => v.slice(5)} />
+                    <YAxis {...chartAxis} width={76} tick={{ fill: 'rgb(var(--text-muted))', fontSize: 10 }} tickFormatter={(v: unknown) => fmtMoneyShort(v as number)} />
                     <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} />
-                    <Area type="monotone" dataKey="cost" stroke="#299d87" fill="url(#rhGrad)" strokeWidth={1.5} dot={false} />
+                    <Area isAnimationActive={false} type="linear" dataKey="cost" stroke={chartColors.blue} fill="url(#rhGrad)" strokeWidth={1.5} dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
@@ -268,7 +260,7 @@ function ResourceHistoryPanel({
           </div>
         )}
       </div>
-    </div>
+    </NativeDialog>
   )
 }
 
@@ -289,7 +281,7 @@ export default function Expenses() {
   const [selectedResource, setSelectedResource] = useState<string | null>(null)
   const [expandedTagKey, setExpandedTagKey] = useState<string | null>(null)
 
-  const { startDate, endDate } = getDateRange(DATE_RANGES[activeRange].days)
+  const { startDate, endDate } = billingDateRange(DATE_RANGES[activeRange].days)
   const { prevStartDate, prevEndDate } = previousPeriod(startDate, endDate)
 
   const { data: cloudAccounts = [] } = useQuery<CloudAccount[]>({
@@ -503,11 +495,11 @@ export default function Expenses() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('expenses.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('expenses.title')}</h1>
         <button
           onClick={handleExport}
-          className="px-4 py-2 bg-subtle hover:bg-emphasis text-secondary hover:text-primary text-sm font-medium rounded-lg border border-strong transition-colors"
+          className="btn-secondary"
         >
           {t('expenses.exportCsv')}
         </button>
@@ -520,14 +512,12 @@ export default function Expenses() {
       )}
 
       {/* Date range tabs */}
-      <div className="flex flex-wrap items-center gap-1 mb-4">
+      <div className="segmented-control mb-4">
         {DATE_RANGES.map((r, i) => (
-          <button
+          <button aria-pressed={activeRange === i}
             key={r.label}
             onClick={() => setActiveRange(i)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              activeRange === i ? 'bg-accent text-on-accent' : 'bg-surface text-secondary hover:bg-subtle'
-            }`}
+            className="segment"
           >
             {r.label}
           </button>
@@ -549,18 +539,18 @@ export default function Expenses() {
       </div>
 
       {/* Filter bar */}
-      <div className="flex flex-wrap items-center gap-3 mb-5 p-4 bg-surface border border-edge rounded-xl">
-        <select value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)}
+      <div className="filter-bar">
+        <select aria-label={t('expenses.allCloudAccounts')} value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)}
           className="px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent">
           <option value="">{t('expenses.allCloudAccounts')}</option>
           {cloudAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
+        <select aria-label={t('expenses.allResourceTypes')} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
           className="px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent">
           <option value="">{t('expenses.allResourceTypes')}</option>
           {RESOURCE_TYPES.map((rt) => <option key={rt} value={rt}>{t(`resType.${rt}`, { defaultValue: rt })}</option>)}
         </select>
-        <select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)}
+        <select aria-label={t('expenses.allRegions')} value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)}
           className="px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent">
           <option value="">{t('expenses.allRegions')}</option>
           {regions.map((r) => <option key={r} value={r}>{r}</option>)}
@@ -574,12 +564,10 @@ export default function Expenses() {
       </div>
 
       {/* Analysis tabs */}
-      <div className="flex gap-0 mb-5 border-b border-edge overflow-x-auto">
+      <div className="page-tabs mb-5">
         {ANALYSIS_TABS.map((tab) => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${
-              activeTab === tab ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-secondary'
-            }`}>
+          <button aria-pressed={activeTab === tab} key={tab} onClick={() => setActiveTab(tab)}
+            className="page-tab">
             {t(ANALYSIS_TAB_KEYS[tab])}
           </button>
         ))}
@@ -603,15 +591,15 @@ export default function Expenses() {
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#299d87" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#299d87" stopOpacity={0} />
+                      <stop offset="5%" stopColor={chartColors.blue} stopOpacity={0.14} />
+                      <stop offset="95%" stopColor={chartColors.blue} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
-                  <XAxis dataKey="date" tick={axisTickStyle} />
-                  <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
+                  <CartesianGrid {...chartGrid}  vertical={false} />
+                  <XAxis {...chartAxis} dataKey="date" tick={axisTickStyle} />
+                  <YAxis {...chartAxis} width={76} tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoneyShort(v as number)} />
                   <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} labelStyle={{ color: 'rgb(var(--text-secondary))' }} />
-                  <Area type="monotone" dataKey="cost" stroke="#299d87" fill="url(#costGradient)" strokeWidth={2} />
+                  <Area isAnimationActive={false} type="linear" dataKey="cost" stroke={chartColors.blue} fill="url(#costGradient)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -621,7 +609,7 @@ export default function Expenses() {
             )}
           </div>
           <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-            <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-edge text-secondary text-left">
                   <th className="px-4 py-3 font-medium">{t('expenses.colDate')}</th>
@@ -674,7 +662,7 @@ export default function Expenses() {
             <div className="flex gap-6">
               <ResponsiveContainer width="50%" height={300}>
                 <PieChart>
-                  <Pie data={byService} dataKey="total_cost" nameKey="name" cx="50%" cy="50%" outerRadius={110}>
+                  <Pie isAnimationActive={false} data={byService} dataKey="total_cost" nameKey="name" cx="50%" cy="50%" outerRadius={110}>
                     {byService.map((_e, i) => <Cell key={`c-${i}`} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} />
@@ -682,7 +670,7 @@ export default function Expenses() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex-1 overflow-auto">
-                <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                   <thead><tr className="text-secondary text-left border-b border-edge"><th className="pb-2">{t('resources.metaService')}</th><th className="pb-2 text-right">{t('expenses.colCost')}</th></tr></thead>
                   <tbody>
                     {byService.map((s, i) => (
@@ -715,11 +703,11 @@ export default function Expenses() {
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(300, byRegion.length * 45)}>
               <BarChart data={byRegion} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" horizontal={false} />
-                <XAxis type="number" tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
-                <YAxis type="category" dataKey="name" tick={axisTickStyle} width={130} />
+                <CartesianGrid {...chartGrid} horizontal={false} />
+                <XAxis {...chartAxis} type="number" tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
+                <YAxis {...chartAxis} type="category" dataKey="name" tick={axisTickStyle} width={130} />
                 <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} />
-                <Bar dataKey="total_cost" fill="#299d87" radius={[0, 4, 4, 0]} />
+                <Bar isAnimationActive={false} maxBarSize={32} dataKey="total_cost" fill={chartColors.blue} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -737,11 +725,11 @@ export default function Expenses() {
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={byCloud}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
-                <XAxis dataKey="name" tick={axisTickStyle} />
-                <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
+                <CartesianGrid {...chartGrid}  vertical={false} />
+                <XAxis {...chartAxis} dataKey="name" tick={axisTickStyle} />
+                <YAxis {...chartAxis} width={76} tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoneyShort(v as number)} />
                 <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} />
-                <Bar dataKey="total_cost" fill="#7b87c2" radius={[4, 4, 0, 0]} />
+                <Bar isAnimationActive={false} maxBarSize={32} dataKey="total_cost" fill={chartColors.purple} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -759,11 +747,11 @@ export default function Expenses() {
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(300, byPool.length * 45)}>
               <BarChart data={byPool} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" horizontal={false} />
-                <XAxis type="number" tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
-                <YAxis type="category" dataKey="name" tick={axisTickStyle} width={140} />
+                <CartesianGrid {...chartGrid} horizontal={false} />
+                <XAxis {...chartAxis} type="number" tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
+                <YAxis {...chartAxis} type="category" dataKey="name" tick={axisTickStyle} width={140} />
                 <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} />
-                <Bar dataKey="total_cost" fill="#14b8a6" radius={[0, 4, 4, 0]} />
+                <Bar isAnimationActive={false} maxBarSize={32} dataKey="total_cost" fill={chartColors.cyan} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -791,15 +779,15 @@ export default function Expenses() {
               <AreaChart data={trendData}>
                 <defs>
                   <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#299d87" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#299d87" stopOpacity={0} />
+                    <stop offset="5%" stopColor={chartColors.blue} stopOpacity={0.14} />
+                    <stop offset="95%" stopColor={chartColors.blue} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
-                <XAxis dataKey="date" tick={axisTickStyle} tickFormatter={(v: string) => v.slice(5)} />
-                <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
+                <CartesianGrid {...chartGrid}  vertical={false} />
+                <XAxis {...chartAxis} dataKey="date" tick={axisTickStyle} tickFormatter={(v: string) => v.slice(5)} />
+                <YAxis {...chartAxis} width={76} tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoneyShort(v as number)} />
                 <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('expenses.chartCost')]} contentStyle={tooltipStyle} />
-                <Area type="monotone" dataKey="cost" stroke="#299d87" fill="url(#trendGrad)" strokeWidth={2} />
+                <Area isAnimationActive={false} type="linear" dataKey="cost" stroke={chartColors.blue} fill="url(#trendGrad)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -820,17 +808,17 @@ export default function Expenses() {
               <>
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={topResources.map((r) => ({ name: r.resource_name ?? r.cloud_resource_id.slice(-12), cost: r.total_cost, resource_id: r.cloud_resource_id }))}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
-                    <XAxis dataKey="name" tick={axisTickStyle} interval={0} angle={-25} textAnchor="end" height={55} />
-                    <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
+                    <CartesianGrid {...chartGrid}  vertical={false} />
+                    <XAxis {...chartAxis} dataKey="name" tick={axisTickStyle} interval={0} angle={-25} textAnchor="end" height={55} />
+                    <YAxis {...chartAxis} width={76} tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoneyShort(v as number)} />
                     <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), t('resources.colTotalCost')]} contentStyle={tooltipStyle} />
-                    <Bar dataKey="cost" fill="#f59e0b" radius={[4, 4, 0, 0]}
+                    <Bar isAnimationActive={false} maxBarSize={32} dataKey="cost" fill={chartColors.orange} radius={[4, 4, 0, 0]}
                       onClick={(d) => setSelectedResource((d as { resource_id: string }).resource_id)}
                       style={{ cursor: 'pointer' }} />
                   </BarChart>
                 </ResponsiveContainer>
 
-                <div className="table-scroll" tabIndex={0}><table className="w-full text-sm mt-4">
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm mt-4">
                   <thead>
                     <tr className="border-b border-edge text-secondary text-left">
                       <th className="px-3 py-2">{t('expenses.colResource')}</th>
@@ -901,24 +889,24 @@ export default function Expenses() {
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
                   <ComposedChart data={forecastChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
-                    <XAxis dataKey="date" tick={axisTickStyle} tickFormatter={(v: string) => v.slice(5)} interval={Math.floor(forecastChartData.length / 10)} />
-                    <YAxis tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoney(v as number)} />
+                    <CartesianGrid {...chartGrid}  vertical={false} />
+                    <XAxis {...chartAxis} dataKey="date" tick={axisTickStyle} tickFormatter={(v: string) => v.slice(5)} interval={Math.floor(forecastChartData.length / 10)} />
+                    <YAxis {...chartAxis} width={76} tick={axisTickStyle} tickFormatter={(v: unknown) => fmtMoneyShort(v as number)} />
                     <Tooltip
                       formatter={(value: unknown, name: string) => [fmtMoney(value as number), name === 'cost' ? t('expenses.chartActual') : name === 'predicted_cost' ? t('expenses.chartForecast') : name]}
                       contentStyle={tooltipStyle}
                     />
                     <ReferenceLine x={forecastData.history[forecastData.history.length - 1]?.date} stroke="rgb(var(--text-muted))" strokeDasharray="4 2" label={{ value: t('expenses.today'), fill: 'rgb(var(--text-muted))', fontSize: 10 }} />
-                    <Area type="monotone" dataKey="cost" stroke="#299d87" fill="#299d8720" strokeWidth={2} dot={false} connectNulls />
-                    <Line type="monotone" dataKey="predicted_cost" stroke="#f97316" strokeWidth={2} strokeDasharray="5 3" dot={false} connectNulls />
-                    <Area type="monotone" dataKey="upper" stroke="transparent" fill="#f9731610" connectNulls />
+                    <Area isAnimationActive={false} type="linear" dataKey="cost" stroke={chartColors.blue} fill="rgb(var(--chart-1) / 0.12)" strokeWidth={2} dot={false} connectNulls />
+                    <Line isAnimationActive={false} type="linear" dataKey="predicted_cost" stroke={chartColors.orange} strokeWidth={2} strokeDasharray="5 3" dot={false} connectNulls />
+                    <Area isAnimationActive={false} type="linear" dataKey="upper" stroke="transparent" fill="rgb(var(--chart-2) / 0.06)" connectNulls />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
 
               {/* Forecast table */}
               <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-                <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-edge text-secondary text-left">
                       <th className="px-4 py-3">{t('expenses.colDate')}</th>
@@ -968,12 +956,12 @@ export default function Expenses() {
                     z_score: +a.z_score.toFixed(2),
                     resource_id: a.cloud_resource_id,
                   }))}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" />
-                    <XAxis dataKey="name" tick={axisTickStyle} interval={0} angle={-20} textAnchor="end" height={50} />
-                    <YAxis tick={axisTickStyle} label={{ value: t('expenses.zScore'), angle: -90, position: 'insideLeft', fill: 'rgb(var(--text-muted))', fontSize: 10 }} />
+                    <CartesianGrid {...chartGrid}  vertical={false} />
+                    <XAxis {...chartAxis} dataKey="name" tick={axisTickStyle} interval={0} angle={-20} textAnchor="end" height={50} />
+                    <YAxis {...chartAxis} width={76} tick={axisTickStyle} label={{ value: t('expenses.zScore'), angle: -90, position: 'insideLeft', fill: 'rgb(var(--text-muted))', fontSize: 10 }} />
                     <Tooltip formatter={(v: unknown) => [(v as number).toFixed(2), t('expenses.zScore')]} contentStyle={tooltipStyle} />
-                    <ReferenceLine y={2.5} stroke="#ef4444" strokeDasharray="4 2" />
-                    <Bar dataKey="z_score" fill="#ef4444" radius={[4, 4, 0, 0]}
+                    <ReferenceLine y={2.5} stroke={chartColors.danger} strokeDasharray="4 2" />
+                    <Bar isAnimationActive={false} maxBarSize={32} dataKey="z_score" fill={chartColors.danger} radius={[4, 4, 0, 0]}
                       onClick={(d) => setSelectedResource((d as { resource_id: string }).resource_id)}
                       style={{ cursor: 'pointer' }} />
                   </BarChart>
@@ -981,7 +969,7 @@ export default function Expenses() {
               </div>
 
               <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-                <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-edge text-secondary text-left">
                       <th className="px-4 py-3">{t('expenses.colDate')}</th>
@@ -1092,7 +1080,7 @@ export default function Expenses() {
                 <div className="bg-surface border border-edge rounded-xl p-5">
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
-                      <Pie
+                      <Pie isAnimationActive={false}
                         data={[
                           { name: t('expenses.onDemand'), value: d.on_demand_cost },
                           { name: t('expenses.reservedSp'), value: d.commitment_cost },
@@ -1100,8 +1088,8 @@ export default function Expenses() {
                         dataKey="value" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                         labelLine={false}
                       >
-                        <Cell fill="#ef4444" />
-                        <Cell fill="#22c55e" />
+                        <Cell fill={chartColors.danger} />
+                        <Cell fill={chartColors.green} />
                       </Pie>
                       <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), '']} contentStyle={tooltipStyle} />
                       <Legend wrapperStyle={{ color: 'rgb(var(--text-muted))', fontSize: 12 }} />
@@ -1146,14 +1134,14 @@ export default function Expenses() {
                       <div className="flex gap-5">
                         <ResponsiveContainer width="40%" height={200}>
                           <PieChart>
-                            <Pie data={tag.values.slice(0, 7)} dataKey="cost" nameKey="tag_value" cx="50%" cy="50%" outerRadius={80}>
+                            <Pie isAnimationActive={false} data={tag.values.slice(0, 7)} dataKey="cost" nameKey="tag_value" cx="50%" cy="50%" outerRadius={80}>
                               {tag.values.slice(0, 7).map((_v, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                             </Pie>
                             <Tooltip formatter={(v: unknown) => [fmtMoney(v as number), '']} contentStyle={tooltipStyle} />
                           </PieChart>
                         </ResponsiveContainer>
                         <div className="flex-1 overflow-auto">
-                          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+                          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                             <thead>
                               <tr className="text-secondary text-left border-b border-edge">
                                 <th className="pb-2">{t('expenses.colValue')}</th>

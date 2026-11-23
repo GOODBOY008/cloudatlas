@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::{
     crypto,
     error::{AppError, AppResult},
-    modules::auth::service::Claims,
+    modules::{auth::service::Claims, k8s::pipeline as k8s},
     state::AppState,
 };
 
@@ -18,7 +18,7 @@ use super::{
     adapters::{
         create_adapter,
         kubernetes::{parse_kubeconfig, KubernetesAdapter},
-        CloudAdapter, DiscoveredResource,
+        AnyAdapter, CloudAdapter, DiscoveredResource,
     },
     credentials::{credentials_have_content, encrypted_has_credentials, validate_credentials},
     dto::{
@@ -94,6 +94,8 @@ fn resource_type_to_ci_type_id(resource_type: &str) -> Uuid {
         "bucket" => uuid::uuid!("20000000-0000-0000-0000-000000000005"),
         "load_balancer" => uuid::uuid!("20000000-0000-0000-0000-000000000006"),
         "ip_address" => uuid::uuid!("20000000-0000-0000-0000-000000000007"),
+        "k8s_cluster" => k8s::K8S_TYPE_CLUSTER,
+        "k8s_pod" => k8s::K8S_TYPE_POD,
         _ => uuid::uuid!("20000000-0000-0000-0000-000000000001"),
     }
 }
@@ -147,9 +149,23 @@ async fn upsert_discovered_resource(
     provider: &str,
     res: &DiscoveredResource,
     now: chrono::DateTime<Utc>,
+    cluster_name: Option<&str>,
 ) -> AppResult<bool> {
-    let ci_id = Uuid::new_v4();
+    let new_ci_id = Uuid::new_v4();
     let ci_type_id = resource_type_to_ci_type_id(&res.resource_type);
+    let canonical_id = match res.resource_type.as_str() {
+        "k8s_cluster" => Some(k8s::cluster_ci_resource_id(&res.resource_name)),
+        "k8s_pod" => cluster_name.map(|cluster| {
+            let namespace = res.meta["namespace"].as_str().unwrap_or("default");
+            k8s::pod_ci_resource_id(cluster, namespace, &res.resource_name)
+        }),
+        _ => None,
+    };
+    let resource_id = canonical_id.as_deref().unwrap_or(&res.cloud_resource_id);
+    let mut ci_meta = res.meta.clone();
+    if canonical_id.is_some() {
+        ci_meta["provider_resource_id"] = json!(res.cloud_resource_id);
+    }
     // A discovered asset is visible to CMDB and FinOps together, or not at all.
     let mut tx = db.begin().await?;
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
@@ -157,7 +173,7 @@ async fn upsert_discovered_resource(
         .execute(&mut *tx)
         .await?;
 
-    let result = sqlx::query_scalar::<_, bool>(
+    let stored_ci_id = sqlx::query_scalar::<_, Uuid>(
         r#"
         INSERT INTO cis
             (id, organization_id, ci_type_id, cloud_account_id,
@@ -171,6 +187,8 @@ async fn upsert_discovered_resource(
              'active', $11, $11, $11)
         ON CONFLICT (organization_id, cloud_account_id, cloud_resource_id)
         DO UPDATE SET
+            ci_type_id     = CASE WHEN $12 THEN EXCLUDED.ci_type_id ELSE cis.ci_type_id END,
+            cloud_provider = CASE WHEN $12 THEN EXCLUDED.cloud_provider ELSE cis.cloud_provider END,
             name          = EXCLUDED.name,
             display_name  = EXCLUDED.display_name,
             cloud_region  = EXCLUDED.cloud_region,
@@ -178,37 +196,48 @@ async fn upsert_discovered_resource(
             tags          = EXCLUDED.tags,
             discovered_at = EXCLUDED.discovered_at,
             updated_at    = EXCLUDED.updated_at
-        RETURNING id = $1
+        RETURNING id
         "#,
     )
-    .bind(ci_id)
+    .bind(new_ci_id)
     .bind(org_id)
     .bind(ci_type_id)
     .bind(account_id)
-    .bind(&res.cloud_resource_id)
+    .bind(resource_id)
     .bind(ci_provider_for(provider))
     .bind(res.region.as_deref())
     .bind(&res.resource_name)
-    .bind(&res.meta)
+    .bind(&ci_meta)
     .bind(&res.tags)
     .bind(now)
+    .bind(canonical_id.is_some())
     .fetch_one(&mut *tx)
     .await?;
-    let created = result;
+    let created = stored_ci_id == new_ci_id;
+    if created && canonical_id.is_some() {
+        k8s::audit_ci_creation(
+            &mut tx,
+            org_id,
+            stored_ci_id,
+            resource_id,
+            "cloud_discovery",
+        )
+        .await?;
+    }
 
     // FinOps mirror: same discovery result into the `resources` table so cost
     // pages / assignment rules / tag policies have data (AGENTS.md §15).
     sqlx::query(
         r#"
         INSERT INTO resources
-            (organization_id, cloud_account_id, cloud_resource_id,
+            (organization_id, cloud_account_id, cloud_resource_id, ci_id,
              resource_type, service_name, name, cloud_region,
              tags, meta, pool_id, owner_id,
              first_seen, last_seen, active,
              total_cost, last_month_cost, recommendations, dismissed_recs,
              created_at, updated_at)
         VALUES
-            ($1, $2, $3,
+            ($1, $2, $3, $11,
              CASE WHEN $4 IN ('instance','rds_instance','k8s_pod','k8s_cluster','volume','snapshot',
                               'bucket','snapshot_chain','image','ip_address',
                               'load_balancer','reserved_instance','savings_plan')
@@ -227,6 +256,7 @@ async fn upsert_discovered_resource(
              $10, $10)
         ON CONFLICT (organization_id, cloud_account_id, cloud_resource_id)
         DO UPDATE SET
+            ci_id         = EXCLUDED.ci_id,
             name          = EXCLUDED.name,
             service_name  = EXCLUDED.service_name,
             cloud_region  = EXCLUDED.cloud_region,
@@ -249,11 +279,66 @@ async fn upsert_discovered_resource(
     .bind(&res.tags)
     .bind(&res.meta)
     .bind(now)
+    .bind(stored_ci_id)
     .execute(&mut *tx)
     .await?;
+
     tx.commit().await?;
 
     Ok(created)
+}
+
+// Earlier discoveries stored Kubernetes provider IDs as cloud-instance CIs.
+async fn archive_legacy_kubernetes_cis(
+    db: &sqlx::PgPool,
+    org_id: Uuid,
+    account_id: Uuid,
+) -> AppResult<u64> {
+    let archived = sqlx::query_as::<_, crate::modules::cmdb::models::Ci>(
+        r#"WITH archived AS (
+           UPDATE cis legacy SET deleted_at = NOW()
+           FROM resources r JOIN cis replacement ON replacement.id = r.ci_id
+             AND replacement.organization_id = r.organization_id
+             AND replacement.cloud_account_id = r.cloud_account_id AND replacement.deleted_at IS NULL
+             AND ((r.resource_type = 'k8s_pod' AND replacement.ci_type_id = $3)
+               OR (r.resource_type = 'k8s_cluster' AND replacement.ci_type_id = $4))
+           WHERE legacy.organization_id = $1 AND legacy.cloud_account_id = $2
+             AND legacy.deleted_at IS NULL AND legacy.discovered_at IS NOT NULL
+             AND legacy.lifecycle_state = 'active' AND legacy.parent_ci_id IS NULL
+             AND legacy.pool_id IS NULL
+             AND legacy.ci_type_id = '20000000-0000-0000-0000-000000000001'
+             AND r.organization_id = legacy.organization_id
+             AND r.cloud_account_id = legacy.cloud_account_id
+             AND r.cloud_resource_id = legacy.cloud_resource_id
+             AND NOT EXISTS (SELECT 1 FROM ci_instance_associations a
+               WHERE a.src_ci_id = legacy.id OR a.dst_ci_id = legacy.id)
+             AND NOT EXISTS (SELECT 1 FROM service_cis sc WHERE sc.ci_id = legacy.id)
+             AND NOT EXISTS (SELECT 1 FROM cis child WHERE child.parent_ci_id = legacy.id)
+             AND NOT EXISTS (SELECT 1 FROM ci_baselines b WHERE b.ci_id = legacy.id)
+             AND NOT EXISTS (SELECT 1 FROM ci_audit_logs l WHERE l.ci_id = legacy.id AND l.user_id IS NOT NULL)
+           RETURNING legacy.*, replacement.id AS replacement_ci_id
+        ), audited AS (
+           INSERT INTO ci_audit_logs (organization_id, ci_id, operation, source, resource_id, resource_name, field_changes)
+           SELECT organization_id, id, 'delete', 'discovery', id::text, COALESCE(display_name, name),
+                  jsonb_build_object('reason', 'legacy_kubernetes_reconciliation',
+                                     'cloud_resource_id', cloud_resource_id, 'replacement_ci_id', replacement_ci_id)
+           FROM archived RETURNING ci_id
+        )
+        SELECT id, organization_id, ci_type_id, cloud_account_id, cloud_resource_id,
+               cloud_provider::text, cloud_region, name, display_name, meta, tags, lifecycle_state::text,
+               parent_ci_id, pool_id, discovered_at, created_at, updated_at
+        FROM archived JOIN audited ON audited.ci_id = archived.id"#,
+    )
+    .bind(org_id)
+    .bind(account_id)
+    .bind(k8s::K8S_TYPE_POD)
+    .bind(k8s::K8S_TYPE_CLUSTER)
+    .fetch_all(db)
+    .await?;
+    for ci in &archived {
+        crate::modules::cmdb::events::emit_ci_deleted(db, org_id, ci).await;
+    }
+    Ok(archived.len() as u64)
 }
 
 // ─── list_accounts ────────────────────────────────────────────────────────────
@@ -736,7 +821,15 @@ pub(crate) async fn run_sync(
         }
     };
 
-    let resources = match adapter.discover_resources(None).await {
+    let inventory = if let Some(aliyun) = adapter.as_aliyun() {
+        Ok(aliyun.discover_with_issues(None).await)
+    } else {
+        adapter
+            .discover_resources(None)
+            .await
+            .map(|resources| (resources, Vec::new()))
+    };
+    let (resources, mut incomplete_sources) = match inventory {
         Ok(r) => r,
         Err(e) => {
             tracing::error!(job_id = %job_id, error = %e, "Sync discovery failed");
@@ -749,6 +842,12 @@ pub(crate) async fn run_sync(
     let mut created = 0i32;
     let mut updated = 0i32;
     let mut failed = 0i32;
+    let kubernetes_cluster = match &adapter {
+        AnyAdapter::Kubernetes(kubernetes) => {
+            Some(k8s::configured_cluster_name(kubernetes, &config))
+        }
+        _ => None,
+    };
 
     // ── Phase: upserting — n/total, write every 20 resources ─────────────
     for (idx, res) in resources.iter().enumerate() {
@@ -759,7 +858,17 @@ pub(crate) async fn run_sync(
             return;
         }
         let now = Utc::now();
-        match upsert_discovered_resource(&db, org_id, account_id, &provider, res, now).await {
+        match upsert_discovered_resource(
+            &db,
+            org_id,
+            account_id,
+            &provider,
+            res,
+            now,
+            kubernetes_cluster.as_deref(),
+        )
+        .await
+        {
             Ok(true) => created += 1,
             Ok(false) => updated += 1,
             Err(e) => {
@@ -770,13 +879,14 @@ pub(crate) async fn run_sync(
     }
 
     // K8s rightsizing pipeline: clusters/workloads/usage samples for
-    // kubernetes accounts (spec 2026-08-17). Failures don't fail the job.
+    // kubernetes accounts (spec 2026-08-17).
     if provider == "kubernetes" {
         if let Err(e) =
             crate::modules::k8s::pipeline::sync_account(&db, org_id, account_id, &adapter, &config)
                 .await
         {
             tracing::warn!(account_id = %account_id, error = %e, "k8s pipeline sync failed");
+            incomplete_sources.push("Kubernetes workloads".into());
         }
     }
 
@@ -784,7 +894,7 @@ pub(crate) async fn run_sync(
     // cluster tables and rightsizing views can see them. We additionally reach
     // each cluster's apiserver via its kubeconfig to sync pods (as resources)
     // and workloads (into the k8s rightsizing tables) — matching the behavior
-    // of a direct `kubernetes` account. Failures don't fail the sync job.
+    // of a direct `kubernetes` account.
     if provider == "alibaba" {
         let clusters: Vec<&crate::modules::cloud::adapters::DiscoveredResource> = resources
             .iter()
@@ -830,11 +940,13 @@ pub(crate) async fn run_sync(
             .await;
             if let Err(e) = upsert {
                 tracing::warn!(resource_id = %res.cloud_resource_id, error = %e, "k8s_clusters upsert failed");
+                incomplete_sources.push(format!("ACK cluster inventory ({})", res.resource_name));
             }
 
             // Discover workloads inside the ACK cluster via its kubeconfig.
             let Some(cluster_id) = res.meta["cluster_id"].as_str().map(str::to_string) else {
                 tracing::warn!(cluster = %res.resource_name, "ACK cluster missing cluster_id, skipping workload sync");
+                incomplete_sources.push(format!("ACK cluster ID ({})", res.resource_name));
                 continue;
             };
             let Some(aliyun) = adapter.as_aliyun() else {
@@ -857,6 +969,7 @@ pub(crate) async fn run_sync(
                                             &provider,
                                             &pod,
                                             Utc::now(),
+                                            Some(&res.resource_name),
                                         )
                                         .await
                                         {
@@ -874,11 +987,15 @@ pub(crate) async fn run_sync(
                                         }
                                     }
                                 }
-                                Err(e) => tracing::warn!(
-                                    cluster = %res.resource_name,
-                                    error = ?e,
-                                    "ACK pod discovery failed"
-                                ),
+                                Err(e) => {
+                                    tracing::warn!(
+                                        cluster = %res.resource_name,
+                                        error = ?e,
+                                        "ACK pod discovery failed"
+                                    );
+                                    incomplete_sources
+                                        .push(format!("ACK Pods ({})", res.resource_name));
+                                }
                             }
                             // Workloads → k8s rightsizing tables.
                             if let Err(e) = crate::modules::k8s::pipeline::sync_cluster(
@@ -896,25 +1013,36 @@ pub(crate) async fn run_sync(
                                     error = ?e,
                                     "ACK workload sync failed"
                                 );
+                                incomplete_sources
+                                    .push(format!("ACK workloads ({})", res.resource_name));
                             }
                         }
-                        Err(e) => tracing::warn!(
+                        Err(e) => {
+                            tracing::warn!(
+                                cluster = %res.resource_name,
+                                error = %e,
+                                "ACK kubeconfig adapter build failed"
+                            );
+                            incomplete_sources.push(format!("ACK adapter ({})", res.resource_name));
+                        }
+                    },
+                    Err(e) => {
+                        tracing::warn!(
                             cluster = %res.resource_name,
                             error = %e,
-                            "ACK kubeconfig adapter build failed"
-                        ),
-                    },
-                    Err(e) => tracing::warn!(
+                            "ACK kubeconfig parse failed"
+                        );
+                        incomplete_sources.push(format!("ACK kubeconfig ({})", res.resource_name));
+                    }
+                },
+                Err(e) => {
+                    tracing::warn!(
                         cluster = %res.resource_name,
                         error = %e,
-                        "ACK kubeconfig parse failed"
-                    ),
-                },
-                Err(e) => tracing::warn!(
-                    cluster = %res.resource_name,
-                    error = %e,
-                    "ACK kubeconfig fetch failed"
-                ),
+                        "ACK kubeconfig fetch failed"
+                    );
+                    incomplete_sources.push(format!("ACK kubeconfig ({})", res.resource_name));
+                }
             }
         }
     }
@@ -924,15 +1052,43 @@ pub(crate) async fn run_sync(
         return;
     }
 
-    let status = if failed == 0 { "succeeded" } else { "failed" };
-    let error = (failed > 0)
-        .then(|| format!("Failed to persist {failed} discovered resources; retry discovery"));
+    let synced_kubernetes = kubernetes_cluster.is_some()
+        || (provider == "alibaba"
+            && resources
+                .iter()
+                .any(|res| res.resource_type == "k8s_cluster"));
+    let mut archived_kubernetes_cis = 0;
+    if synced_kubernetes && failed == 0 && incomplete_sources.is_empty() {
+        match archive_legacy_kubernetes_cis(&db, org_id, account_id).await {
+            Ok(archived) => archived_kubernetes_cis = archived,
+            Err(error) => {
+                tracing::warn!(%account_id, %error, "Failed to archive legacy Kubernetes CIs");
+                incomplete_sources.push("Kubernetes CI reconciliation".into());
+            }
+        }
+    }
+
+    let complete = failed == 0 && incomplete_sources.is_empty();
+    let status = if complete { "succeeded" } else { "failed" };
+    let error = if incomplete_sources.is_empty() {
+        (failed > 0)
+            .then(|| format!("Failed to persist {failed} discovered resources; retry discovery"))
+    } else {
+        Some(format!(
+            "Discovery incomplete. Failed sources: {}. Failed resource writes: {failed}.",
+            incomplete_sources.join(", ")
+        ))
+    };
     jobs::finalize_job(
         &db,
         &job,
         status,
         error.as_deref(),
-        json!({ "resources_failed": failed }),
+        json!({
+            "resources_failed": failed,
+            "incomplete_sources": incomplete_sources,
+            "archived_kubernetes_cis": archived_kubernetes_cis,
+        }),
         Some((discovered, created, updated)),
     )
     .await;
@@ -1078,11 +1234,8 @@ mod tests {
             "Aliyun ACK"
         );
     }
-    #[tokio::test]
-    async fn discovery_rolls_back_failed_mirrors_and_keeps_managed_lifecycle() {
-        let Ok(url) = std::env::var("TEST_DATABASE_URL") else {
-            return;
-        };
+    async fn discovery_fixture() -> Option<(sqlx::PgPool, Uuid, Uuid)> {
+        let url = std::env::var("TEST_DATABASE_URL").ok()?;
         let db = sqlx::PgPool::connect(&url).await.expect("test database");
         sqlx::migrate!("./migrations")
             .run(&db)
@@ -1097,6 +1250,264 @@ mod tests {
         .unwrap();
         let account: Uuid = sqlx::query_scalar("INSERT INTO cloud_accounts (organization_id, name, provider, credentials_enc) VALUES ($1,'Atomic','mock','test') RETURNING id")
             .bind(org).fetch_one(&db).await.unwrap();
+        Some((db, org, account))
+    }
+
+    #[tokio::test]
+    async fn kubernetes_discovery_links_provider_ids_to_stable_topology_cis() {
+        let Some((db, org, account)) = discovery_fixture().await else {
+            return;
+        };
+        for (kind, name, provider_id, created) in [
+            ("k8s_cluster", "prod", "ack:cluster-one", true),
+            ("k8s_pod", "web", "pod-uid-one", true),
+            ("k8s_pod", "web", "pod-uid-two", false),
+            ("k8s_pod", "web", "pod-uid-two", false),
+        ] {
+            let res = DiscoveredResource {
+                cloud_resource_id: provider_id.into(),
+                resource_type: kind.into(),
+                resource_name: name.into(),
+                region: None,
+                tags: json!({}),
+                meta: json!({"namespace":"default"}),
+            };
+            assert_eq!(
+                upsert_discovered_resource(
+                    &db,
+                    org,
+                    account,
+                    "alibaba",
+                    &res,
+                    Utc::now(),
+                    Some("prod")
+                )
+                .await
+                .unwrap(),
+                created
+            );
+        }
+        let links: Vec<(String, String)> = sqlx::query_as(
+            "SELECT r.cloud_resource_id, c.cloud_resource_id FROM resources r JOIN cis c ON c.id = r.ci_id
+             WHERE r.organization_id = $1 AND r.cloud_account_id = $2 ORDER BY r.cloud_resource_id"
+        ).bind(org).bind(account).fetch_all(&db).await.unwrap();
+        assert_eq!(
+            links,
+            vec![
+                ("ack:cluster-one".into(), "k8s/cluster/prod".into()),
+                ("pod-uid-one".into(), "k8s/pod/prod/default/web".into()),
+                ("pod-uid-two".into(), "k8s/pod/prod/default/web".into()),
+            ]
+        );
+        let audited: Vec<(String, i64)> = sqlx::query_as(
+            "SELECT c.cloud_resource_id, COUNT(a.id) FROM cis c LEFT JOIN ci_audit_logs a
+             ON a.ci_id = c.id AND a.organization_id = c.organization_id
+             AND a.operation = 'create' AND a.source = 'discovery'
+             AND a.field_changes->>'resource' = c.cloud_resource_id
+             WHERE c.organization_id = $1 GROUP BY c.cloud_resource_id ORDER BY c.cloud_resource_id",
+        ).bind(org).fetch_all(&db).await.unwrap();
+        assert_eq!(
+            audited,
+            vec![
+                ("k8s/cluster/prod".into(), 1),
+                ("k8s/pod/prod/default/web".into(), 1)
+            ]
+        );
+        sqlx::query("DELETE FROM organizations WHERE id=$1")
+            .bind(org)
+            .execute(&db)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn first_upgraded_scan_preserves_expense_link_for_replaced_legacy_pod() {
+        let Some((db, org, account)) = discovery_fixture().await else {
+            return;
+        };
+        let previous = DiscoveredResource {
+            cloud_resource_id: "pod-uid-old".into(),
+            resource_type: "instance".into(),
+            resource_name: "web".into(),
+            region: None,
+            tags: json!({}),
+            meta: json!({"namespace": "default"}),
+        };
+        upsert_discovered_resource(&db, org, account, "alibaba", &previous, Utc::now(), None)
+            .await
+            .unwrap();
+
+        // Model pre-upgrade inventory: a generic CI keyed by the old provider UID,
+        // and a Kubernetes resource that migration 003 could not link to a topology CI.
+        let legacy_ci: Uuid = sqlx::query_scalar(
+            "SELECT id FROM cis WHERE organization_id = $1 AND cloud_account_id = $2
+             AND cloud_resource_id = $3",
+        )
+        .bind(org)
+        .bind(account)
+        .bind(&previous.cloud_resource_id)
+        .fetch_one(&db)
+        .await
+        .unwrap();
+        sqlx::query(
+            "UPDATE resources SET resource_type = 'k8s_pod', ci_id = NULL
+             WHERE organization_id = $1 AND cloud_account_id = $2 AND cloud_resource_id = $3",
+        )
+        .bind(org)
+        .bind(account)
+        .bind(&previous.cloud_resource_id)
+        .execute(&db)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO expenses (organization_id, cloud_account_id, cloud_resource_id, date, cost)
+             VALUES ($1, $2, $3, CURRENT_DATE, 7)",
+        )
+        .bind(org)
+        .bind(account)
+        .bind(&previous.cloud_resource_id)
+        .execute(&db)
+        .await
+        .unwrap();
+
+        let expense_links = "SELECT link.ci_id
+             FROM expenses e JOIN ci_finops_resource_ids link
+               ON link.organization_id = e.organization_id
+              AND link.cloud_account_id = e.cloud_account_id
+              AND link.cloud_resource_id = e.cloud_resource_id
+             WHERE e.organization_id = $1 AND e.cloud_account_id = $2
+               AND e.cloud_resource_id = $3";
+        let before: Vec<Uuid> = sqlx::query_scalar(expense_links)
+            .bind(org)
+            .bind(account)
+            .bind(&previous.cloud_resource_id)
+            .fetch_all(&db)
+            .await
+            .unwrap();
+
+        // Discovery sees only the same-name replacement, not the old provider UID.
+        let replacement = DiscoveredResource {
+            cloud_resource_id: "pod-uid-new".into(),
+            resource_type: "k8s_pod".into(),
+            region: previous.region.clone(),
+            resource_name: previous.resource_name.clone(),
+            tags: previous.tags.clone(),
+            meta: previous.meta.clone(),
+        };
+        upsert_discovered_resource(
+            &db,
+            org,
+            account,
+            "alibaba",
+            &replacement,
+            Utc::now(),
+            Some("prod"),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            archive_legacy_kubernetes_cis(&db, org, account)
+                .await
+                .unwrap(),
+            0
+        );
+
+        let after: Vec<Uuid> = sqlx::query_scalar(expense_links)
+            .bind(org)
+            .bind(account)
+            .bind(&previous.cloud_resource_id)
+            .fetch_all(&db)
+            .await
+            .unwrap();
+        let raw_cost: f64 = sqlx::query_scalar(
+            "SELECT COALESCE(SUM(cost), 0)::float8 FROM expenses
+             WHERE organization_id = $1 AND cloud_account_id = $2 AND cloud_resource_id = $3",
+        )
+        .bind(org)
+        .bind(account)
+        .bind(&previous.cloud_resource_id)
+        .fetch_one(&db)
+        .await
+        .unwrap();
+        let replacement_ci: Uuid = sqlx::query_scalar(
+            "SELECT ci_id FROM ci_finops_resource_ids WHERE organization_id = $1
+             AND cloud_account_id = $2 AND cloud_resource_id = $3",
+        )
+        .bind(org)
+        .bind(account)
+        .bind(&replacement.cloud_resource_id)
+        .fetch_one(&db)
+        .await
+        .unwrap();
+
+        assert_eq!(before, vec![legacy_ci], "legacy expense must start linked");
+        assert_eq!(raw_cost, 7.0, "discovery must not change imported cost");
+        assert_ne!(
+            replacement_ci, legacy_ci,
+            "a reused Pod name is not lineage"
+        );
+        assert_eq!(
+            after, before,
+            "archiving a legacy CI without a verified replacement must not unmatch historical cost"
+        );
+
+        // Only a discovery of the old provider UID establishes an alternate billing link.
+        let rediscovered = DiscoveredResource {
+            cloud_resource_id: previous.cloud_resource_id.clone(),
+            ..replacement
+        };
+        upsert_discovered_resource(
+            &db,
+            org,
+            account,
+            "alibaba",
+            &rediscovered,
+            Utc::now(),
+            Some("prod"),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            archive_legacy_kubernetes_cis(&db, org, account)
+                .await
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            archive_legacy_kubernetes_cis(&db, org, account)
+                .await
+                .unwrap(),
+            0
+        );
+        let linked: Vec<Uuid> = sqlx::query_scalar(expense_links)
+            .bind(org)
+            .bind(account)
+            .bind(&previous.cloud_resource_id)
+            .fetch_all(&db)
+            .await
+            .unwrap();
+        assert_eq!(linked, vec![replacement_ci]);
+        let audited_replacements: Vec<Uuid> = sqlx::query_scalar(
+            "SELECT (field_changes->>'replacement_ci_id')::uuid FROM ci_audit_logs
+             WHERE organization_id = $1 AND ci_id = $2 AND operation = 'delete' AND source = 'discovery'"
+        ).bind(org).bind(legacy_ci).fetch_all(&db).await.unwrap();
+        assert_eq!(audited_replacements, vec![replacement_ci]);
+        let events: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM ci_events WHERE organization_id = $1 AND ci_id = $2 AND event_type = 'ci.deleted'"
+        ).bind(org).bind(legacy_ci).fetch_one(&db).await.unwrap();
+        assert_eq!(events, 1);
+        sqlx::query("DELETE FROM organizations WHERE id = $1")
+            .bind(org)
+            .execute(&db)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn discovery_rolls_back_failed_mirrors_and_keeps_managed_lifecycle() {
+        let Some((db, org, account)) = discovery_fixture().await else {
+            return;
+        };
         // Inject a failure only into this fixture's FinOps mirror. The CI write
         // succeeds first, so a surviving CI would reveal a broken transaction.
         let trigger_name = format!("reject_mirror_{}", org.simple());
@@ -1113,7 +1524,33 @@ mod tests {
             tags: json!({}),
             meta: json!({"cpu":2}),
         };
-        let failed = upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now()).await;
+        let failed =
+            upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now(), None).await;
+        let pod = DiscoveredResource {
+            resource_type: "k8s_pod".into(),
+            ..res.clone()
+        };
+        assert!(upsert_discovered_resource(
+            &db,
+            org,
+            account,
+            "mock",
+            &pod,
+            Utc::now(),
+            Some("prod")
+        )
+        .await
+        .is_err());
+        let audits: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM ci_audit_logs WHERE organization_id = $1")
+                .bind(org)
+                .fetch_one(&db)
+                .await
+                .unwrap();
+        assert_eq!(
+            audits, 0,
+            "a failed mirror must roll back the creation audit"
+        );
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM cis WHERE organization_id=$1")
             .bind(org)
             .fetch_one(&db)
@@ -1159,14 +1596,14 @@ mod tests {
         sqlx::query("INSERT INTO expenses (organization_id,cloud_account_id,cloud_resource_id,date,cost) VALUES ($1,$2,'atomic',CURRENT_DATE,12)")
             .bind(org).bind(account).execute(&db).await.unwrap();
         assert!(
-            upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now())
+            upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now(), None)
                 .await
                 .unwrap()
         );
         sqlx::query("UPDATE cis SET lifecycle_state='retired', meta=meta || '{\"owner_note\":\"keep\"}'::jsonb WHERE organization_id=$1")
             .bind(org).execute(&db).await.unwrap();
         assert!(
-            !upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now())
+            !upsert_discovered_resource(&db, org, account, "mock", &res, Utc::now(), None)
                 .await
                 .unwrap()
         );

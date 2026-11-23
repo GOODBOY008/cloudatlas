@@ -3,8 +3,6 @@
  */
 import { test, expect } from '../fixtures/base.fixture';
 
-const E2E_POOL_NAME = `E2E-Pool-${Date.now()}`;
-
 test.describe('Pools CRUD @regression', () => {
   test.beforeEach(async ({ poolsPage }) => {
     await poolsPage.navigate();
@@ -43,10 +41,14 @@ test.describe('Pools CRUD @regression', () => {
     await poolsPage.closeModal();
   });
 
-  test('POOL-06 — create a pool end-to-end', async ({ poolsPage }) => {
-    await poolsPage.createPool(E2E_POOL_NAME);
-    // Verify the new pool appears in the list
-    await expect(poolsPage.poolList.getByText(E2E_POOL_NAME)).toBeVisible({ timeout: 10_000 });
+  test('POOL-06/10 — create and delete a pool end-to-end', async ({ poolsPage }) => {
+    const name = `E2E-Pool-${Date.now()}`;
+    await poolsPage.createPool(name);
+    const pool = poolsPage.poolList.getByText(name, { exact: true });
+    await expect(pool).toBeVisible();
+    await poolsPage.openDeleteDialog(name);
+    await poolsPage.deleteDialog.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(pool).toBeHidden();
   });
 
   test('POOL-07 — edit modal opens pre-filled', async ({ poolsPage }) => {
@@ -65,38 +67,12 @@ test.describe('Pools CRUD @regression', () => {
   });
 
   test('POOL-09/11 — delete confirmation shows; cancel keeps pool', async ({ poolsPage }) => {
-    const deleteBtn = poolsPage.page.getByRole('button', { name: /delete/i }).first();
-    if (await deleteBtn.count() > 0) {
-      await deleteBtn.click();
-      // Confirmation should appear — either a native dialog or the inline
-      // modal's confirm/cancel pair. Scope to buttons inside the overlay so
-      // header buttons ("Notifications"…) can't match /no/i.
-      const overlay = poolsPage.page.locator('.fixed.inset-0, [role="dialog"]').last();
-      const confirmBtn = overlay.getByRole('button', { name: /^(confirm|yes|ok|delete)$/i }).first();
-      const cancelBtn = overlay.getByRole('button', { name: /^cancel$|^(no|取消)$/i }).first();
-      // The modal always renders a Cancel next to Confirm — wait for it.
-      await expect(cancelBtn.or(confirmBtn).first()).toBeVisible({ timeout: 5000 });
-      // Cancel
-      if (await cancelBtn.isVisible()) {
-        await cancelBtn.click();
-      }
-    } else {
-      test.skip(true, 'No delete buttons found');
-    }
-  });
-
-  test('POOL-10 — delete the e2e-created pool', async ({ poolsPage }) => {
-    // Check if the pool still exists (only runs after POOL-06)
-    const poolRow = poolsPage.page.locator('main').getByText(E2E_POOL_NAME);
-    if (await poolRow.count() === 0) {
-      test.skip(true, `Pool ${E2E_POOL_NAME} not found (POOL-06 may have been skipped)`);
-      return;
-    }
-    // Set up dialog handler before clicking delete
-    poolsPage.page.on('dialog', dialog => dialog.accept());
-    await poolsPage.deletePool(E2E_POOL_NAME);
-    // exact: the confirm modal's description ("X and all its data will be
-    // removed…") also contains the pool name.
-    await expect(poolsPage.poolList.getByText(E2E_POOL_NAME, { exact: true })).toBeHidden({ timeout: 8000 });
+    const name = 'Root Pool';
+    await poolsPage.openDeleteDialog(name);
+    await expect(poolsPage.deleteDialog).toContainText(name);
+    await poolsPage.deleteDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(poolsPage.deleteDialog).toBeHidden();
+    await poolsPage.navigate();
+    await expect(poolsPage.poolList.getByText(name, { exact: true })).toBeVisible();
   });
 });

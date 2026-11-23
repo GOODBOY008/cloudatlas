@@ -911,6 +911,8 @@ pub async fn list_drift(
     let rows = sqlx::query(
         r#"SELECT cd.id, cd.ci_id, cd.baseline_id, cd.field_name AS field_path,
                   cd.expected_value AS old_value, cd.actual_value AS new_value, cd.detected_at, cd.acknowledged_at,
+                  CASE WHEN cd.status = 'open' AND cd.acknowledged_at IS NOT NULL THEN 'acknowledged'
+                       ELSE cd.status::text END AS status,
                   c.name AS ci_name
            FROM ci_drift cd
            JOIN cis c ON c.id = cd.ci_id
@@ -937,6 +939,7 @@ pub async fn list_drift(
                 "new_value": r.get::<Option<String>, _>("new_value"),
                 "detected_at": r.get::<chrono::DateTime<chrono::Utc>, _>("detected_at"),
                 "acknowledged_at": r.get::<Option<chrono::DateTime<chrono::Utc>>, _>("acknowledged_at"),
+                "status": r.get::<String, _>("status"),
             })
         })
         .collect();
@@ -1093,9 +1096,12 @@ pub async fn acknowledge_drift(
 ) -> AppResult<Json<Value>> {
     ensure_org_member(&state.db, org_id, claims.user_id()?).await?;
 
-    sqlx::query(
-        r#"UPDATE ci_drift SET acknowledged_at = NOW(), acknowledged_by = $3
-           WHERE id = $1
+    let result = sqlx::query(
+        r#"UPDATE ci_drift
+           SET status = 'acknowledged',
+               acknowledged_at = COALESCE(acknowledged_at, NOW()),
+               acknowledged_by = COALESCE(acknowledged_by, $3)
+           WHERE id = $1 AND status IN ('open', 'acknowledged')
            AND EXISTS (SELECT 1 FROM cis WHERE id = ci_drift.ci_id AND organization_id = $2)"#,
     )
     .bind(drift_id)
@@ -1104,6 +1110,9 @@ pub async fn acknowledge_drift(
     .execute(&state.db)
     .await?;
 
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Drift item is missing or closed".into()));
+    }
     Ok(Json(json!({ "data": { "acknowledged": true } })))
 }
 

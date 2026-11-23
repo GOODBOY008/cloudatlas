@@ -240,50 +240,45 @@ pub async fn cost_center_expenses(
 ) -> AppResult<Json<Value>> {
     let user_id = claims.user_id()?;
 
-    let existing = sqlx::query("SELECT organization_id FROM cost_centers WHERE id = $1")
+    let org_id: Uuid = sqlx::query_scalar("SELECT organization_id FROM cost_centers WHERE id = $1")
         .bind(id)
         .fetch_optional(&state.db)
         .await?
         .ok_or_else(|| AppError::NotFound("Cost center not found".into()))?;
-
-    let org_id: Uuid = existing
-        .try_get("organization_id")
-        .map_err(|_| AppError::NotFound("Cost center not found".into()))?;
     ensure_org_member(&state.db, org_id, user_id).await?;
+    let currency = crate::modules::billing::fx::org_currency(&state.db, org_id).await;
 
-    // Aggregate expenses from all business capabilities linked to this cost center,
-    // via their associated CIs' cloud_resource_ids in expenses.
-    let row = sqlx::query(
+    // A bill may reach the same cost center through several services. Count it once.
+    let (total_cost, resource_count): (f64, i64) = sqlx::query_as(
         r#"SELECT
                COALESCE(SUM(e.cost)::float8, 0) AS total_cost,
-               COUNT(DISTINCT e.cloud_resource_id) AS resource_count
+               COUNT(DISTINCT (e.cloud_account_id, e.cloud_resource_id)) AS resource_count
            FROM expenses e
-           JOIN cis c ON c.cloud_resource_id = e.cloud_resource_id
-               AND c.organization_id = e.organization_id
-           JOIN service_cis sc ON sc.ci_id = c.id
-           JOIN services svc ON svc.id = sc.service_id
-           JOIN business_capabilities bc ON bc.name = svc.name
-               AND bc.organization_id = e.organization_id
-           WHERE bc.cost_center_id = $1
-             AND e.date >= DATE_TRUNC('month', CURRENT_DATE)::date"#,
+           WHERE e.organization_id = $2 AND e.currency = $3
+             AND e.date BETWEEN DATE_TRUNC('month', CURRENT_DATE)::date AND CURRENT_DATE
+             AND EXISTS (
+                 SELECT 1
+                 FROM business_capabilities bc
+                 JOIN services svc ON svc.name = bc.name
+                     AND svc.organization_id = bc.organization_id AND svc.deleted_at IS NULL
+                 JOIN service_cis sc ON sc.service_id = svc.id
+                 JOIN ci_finops_resource_ids c ON c.ci_id = sc.ci_id AND c.organization_id = svc.organization_id
+                 WHERE bc.cost_center_id = $1 AND bc.organization_id = e.organization_id
+                   AND c.cloud_resource_id = e.cloud_resource_id
+                   AND (c.cloud_account_id IS NULL OR c.cloud_account_id = e.cloud_account_id)
+             )"#,
     )
     .bind(id)
-    .fetch_optional(&state.db)
-    .await;
-
-    // Fall back gracefully if the join path yields no data
-    let (total_cost, resource_count) = match row {
-        Ok(Some(r)) => (
-            r.try_get::<f64, _>("total_cost").unwrap_or(0.0),
-            r.try_get::<i64, _>("resource_count").unwrap_or(0),
-        ),
-        _ => (0.0, 0),
-    };
+    .bind(org_id)
+    .bind(&currency)
+    .fetch_one(&state.db)
+    .await?;
 
     Ok(Json(json!({
         "data": {
             "cost_center_id":    id,
             "total_cost":        total_cost,
+            "currency":          currency,
             "resource_count":    resource_count,
             "period":            "current_month",
         }

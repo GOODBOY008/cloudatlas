@@ -316,22 +316,28 @@ pub async fn list_service_cis(
     let rows = sqlx::query(
         r#"SELECT sc.id, sc.ci_id, sc.role, c.name AS ci_name, sc.created_at
            FROM service_cis sc
-           JOIN cis c ON c.id = sc.ci_id
+           JOIN cis c ON c.id = sc.ci_id AND c.organization_id = $2 AND c.deleted_at IS NULL
            WHERE sc.service_id = $1
            ORDER BY sc.created_at ASC, sc.id ASC
-           LIMIT $2 OFFSET $3"#,
+           LIMIT $3 OFFSET $4"#,
     )
     .bind(service_id)
+    .bind(org_id)
     .bind(bounds.limit)
     .bind(bounds.offset)
     .fetch_all(&state.db)
     .await?;
 
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM service_cis WHERE service_id = $1")
-        .bind(service_id)
-        .fetch_one(&state.db)
-        .await
-        .unwrap_or(0);
+    let total: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*)
+           FROM service_cis sc
+           JOIN cis c ON c.id = sc.ci_id AND c.organization_id = $2 AND c.deleted_at IS NULL
+           WHERE sc.service_id = $1"#,
+    )
+    .bind(service_id)
+    .bind(org_id)
+    .fetch_one(&state.db)
+    .await?;
 
     let data: Vec<Value> = rows
         .iter()
@@ -360,44 +366,46 @@ pub async fn add_service_ci(
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
-    let service = sqlx::query(
-        "SELECT id FROM services WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL",
+    let (visible_pair, inserted): (bool, bool) = sqlx::query_as(
+        r#"WITH visible_pair AS (
+               SELECT s.id AS service_id, c.id AS ci_id
+               FROM services s
+               JOIN cis c ON c.id = $3 AND c.organization_id = s.organization_id
+                   AND c.deleted_at IS NULL
+               WHERE s.id = $1 AND s.organization_id = $2 AND s.deleted_at IS NULL
+           ), inserted AS (
+               INSERT INTO service_cis (service_id, ci_id, role)
+               SELECT service_id, ci_id, $4 FROM visible_pair
+               ON CONFLICT (service_id, ci_id) DO NOTHING
+               RETURNING id
+           )
+           SELECT EXISTS (SELECT 1 FROM visible_pair), EXISTS (SELECT 1 FROM inserted)"#,
     )
     .bind(service_id)
     .bind(org_id)
-    .fetch_optional(&state.db)
-    .await?;
-
-    if service.is_none() {
-        return Err(AppError::NotFound(format!(
-            "Service {service_id} not found"
-        )));
-    }
-
-    let id = Uuid::new_v4();
-    sqlx::query(
-        "INSERT INTO service_cis (id, service_id, ci_id, role) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
-    )
-    .bind(id)
-    .bind(service_id)
     .bind(body.ci_id)
     .bind(body.role.as_deref())
-    .execute(&state.db)
+    .fetch_one(&state.db)
     .await?;
 
-    // T4: model-layer audit.
-    super::handlers::write_model_audit_log(
-        &state.db,
-        org_id,
-        Some(user_id),
-        "service",
-        "add_ci",
-        &service_id.to_string(),
-        "",
-        None,
-        Some(&json!({ "ci_id": body.ci_id, "role": body.role })),
-    )
-    .await;
+    if !visible_pair {
+        return Err(AppError::NotFound("Service or CI not found".into()));
+    }
+
+    if inserted {
+        super::handlers::write_model_audit_log(
+            &state.db,
+            org_id,
+            Some(user_id),
+            "service",
+            "add_ci",
+            &service_id.to_string(),
+            "",
+            None,
+            Some(&json!({ "ci_id": body.ci_id, "role": body.role })),
+        )
+        .await;
+    }
 
     Ok((
         StatusCode::CREATED,
@@ -473,28 +481,36 @@ pub async fn get_service_costs(
     .ok_or_else(|| AppError::NotFound(format!("Service {service_id} not found")))?;
 
     let service_name: String = service.try_get("name").unwrap_or_default();
+    let currency = crate::modules::billing::fx::org_currency(&state.db, org_id).await;
 
-    // Sum all expenses from the last 30 days for CIs linked to this service.
-    // Join: service_cis → cis → expenses (matching cloud_resource_id)
+    // A retained legacy CI and its topology CI can both belong to this service.
+    // Count each expense once, preferring its discovered CI over a legacy match.
     let rows = sqlx::query(
-        r#"SELECT
+        r#"WITH members AS (
+               SELECT c.id, c.name, c.cloud_resource_id FROM service_cis sc
+               JOIN cis c ON c.id = sc.ci_id AND c.deleted_at IS NULL
+               WHERE sc.service_id = $1 AND c.organization_id = $2
+           ), matched AS (
+               SELECT DISTINCT ON (e.id) e.id, c.id AS ci_id, e.cost
+               FROM members c JOIN ci_finops_resource_ids i ON i.ci_id = c.id
+               JOIN expenses e ON e.organization_id = i.organization_id AND e.cloud_resource_id = i.cloud_resource_id
+                   AND (i.cloud_account_id IS NULL OR e.cloud_account_id = i.cloud_account_id)
+               WHERE e.currency = $3 AND e.date >= (CURRENT_DATE - INTERVAL '30 days')
+               ORDER BY e.id, (i.cloud_account_id IS NOT NULL) DESC,
+                   (i.cloud_resource_id IS DISTINCT FROM c.cloud_resource_id) DESC, c.id
+           ) SELECT
                c.id AS ci_id,
                c.name AS ci_name,
                c.cloud_resource_id,
                COALESCE(SUM(e.cost), 0)::float8 AS total_cost,
                COUNT(e.id) AS expense_rows
-           FROM service_cis sc
-           JOIN cis c ON c.id = sc.ci_id AND c.deleted_at IS NULL
-           LEFT JOIN expenses e
-               ON e.cloud_resource_id = c.cloud_resource_id
-               AND e.date >= (CURRENT_DATE - INTERVAL '30 days')
-           WHERE sc.service_id = $1
-             AND c.organization_id = $2
+           FROM members c LEFT JOIN matched e ON e.ci_id = c.id
            GROUP BY c.id, c.name, c.cloud_resource_id
            ORDER BY total_cost DESC"#,
     )
     .bind(service_id)
     .bind(org_id)
+    .bind(&currency)
     .fetch_all(&state.db)
     .await?;
 
@@ -520,7 +536,7 @@ pub async fn get_service_costs(
             "service_name":     service_name,
             "period_days":      30,
             "total_cost":       grand_total,
-            "currency":         "USD",
+            "currency":         currency,
             "ci_count":         ci_costs.len(),
             "ci_costs":         ci_costs,
         }

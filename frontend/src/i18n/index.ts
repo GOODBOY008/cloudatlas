@@ -1,10 +1,11 @@
-import i18n from 'i18next'
+import i18n, { type BackendModule } from 'i18next'
 import { initReactI18next } from 'react-i18next'
-import en from './locales/en'
-import zh from './locales/zh'
+import en from './locales/enShell'
+import zh from './locales/zhShell'
 
 export const SUPPORTED_LANGUAGES = ['en', 'zh'] as const
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]
+export const WORKSPACE_NAMESPACE = 'workspace'
 
 const STORAGE_KEY = 'cloudatlas-language'
 
@@ -24,17 +25,45 @@ export function setStoredLanguage(lang: SupportedLanguage) {
   window.localStorage.setItem(STORAGE_KEY, lang)
 }
 
+export async function changeAppLanguage(language: SupportedLanguage) {
+  await i18n.changeLanguage(language)
+  if (i18n.language === language) setStoredLanguage(language)
+}
+
 /** Keep the <html lang> attribute in sync with the active language. */
 export function syncHtmlLang(lang: SupportedLanguage) {
   if (typeof document === 'undefined') return
   document.documentElement.lang = lang
 }
 
-i18n.use(initReactI18next).init({
+const workspaceMessages = {
+  en: () => import('./locales/en'),
+  zh: () => import('./locales/zh'),
+}
+
+const workspaceBackend: BackendModule = {
+  type: 'backend',
+  init() {},
+  read(language, namespace, callback) {
+    if (namespace !== WORKSPACE_NAMESPACE || !isSupportedLanguage(language)) {
+      callback(null, {})
+      return
+    }
+    void workspaceMessages[language]().then(
+      ({ workspace }) => callback(null, workspace),
+      (error: unknown) => callback(String(error), false),
+    )
+  },
+}
+
+i18n.use(workspaceBackend).use(initReactI18next).init({
   resources: {
     en: { translation: en },
     zh: { translation: zh },
   },
+  ns: ['translation'],
+  fallbackNS: WORKSPACE_NAMESPACE,
+  partialBundledLanguages: true,
   lng: getStoredLanguage(),
   fallbackLng: 'en',
   interpolation: {

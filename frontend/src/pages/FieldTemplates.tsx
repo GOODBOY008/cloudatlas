@@ -1,3 +1,4 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -191,14 +192,14 @@ export default function FieldTemplates() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="page-header">
         <div>
-          <h2 className="page-title">{t('fieldTemplates.title')}</h2>
+          <h1 className="page-title">{t('fieldTemplates.title')}</h1>
           <p className="text-sm text-secondary mt-0.5">{t('fieldTemplates.subtitle')}</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+          className="btn-primary"
         >
           {t('fieldTemplates.newTemplate')}
         </button>
@@ -371,7 +372,7 @@ export default function FieldTemplates() {
                   <button
                     onClick={() => applyMutation.mutate(true)}
                     disabled={applyMutation.isPending || !diffTypeId}
-                    className="px-3 py-1.5 bg-emphasis hover:bg-emphasis disabled:opacity-50 text-primary text-xs rounded-lg"
+                    className="btn-secondary"
                     data-testid="field-template-dry-run"
                   >
                     {t('fieldTemplates.dryRun')}
@@ -381,7 +382,7 @@ export default function FieldTemplates() {
                       if (confirm(t('fieldTemplates.applyConfirm'))) applyMutation.mutate(false)
                     }}
                     disabled={applyMutation.isPending || !diffTypeId}
-                    className="px-3 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-xs rounded-lg"
+                    className="btn-primary"
                     data-testid="field-template-apply"
                   >
                     {t('fieldTemplates.apply')}
@@ -399,12 +400,9 @@ export default function FieldTemplates() {
 
       {/* New template modal */}
       {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setShowModal(false)}
-        >
+        <NativeDialog className="items-center justify-center p-4" label={t('fieldTemplates.newTemplateTitle')} onClose={() => setShowModal(false)}>
           <div
-            className="bg-surface border border-strong rounded-xl p-6 w-full max-w-lg shadow-xl"
+            className="dialog-panel p-6 w-full max-w-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-primary mb-4">{t('fieldTemplates.newTemplateTitle')}</h3>
@@ -444,14 +442,14 @@ export default function FieldTemplates() {
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-primary"
                 >
                   {t('fieldTemplates.create')}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

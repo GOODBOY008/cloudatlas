@@ -1,3 +1,5 @@
+import { NativeDialog } from '../components/shared/NativeDialog'
+import { useMoneyFormatter, useOrgCurrency } from '../lib/format'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -30,6 +32,7 @@ function AlertCard({
   onDelete: () => void
   isDeleting: boolean
 }) {
+  const fmt = useMoneyFormatter()
   const { t } = useTranslation()
   return (
     <div className="flex items-center justify-between py-3 border-b border-edge last:border-0">
@@ -40,7 +43,7 @@ function AlertCard({
             {t('alerts.alertAt', {
               value:
                 alert.alert_type === 'ABSOLUTE'
-                  ? `$${alert.threshold.toLocaleString()}`
+                  ? fmt(alert.threshold)
                   : `${alert.threshold}%`,
             })}
           </p>
@@ -75,6 +78,8 @@ function AlertCard({
 }
 
 export default function Alerts() {
+  const currency = useOrgCurrency()
+  const fmt = useMoneyFormatter()
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { currentOrg } = useOrgStore()
@@ -155,19 +160,19 @@ export default function Alerts() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('alerts.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('alerts.title')}</h1>
         <div className="flex items-center gap-3">
           <button
             onClick={() => evaluateMutation.mutate()}
             disabled={evaluateMutation.isPending}
-            className="px-4 py-2 bg-subtle hover:bg-emphasis disabled:opacity-60 text-primary text-sm font-medium rounded-lg border border-strong transition-colors"
+            className="btn-secondary"
           >
             {evaluateMutation.isPending ? t('alerts.evaluating') : t('alerts.evaluateNow')}
           </button>
           <button
             onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+            className="btn-primary"
           >
             {t('alerts.newAlert')}
           </button>
@@ -200,8 +205,8 @@ export default function Alerts() {
                       <p className="text-sm text-primary">{event.message}</p>
                       <p className="text-xs text-muted mt-0.5">
                         {t('alerts.thresholdActual', {
-                          threshold: event.threshold.toFixed(2),
-                          actual: event.actual.toFixed(2),
+                          threshold: event.alert_type === 'PERCENTAGE' ? event.threshold.toFixed(2) + '%' : fmt(event.threshold),
+                          actual: event.alert_type === 'PERCENTAGE' ? event.actual.toFixed(2) + '%' : fmt(event.actual),
                         })}
                       </p>
                     </div>
@@ -245,7 +250,7 @@ export default function Alerts() {
                   </h3>
                   {pool?.monthly_budget && (
                     <span className="text-xs text-muted">
-                      {t('alerts.budgetPerMonth', { amount: pool.monthly_budget.toLocaleString() })}
+                      {t('alerts.budgetPerMonth', { amount: fmt(pool.monthly_budget) })}
                     </span>
                   )}
                 </div>
@@ -293,8 +298,8 @@ export default function Alerts() {
 
       {/* Create Alert Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-surface rounded-xl p-6 w-full max-w-lg border border-edge shadow-xl">
+        <NativeDialog className="items-center justify-center p-4" label={t('alerts.newBudgetAlert')} onClose={closeModal}>
+          <div className="dialog-panel p-6 w-full max-w-lg">
             <h3 className="text-base font-semibold text-primary mb-4">{t('alerts.newBudgetAlert')}</h3>
             {formError && (
               <div className="mb-3 p-2 rounded bg-danger/10 border border-danger/25 text-danger text-sm">
@@ -316,7 +321,7 @@ export default function Alerts() {
                   {pools.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
-                      {p.monthly_budget ? t('alerts.optionBudget', { amount: p.monthly_budget.toLocaleString() }) : ''}
+                      {p.monthly_budget ? t('alerts.optionBudget', { amount: fmt(p.monthly_budget) }) : ''}
                     </option>
                   ))}
                 </select>
@@ -344,7 +349,7 @@ export default function Alerts() {
               <div>
                 <label className="block text-xs text-secondary mb-1">
                   {t('alerts.threshold')}{' '}
-                  {form.alert_type === 'PERCENTAGE' ? t('alerts.thresholdPct') : t('alerts.thresholdAmount')}
+                  {form.alert_type === 'PERCENTAGE' ? t('alerts.thresholdPct') : t('alerts.thresholdAmount', { currency })}
                 </label>
                 <input
                   required
@@ -381,21 +386,21 @@ export default function Alerts() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary border border-strong rounded-lg transition-colors"
+                  className="btn-secondary"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm font-medium rounded-lg transition-colors"
+                  className="btn-primary"
                 >
                   {createMutation.isPending ? t('alerts.creating') : t('alerts.createAlert')}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </NativeDialog>
       )}
     </div>
   )

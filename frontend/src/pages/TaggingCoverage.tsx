@@ -1,30 +1,11 @@
+import { MetricCard } from '../components/shared/MetricCard'
+import { useMoneyFormatter } from '../lib/format'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import api from '../lib/api'
 import { useOrgStore } from '../store/orgStore'
 import type { TagCoverageResponse } from '../types'
-
-function StatCard({
-  label,
-  value,
-  detail,
-  accent,
-}: {
-  label: string
-  value: string
-  detail: string
-  accent: string
-}) {
-  return (
-    <div className="bg-surface border border-edge rounded-xl p-5 relative overflow-hidden">
-      <div className={`absolute inset-x-0 top-0 h-1 ${accent}`} />
-      <p className="text-xs uppercase tracking-wider text-muted">{label}</p>
-      <p className="mt-2 text-2xl font-bold text-primary">{value}</p>
-      <p className="mt-1 text-sm text-secondary">{detail}</p>
-    </div>
-  )
-}
 
 function CoverageRow({
   policyName,
@@ -44,6 +25,7 @@ function CoverageRow({
   uncoveredCost: number
 }) {
   const { t } = useTranslation()
+  const fmt = useMoneyFormatter()
   return (
     <div className="py-4 border-b border-edge last:border-0">
       <div className="flex items-start justify-between gap-4 mb-2">
@@ -67,12 +49,12 @@ function CoverageRow({
       </div>
       <div className="h-2 rounded-full bg-subtle overflow-hidden">
         <div
-          className={`h-full rounded-full ${coverage >= 90 ? 'bg-gradient-to-r from-success to-info' : coverage >= 70 ? 'bg-gradient-to-r from-amber-500 to-warning' : 'bg-gradient-to-r from-rose-500 to-danger'}`}
+          className={`h-full rounded-full ${coverage >= 90 ? 'bg-success' : coverage >= 70 ? 'bg-warning' : 'bg-danger'}`}
           style={{ width: `${Math.max(0, Math.min(100, coverage))}%` }}
         />
       </div>
       <div className="mt-2 flex items-center justify-between text-xs text-muted">
-        <span>{t('taggingCoverage.uncoveredCostLabel', { amount: uncoveredCost.toFixed(2) })}</span>
+        <span>{t('taggingCoverage.uncoveredCostLabel', { amount: fmt(uncoveredCost) })}</span>
         <span>{coverage >= 90 ? t('taggingCoverage.healthy') : coverage >= 70 ? t('taggingCoverage.needsAttention') : t('taggingCoverage.criticalGap')}</span>
       </div>
     </div>
@@ -81,6 +63,7 @@ function CoverageRow({
 
 export default function TaggingCoverage() {
   const { t } = useTranslation()
+  const fmt = useMoneyFormatter()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id
 
@@ -109,9 +92,9 @@ export default function TaggingCoverage() {
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4 mb-6">
+      <div className="page-header">
         <div>
-          <h2 className="page-title">{t('taggingCoverage.title')}</h2>
+          <h1 className="page-title">{t('taggingCoverage.title')}</h1>
           <p className="text-sm text-muted mt-1">
             {t('taggingCoverage.subtitle')}
           </p>
@@ -119,7 +102,7 @@ export default function TaggingCoverage() {
         <button
           onClick={() => refetch()}
           disabled={isFetching}
-          className="px-4 py-2 bg-subtle hover:bg-emphasis disabled:opacity-60 text-primary text-sm font-medium rounded-lg border border-strong transition-colors"
+          className="btn-secondary"
         >
           {isFetching ? t('taggingCoverage.refreshing') : t('taggingCoverage.refresh')}
         </button>
@@ -131,30 +114,26 @@ export default function TaggingCoverage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <MetricCard
           label={t('taggingCoverage.activePolicies')}
           value={report.meta.active_policies.toString()}
           detail={t('taggingCoverage.activePoliciesDetail')}
-          accent="bg-gradient-to-r from-accent to-violet-500"
         />
-        <StatCard
+        <MetricCard
           label={t('taggingCoverage.totalResources')}
           value={report.meta.total_resources.toString()}
           detail={t('taggingCoverage.totalResourcesDetail')}
-          accent="bg-gradient-to-r from-info to-info"
         />
-        <StatCard
+        <MetricCard
           label={t('taggingCoverage.averageCoverage')}
           value={`${averageCoverage.toFixed(1)}%`}
           detail={t('taggingCoverage.averageCoverageDetail')}
-          accent="bg-gradient-to-r from-success to-accent"
         />
-        <StatCard
+        <MetricCard
           label={t('taggingCoverage.uncoveredCost')}
-          value={`$${uncoveredCost.toFixed(2)}`}
+          value={fmt(uncoveredCost)}
           detail={t('taggingCoverage.uncoveredCostDetail')}
-          accent="bg-gradient-to-r from-amber-500 to-warning"
         />
       </div>
 

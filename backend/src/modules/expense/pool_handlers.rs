@@ -145,10 +145,14 @@ pub async fn get_pool(
     };
 
     let cost_row = sqlx::query(
-        "SELECT COALESCE(SUM(cost), 0)::float8 AS cost FROM expenses WHERE pool_id = $1 AND date >= $2",
+        r#"SELECT COALESCE(SUM(cost), 0)::float8 AS cost
+           FROM expenses
+           WHERE pool_id = $1 AND date >= $2 AND organization_id = $3
+             AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $3), 'USD')"#,
     )
     .bind(pool_id)
     .bind(month_start)
+    .bind(org_id)
     .fetch_one(&state.db)
     .await?;
 
@@ -265,6 +269,8 @@ pub async fn get_pool_tree(
                   COALESCE((
                       SELECT SUM(e.cost)::float8 FROM expenses e
                       WHERE e.pool_id = pt.id
+                        AND e.organization_id = $1
+                        AND e.currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
                         AND e.date >= DATE_TRUNC('month', CURRENT_DATE)::date
                   ), 0) AS current_month_spend
            FROM pool_tree pt
@@ -349,6 +355,7 @@ pub async fn pool_expense_trend(
         SELECT date::text AS date, SUM(cost)::float8 AS cost
         FROM expenses
         WHERE organization_id = $1 AND pool_id = $2 AND date >= $3 AND date <= $4
+          AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
         GROUP BY date ORDER BY date ASC
         "#,
     )
@@ -412,7 +419,9 @@ pub async fn pool_expense_trend(
         NaiveDate::from_ymd_opt(today.year(), today.month(), 1).unwrap_or(today)
     };
     let month_spend: f64 = sqlx::query_scalar(
-        "SELECT COALESCE(SUM(cost), 0)::float8 FROM expenses WHERE organization_id = $1 AND pool_id = $2 AND date >= $3",
+        r#"SELECT COALESCE(SUM(cost), 0)::float8 FROM expenses
+           WHERE organization_id = $1 AND pool_id = $2 AND date >= $3
+             AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')"#,
     )
     .bind(org_id)
     .bind(pool_id)
@@ -503,6 +512,7 @@ pub async fn pool_top_resources(
             COUNT(DISTINCT date)       AS active_days
         FROM expenses
         WHERE organization_id = $1 AND pool_id = $2 AND date >= $3 AND date <= $4
+          AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
         GROUP BY cloud_resource_id, resource_type
         ORDER BY total_cost DESC
         LIMIT 20
@@ -536,6 +546,7 @@ pub async fn pool_top_resources(
         SELECT date::text AS date, SUM(cost)::float8 AS cost
         FROM expenses
         WHERE organization_id = $1 AND pool_id = $2 AND date >= $3 AND date <= $4
+          AND currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
         GROUP BY date ORDER BY date ASC
         "#,
     )
@@ -698,6 +709,7 @@ pub async fn budget_matrix(
         LEFT JOIN expenses e
             ON e.pool_id = p.id
            AND e.organization_id = $1
+           AND e.currency = COALESCE((SELECT settings->>'currency' FROM organizations WHERE id = $1), 'USD')
            AND e.date >= $2
            AND e.date <= $3
         WHERE p.organization_id = $1

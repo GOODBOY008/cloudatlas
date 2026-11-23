@@ -202,11 +202,11 @@ export default function CloudAccounts() {
   return (
     <>
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('cloudAccounts.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('cloudAccounts.title')}</h1>
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+          className="btn-primary"
         >
           {showForm ? t('common.cancel') : t('cloudAccounts.addAccount')}
         </button>
@@ -297,7 +297,7 @@ export default function CloudAccounts() {
               <button
                 type="submit"
                 disabled={addMutation.isPending}
-                className="px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm font-medium rounded-lg transition-colors"
+                className="btn-primary"
               >
                 {addMutation.isPending ? t('cloudAccounts.adding') : t('cloudAccounts.addAccount')}
               </button>
@@ -313,7 +313,7 @@ export default function CloudAccounts() {
       )}
 
       <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-        <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
           <thead>
             <tr className="border-b border-edge text-secondary text-left">
               <th className="px-4 py-3 font-medium">{t('common.name')}</th>
@@ -385,7 +385,15 @@ export default function CloudAccounts() {
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => { setEditAcct(acct); setEditName(acct.name); setEditCurrency(acct.currency ?? 'USD'); setEditCreds({}); setEditConfig(prefillConfig(acct.config ?? {})); setEditClear(false) }}
+                        onClick={(event) => {
+                          event.currentTarget.focus()
+                          setEditAcct(acct)
+                          setEditName(acct.name)
+                          setEditCurrency(acct.currency ?? (acct.provider === 'alibaba' ? 'CNY' : 'USD'))
+                          setEditCreds({})
+                          setEditConfig(prefillConfig(acct.config ?? {}))
+                          setEditClear(false)
+                        }}
                         className="px-2.5 py-1 text-xs rounded bg-emphasis hover:bg-emphasis text-primary"
                       >
                         {t('common.edit')}
@@ -541,7 +549,7 @@ export default function CloudAccounts() {
             <button
               type="submit"
               disabled={updateMutation.isPending}
-              className="px-4 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm rounded-lg transition-colors"
+              className="btn-primary"
             >
               {updateMutation.isPending ? t('cloudAccounts.saving') : t('common.save')}
             </button>
@@ -581,7 +589,7 @@ export default function CloudAccounts() {
         <div className="flex justify-end">
           <button
             onClick={() => setAlertMsg(null)}
-            className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg transition-colors"
+            className="btn-primary"
           >
             {t('cloudAccounts.ok')}
           </button>

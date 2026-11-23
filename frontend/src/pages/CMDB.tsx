@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { NativeDialog } from '../components/shared/NativeDialog'
+import { useId, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api, { paginatedGet } from '../lib/api'
 import { usePagination } from '../lib/hooks/usePagination'
@@ -6,6 +7,7 @@ import PaginationBar from '../components/PaginationBar'
 import { useTranslation } from 'react-i18next'
 import { useOrgStore } from '../store/orgStore'
 import { ProviderBadge } from '../components/shared/ProviderBadge'
+import { CiPicker } from '../components/shared/CiPicker'
 import { CLOUD_PROVIDERS, providerLabel } from '../lib/providers'
 import type { CI } from '../types'
 
@@ -121,6 +123,7 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
   const queryClient = useQueryClient()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id
+  const assocTypeControl = useId()
   const [showAddAssoc, setShowAddAssoc] = useState(false)
   const [assocKindId, setAssocKindId] = useState('')
   const [assocDstId, setAssocDstId] = useState('')
@@ -171,15 +174,7 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
     queryFn: async () => api.get(`/orgs/${orgId}/ci-object-associations`).then(r => r.data),
   })
   const objAssocs = (objAssocData?.data ?? []).filter(a => a.src_ci_type_id === ci.ci_type_id)
-
-  // Available destination CIs
-  const { data: allCIs } = useQuery<{ data: CI[] }>({
-    queryKey: ['cmdb', orgId],
-    enabled: !!orgId && showAddAssoc,
-    // reuses cached data if already fetched
-    queryFn: async () => api.get(`/orgs/${orgId}/cis`).then(r => r.data),
-  })
-  const dstCIs = (allCIs?.data ?? []).filter(c => c.id !== ci.id)
+  const selectedMapping = objAssocs.find(a => a.id === assocKindId)
 
   const linkMutation = useMutation({
     mutationFn: () =>
@@ -309,15 +304,11 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
   }
 
   return (
-    <>
+    <NativeDialog className="justify-end" label={ci.display_name || ci.name} onClose={onClose}>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/30 z-40"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+
       {/* Drawer */}
-      <div className="fixed right-0 top-0 h-full w-[480px] bg-surface border-l border-edge z-50 overflow-y-auto">
+      <div className="drawer-panel max-w-[480px]">
         {/* Header */}
         <div className="flex items-start justify-between p-5 border-b border-edge sticky top-0 bg-surface">
           <div>
@@ -388,13 +379,13 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                   <button
                     onClick={() => setParentMutation.mutate(parentDraft)}
                     disabled={setParentMutation.isPending}
-                    className="flex-1 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent text-xs rounded transition-colors"
+                    className="btn-primary flex-1"
                   >
                     {t('common.save')}
                   </button>
                   <button
                     onClick={() => setEditingParent(false)}
-                    className="px-3 py-1.5 bg-emphasis hover:bg-emphasis text-primary text-xs rounded transition-colors"
+                    className="btn-secondary"
                   >
                     {t('common.cancel')}
                   </button>
@@ -416,7 +407,7 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
             <section>
               <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">{t('cmdb.metadata')}</h3>
               <div className="bg-subtle/50 rounded-lg overflow-hidden">
-                <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                   <tbody>
                     {metaEntries.map(([k, v]) => (
                       <tr key={k} className="border-b border-strong/50 last:border-0">
@@ -498,14 +489,14 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                     onClick={handleSaveTags}
                     disabled={patchTags.isPending}
                     data-testid="ci-tags-save"
-                    className="flex-1 py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent text-xs rounded transition-colors"
+                    className="btn-primary flex-1"
                   >
                     {patchTags.isPending ? t('cmdb.savingTags') : t('common.save')}
                   </button>
                   <button
                     onClick={cancelTagEdit}
                     disabled={patchTags.isPending}
-                    className="px-3 py-1.5 bg-emphasis hover:bg-emphasis disabled:opacity-40 text-primary text-xs rounded transition-colors"
+                    className="btn-secondary"
                   >
                     {t('common.cancel')}
                   </button>
@@ -540,10 +531,24 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
 
             {/* Add association form */}
             {showAddAssoc && (
-              <div className="bg-subtle/70 rounded-lg p-3 mb-3 space-y-2">
+              <form
+                className="bg-subtle/70 rounded-lg p-3 mb-3 space-y-2"
+                onSubmit={event => {
+                  event.preventDefault()
+                  if (selectedMapping && assocDstId && !linkMutation.isPending) linkMutation.mutate()
+                }}
+              >
+                <label htmlFor={assocTypeControl} className="block text-xs text-secondary">{t('cmdb.associations')}</label>
                 <select
+                  id={assocTypeControl}
+                  name="associationType"
+                  required
                   value={assocKindId}
-                  onChange={e => setAssocKindId(e.target.value)}
+                  onChange={e => {
+                    setAssocKindId(e.target.value)
+                    setAssocDstId('')
+                    setAssocError('')
+                  }}
                   className="w-full bg-emphasis text-primary text-xs rounded px-2 py-1.5 border border-strong focus:outline-none focus:border-accent"
                 >
                   <option value="">{t('cmdb.selectAssocType')}</option>
@@ -553,32 +558,33 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                     </option>
                   ))}
                 </select>
-                <select
-                  value={assocDstId}
-                  onChange={e => setAssocDstId(e.target.value)}
-                  className="w-full bg-emphasis text-primary text-xs rounded px-2 py-1.5 border border-strong focus:outline-none focus:border-accent"
-                >
-                  <option value="">{t('cmdb.selectTargetCi')}</option>
-                  {dstCIs.map(c => (
-                    <option key={c.id} value={c.id}>{c.display_name || c.name}</option>
-                  ))}
-                </select>
-                {assocError && <p className="text-xs text-danger">{assocError}</p>}
+                {orgId && selectedMapping && (
+                  <CiPicker
+                    key={selectedMapping.id}
+                    orgId={orgId}
+                    ciTypeId={selectedMapping.dst_ci_type_id}
+                    excludeIds={[ci.id]}
+                    value={assocDstId}
+                    onChange={setAssocDstId}
+                    placeholder={t('cmdb.selectTargetCi')}
+                  />
+                )}
+                {assocError && <p role="alert" className="text-xs text-danger">{assocError}</p>}
                 <button
-                  onClick={() => linkMutation.mutate()}
-                  disabled={!assocKindId || !assocDstId || linkMutation.isPending}
-                  className="w-full py-1.5 bg-accent hover:bg-accent-hover disabled:opacity-40 text-on-accent text-xs rounded transition-colors"
+                  type="submit"
+                  disabled={linkMutation.isPending}
+                  className="btn-primary w-full"
                 >
                   {linkMutation.isPending ? t('cmdb.linking') : t('cmdb.link')}
                 </button>
-              </div>
+              </form>
             )}
 
             {associations.length === 0 ? (
               <p className="text-muted text-sm">{t('cmdb.noAssociations')}</p>
             ) : (
               <div className="bg-subtle/50 rounded-lg overflow-hidden">
-                <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
                   <thead>
                     <tr className="text-muted text-xs border-b border-strong">
                       <th className="px-3 py-2 text-left">{t('cmdb.colCi')}</th>
@@ -654,7 +660,7 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
           </button>
         </div>
       </div>
-    </>
+    </NativeDialog>
   )
 }
 
@@ -854,8 +860,8 @@ export default function CMDB() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('cmdb.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('cmdb.title')}</h1>
         <div className="flex items-center gap-3">
           <button
             onClick={() => discoveryMutation.mutate()}
@@ -874,7 +880,7 @@ export default function CMDB() {
           </button>
           <button
             onClick={() => setShowForm((v) => !v)}
-            className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg transition-colors"
+            className="btn-primary"
           >
             {showForm ? t('common.cancel') : t('cmdb.newCi')}
           </button>
@@ -966,7 +972,7 @@ export default function CMDB() {
               <button
                 type="submit"
                 disabled={createMutation.isPending}
-                className="w-full px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-60 text-on-accent text-sm font-medium rounded-lg transition-colors"
+                className="btn-primary w-full"
               >
                 {createMutation.isPending ? t('cmdb.creating') : t('cmdb.createCi')}
               </button>
@@ -1102,14 +1108,14 @@ export default function CMDB() {
       )}
 
       <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-        <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
           <thead>
             <tr className="border-b border-edge text-secondary text-left">
               <th className="px-2 py-3 w-8">
                 {selectedIds.size > 0 && (
                   <button
                     onClick={() => setShowBulkModal(true)}
-                    className="px-2 py-1 bg-accent hover:bg-accent-hover text-on-accent text-xs rounded transition-colors"
+                    className="btn-primary"
                   >
                     {t('cmdb.editTags', { count: selectedIds.size })}
                   </button>
@@ -1220,8 +1226,8 @@ export default function CMDB() {
 
       {/* CI Detail Drawer */}
       {showBulkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowBulkModal(false)}>
-          <div className="bg-surface border border-strong rounded-xl p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <NativeDialog className="items-center justify-center p-4" label={t('cmdb.editTagsTitle', { count: selectedIds.size })} onClose={() => setShowBulkModal(false)}>
+          <div className="dialog-panel p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-primary mb-2">{t('cmdb.editTagsTitle', { count: selectedIds.size })}</h3>
             <textarea
               value={bulkTagsText}
@@ -1233,10 +1239,10 @@ export default function CMDB() {
             {bulkMessage && <p className="text-xs text-warning mt-2">{bulkMessage}</p>}
             <div className="flex justify-end gap-3 mt-4">
               <button onClick={() => setShowBulkModal(false)} className="px-4 py-2 text-sm text-secondary hover:text-primary">{t('common.cancel')}</button>
-              <button onClick={applyBulkTags} className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg">{t('cmdb.applyToAll')}</button>
+              <button onClick={applyBulkTags} className="btn-primary">{t('cmdb.applyToAll')}</button>
             </div>
           </div>
-        </div>
+        </NativeDialog>
       )}
 
       {selectedCi && (

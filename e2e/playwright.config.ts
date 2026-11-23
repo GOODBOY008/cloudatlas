@@ -15,6 +15,7 @@ const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:5173';
 
 export default defineConfig({
   testDir: './tests',
+  testIgnore: /mobile-webkit\.spec\.ts/,
   /* Maximum time one test can run */
   timeout: 45_000,
   /* Global timeout for the whole test suite */
@@ -103,6 +104,12 @@ export default defineConfig({
     /* Mobile smoke: only on CI */
     ...(process.env.CI
       ? [
+          {
+            name: 'mobile-webkit',
+            use: { ...devices['iPhone 13'] },
+            testMatch: /mobile-webkit\.spec\.ts/,
+            testIgnore: [],
+          },
           {
             name: 'mobile-chrome',
             use: {

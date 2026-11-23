@@ -11,6 +11,7 @@ export class PoolsPage extends BasePage {
   readonly descriptionInput: Locator;
   readonly budgetInput: Locator;
   readonly createPoolBtn: Locator;
+  readonly deleteDialog: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -24,6 +25,7 @@ export class PoolsPage extends BasePage {
     this.descriptionInput = page.getByPlaceholder(/cloud spend|description/i);
     this.budgetInput = page.getByRole('spinbutton');
     this.createPoolBtn = page.getByRole('button', { name: /create pool/i });
+    this.deleteDialog = page.getByRole('dialog', { name: 'Delete pool?', exact: true });
   }
 
   async navigate(): Promise<void> {
@@ -43,18 +45,9 @@ export class PoolsPage extends BasePage {
     await this.formHeading.waitFor({ state: 'hidden', timeout: 10_000 });
   }
 
-  async deletePool(name: string): Promise<void> {
-    const row = this.page.locator(`tr, li, [data-testid]`).filter({ hasText: name }).first();
-    // Accept any native confirm/prompt dialogs that appear
-    this.page.on('dialog', dialog => dialog.accept());
-    await row.getByRole('button', { name: /delete/i }).click();
-    // The pool delete flow uses a React modal whose confirm button is
-    // labelled "Delete" (common.delete) — scope to the overlay so the row's
-    // own delete button can't match.
-    const overlay = this.page.locator('.fixed.inset-0, [role="dialog"]').last();
-    const confirmBtn = overlay.getByRole('button', { name: /^(confirm|yes|ok|delete)$/i }).first();
-    if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await confirmBtn.click();
-    }
+  async openDeleteDialog(name: string): Promise<void> {
+    const row = this.poolList.getByRole('listitem').filter({ has: this.page.getByText(name, { exact: true }) });
+    await row.getByRole('button', { name: 'Delete', exact: true }).click();
+    await this.deleteDialog.waitFor({ state: 'visible' });
   }
 }

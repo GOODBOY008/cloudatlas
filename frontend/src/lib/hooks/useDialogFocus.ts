@@ -34,7 +34,7 @@ export function useDialogFocus<T extends HTMLElement>(
         panel.querySelectorAll<HTMLElement>(
           'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
         ),
-      ).filter((element) => element.getClientRects().length > 0)
+      ).filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0)
     if (panel.contains(document.activeElement)) {
       initialDialogFocusRef.current = document.activeElement as HTMLElement
     } else {

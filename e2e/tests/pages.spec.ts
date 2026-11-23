@@ -1,16 +1,11 @@
 /**
  * Suite 3: Page Rendering — All 34 routes (PAGE-01 → PAGE-34)
  * Verifies each route loads without console errors.
- * Known broken routes are tagged and expected to fail gracefully.
  *
- * Note: all 34 routes remain reachable via direct URL. The 2026-06-01 sidebar
- * redesign only removed `/cmdb-audit` from the sidebar nav (PAGE-34) — the
- * route is still served. See navigation.spec.ts NAV-12 for the sidebar check.
+ * All routes remain reachable via direct URL. See navigation.spec.ts NAV-12
+ * for the CMDB audit sidebar entry.
  */
 import { test, expect } from '../fixtures/base.fixture';
-
-/** Routes that are known to have backend errors and are excluded from strict checks */
-const KNOWN_UNSTABLE = new Set(['/compliance', '/cmdb-stats']);
 
 const ROUTES: Array<{ id: string; path: string }> = [
   { id: 'PAGE-01', path: '/dashboard' },
@@ -52,16 +47,6 @@ const ROUTES: Array<{ id: string; path: string }> = [
 test.describe('Page Rendering — 34 Routes @regression', () => {
   for (const { id, path } of ROUTES) {
     test(`${id} — ${path} renders without crashing`, async ({ page }) => {
-      if (KNOWN_UNSTABLE.has(path)) {
-        // Still navigate — just don't fail on backend errors
-        await page.goto(path);
-        await page.waitForLoadState('domcontentloaded');
-        // Page should not be blank
-        const body = await page.locator('body').textContent();
-        expect(body?.length ?? 0).toBeGreaterThan(10);
-        return;
-      }
-
       const errors: string[] = [];
       page.on('console', (msg) => {
         if (msg.type() === 'error') {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 import Layout from '../components/Layout'
@@ -55,14 +55,24 @@ afterEach(() => {
 })
 
 describe('workspace selection in Layout', () => {
+  it('uses the workspace currency from the organization list before rendering costs', async () => {
+    const workspace = { ...organizations[0], settings: { currency: 'CNY' } }
+    vi.mocked(api.get).mockResolvedValue({ data: { data: [workspace] } })
+    useOrgStore.getState().setCurrentOrg(workspace)
+    renderLayout()
+
+    await waitFor(() => expect(getOrgCurrency()).toBe('CNY'))
+    expect(api.get).not.toHaveBeenCalledWith('/organizations/org-001')
+  })
+
   it('preserves the selected workspace and its currency across a layout remount', async () => {
     useOrgStore.getState().setCurrentOrg({ ...organizations[1], name: 'Old Beta name' })
-    renderLayout()
+    const view = renderLayout()
     await waitFor(() => expect(getOrgCurrency()).toBe('EUR'))
     expect(screen.getByRole('button', { name: 'Switch workspace' })).toHaveTextContent('Beta Inc')
 
-    await userEvent.click(screen.getByRole('button', { name: 'Logout' }))
-    await userEvent.click(screen.getByRole('link', { name: 'Sign back in' }))
+    view.unmount()
+    renderLayout()
     await waitFor(() => expect(api.get).toHaveBeenCalledTimes(4))
     expect(screen.getByRole('button', { name: 'Switch workspace' })).toHaveTextContent('Beta Inc')
     expect(getOrgCurrency()).toBe('EUR')
@@ -92,4 +102,43 @@ describe('workspace selection in Layout', () => {
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/organizations/org-001'))
     expect(screen.getByRole('button', { name: 'Switch workspace' })).toHaveTextContent('Acme Corp')
   })
+  it('ignores a late currency response after switching workspaces', async () => {
+    let finishFirst!: (value: unknown) => void
+    const first = new Promise((resolve) => { finishFirst = resolve })
+    vi.mocked(api.get).mockImplementation((url) => {
+      if (url === '/organizations/org-001') return first as ReturnType<typeof api.get>
+      return Promise.resolve({ data: { data: url === '/organizations' ? organizations : { settings: { currency: 'EUR' } } } })
+    })
+    renderLayout()
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/organizations/org-001'))
+    await userEvent.click(screen.getByRole('button', { name: 'Switch workspace' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Beta Inc' }))
+    await waitFor(() => expect(getOrgCurrency()).toBe('EUR'))
+    await act(async () => finishFirst({ data: { data: { settings: { currency: 'CNY' } } } }))
+    expect(getOrgCurrency()).toBe('EUR')
+  })
+
+  it('does not restore organizations from a request that finishes after leaving the shell', async () => {
+    let finish!: (value: unknown) => void
+    vi.mocked(api.get).mockReturnValue(new Promise((resolve) => { finish = resolve }) as ReturnType<typeof api.get>)
+    const view = renderLayout()
+    view.unmount()
+    await act(async () => finish({ data: { data: organizations } }))
+    expect(useOrgStore.getState().currentOrg).toBeNull()
+  })
+
+  it('keeps navigation usable when a page throws and recovers on navigation', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    function BrokenPage(): never { throw new Error('Page failed') }
+    render(<MemoryRouter initialEntries={['/broken']}><Routes><Route element={<Layout />}>
+      <Route path="/broken" element={<BrokenPage />} />
+      <Route path="/dashboard" element={<h1>Recovered page</h1>} />
+    </Route></Routes></MemoryRouter>)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong')
+    expect(screen.getByRole('navigation', { name: 'Primary navigation' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('link', { name: 'Dashboard' }))
+    expect(screen.getByRole('heading', { name: 'Recovered page' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
 })

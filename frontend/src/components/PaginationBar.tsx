@@ -45,7 +45,7 @@ export default function PaginationBar({
 
   if (total === 0) {
     return (
-      <div className="px-4 py-3 border-t border-strong text-sm text-secondary">
+      <div className="px-4 py-3 border-t border-edge text-sm text-secondary">
         {t('pagination.empty')}
       </div>
     )
@@ -55,7 +55,7 @@ export default function PaginationBar({
   const end = Math.min(page * perPage, total)
 
   return (
-    <div className="px-4 py-3 border-t border-strong flex flex-wrap items-center justify-between gap-2 text-sm text-secondary">
+    <div className="px-4 py-3 border-t border-edge flex flex-wrap items-center justify-between gap-3 text-xs text-secondary">
       <span>
         {t('pagination.showing', { start: start.toLocaleString(), end: end.toLocaleString(), total: total.toLocaleString() })}
       </span>
@@ -77,7 +77,7 @@ export default function PaginationBar({
           data-testid="prev-page"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="px-3 py-1 rounded bg-subtle disabled:opacity-40 hover:bg-emphasis transition-colors"
+          className="btn-secondary !min-h-8 !py-1 !text-xs"
         >
           {t('pagination.prev')}
         </button>
@@ -89,11 +89,12 @@ export default function PaginationBar({
               key={p}
               data-testid={`page-${p}`}
               aria-label={t('pagination.pageAria', { page: p })}
+              aria-current={p === page ? 'page' : undefined}
               onClick={() => onPageChange(p)}
               className={
                 p === page
-                  ? 'px-2.5 py-1 rounded bg-accent text-on-accent font-medium'
-                  : 'px-2.5 py-1 rounded bg-subtle hover:bg-emphasis transition-colors'
+                  ? 'min-h-8 min-w-8 px-2 rounded border border-accent bg-accent-soft text-accent font-medium'
+                  : 'min-h-8 min-w-8 px-2 rounded border border-transparent hover:bg-subtle'
               }
             >
               {p}
@@ -104,7 +105,7 @@ export default function PaginationBar({
           data-testid="next-page"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="px-3 py-1 rounded bg-subtle disabled:opacity-40 hover:bg-emphasis transition-colors"
+          className="btn-secondary !min-h-8 !py-1 !text-xs"
         >
           {t('pagination.next')}
         </button>

@@ -37,8 +37,7 @@ interface CIType {
 
 interface ExecuteResult {
   applied: number
-  skipped: number
-  errors: string[]
+  skipped: { ci_id: string; reason: string }[]
 }
 
 const OPERATORS = ['eq', 'ne', 'contains', 'not_contains', 'gt', 'lt', 'gte', 'lte', 'starts_with', 'in']
@@ -191,7 +190,7 @@ export default function CIApplyRules() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="page-header">
         <div>
           <h1 className="page-title">{t('ciApplyRules.title')}</h1>
           <p className="text-sm text-secondary mt-0.5">
@@ -200,7 +199,7 @@ export default function CIApplyRules() {
         </div>
         <button
           onClick={() => { resetForm(); setShowForm(true) }}
-          className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm font-medium rounded-lg"
+          className="btn-primary"
         >
           {t('ciApplyRules.newRule')}
         </button>
@@ -324,11 +323,11 @@ export default function CIApplyRules() {
             <button
               disabled={busy}
               onClick={() => editId ? updateMutation.mutate() : createMutation.mutate()}
-              className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-on-accent text-sm font-medium rounded-lg"
+              className="btn-primary"
             >
               {busy ? t('ciApplyRules.saving') : editId ? t('ciApplyRules.updateRule') : t('ciApplyRules.createRule')}
             </button>
-            <button onClick={resetForm} className="px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg">
+            <button onClick={resetForm} className="btn-secondary">
               {t('common.cancel')}
             </button>
           </div>
@@ -344,13 +343,12 @@ export default function CIApplyRules() {
           </div>
           <div className="flex gap-6">
             <span className="text-sm text-secondary">{t('ciApplyRules.appliedLabel')} <span className="text-success font-bold">{execResult.result.applied}</span></span>
-            <span className="text-sm text-secondary">{t('ciApplyRules.skippedLabel')} <span className="text-warning font-bold">{execResult.result.skipped}</span></span>
-            <span className="text-sm text-secondary">{t('ciApplyRules.errorsLabel')} <span className="text-danger font-bold">{execResult.result.errors.length}</span></span>
+            <span className="text-sm text-secondary">{t('ciApplyRules.skippedLabel')} <span className="text-warning font-bold">{execResult.result.skipped.length}</span></span>
           </div>
-          {execResult.result.errors.length > 0 && (
-            <div className="text-xs text-danger space-y-0.5">
-              {execResult.result.errors.map((e, i) => <p key={i}>{e}</p>)}
-            </div>
+          {execResult.result.skipped.length > 0 && (
+            <ul className="text-xs text-warning space-y-0.5">
+              {execResult.result.skipped.map(item => <li key={item.ci_id}>{item.ci_id} · {item.reason}</li>)}
+            </ul>
           )}
         </div>
       )}
@@ -365,7 +363,7 @@ export default function CIApplyRules() {
         </div>
       ) : (
         <div className="bg-surface rounded-xl border border-edge overflow-hidden">
-          <div className="table-scroll" tabIndex={0}><table className="w-full text-sm">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-muted border-b border-edge">
                 <th className="text-left px-4 py-3">{t('cmdb.ciType')}</th>

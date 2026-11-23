@@ -116,8 +116,8 @@ export default function Checklist() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="page-title">{t('checklist.title')}</h2>
+      <div className="page-header">
+        <h1 className="page-title">{t('checklist.title')}</h1>
         <RunBadge status={checklist?.run_status ?? 'idle'} />
       </div>
 
@@ -162,7 +162,7 @@ export default function Checklist() {
         <div className="px-5 py-4 border-b border-edge">
           <h3 className="text-sm font-semibold text-primary">{t('checklist.detectionModules')}</h3>
         </div>
-        <div className="table-scroll" tabIndex={0}><table className="w-full text-left">
+        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
           <thead className="border-b border-edge text-xs uppercase text-muted">
             <tr>
               <th className="px-4 py-3 font-medium">{t('checklist.colModule')}</th>

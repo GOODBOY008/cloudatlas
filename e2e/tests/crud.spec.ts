@@ -126,12 +126,9 @@ test.describe('Settings @regression', () => {
   });
 
   test('SET-07 — invite member form visible', async ({ settingsPage }) => {
-    const inviteInput = settingsPage.page.getByLabel(/email/i).first();
-    if (await inviteInput.isVisible()) {
-      await expect(inviteInput).toBeEnabled();
-    } else {
-      test.skip(true, 'Invite form not found');
-    }
+    const inviteInput = settingsPage.page.getByRole('main').getByPlaceholder('Email address');
+    await expect(inviteInput).toBeVisible();
+    await expect(inviteInput).toBeEnabled();
   });
 });
 
@@ -179,16 +176,10 @@ test.describe('CMDB CRUD @regression', () => {
   });
 
   test('CMDB-07 — clicking CI row opens drawer', async ({ cmdbPage }) => {
-    const firstRow = cmdbPage.page.locator('main table tbody tr').first();
-    if (await firstRow.isVisible()) {
-      await firstRow.click();
-      // Drawer should appear
-      const drawer = cmdbPage.page.locator('[role="dialog"], aside, [class*="drawer"]').first();
-      await drawer.waitFor({ state: 'visible', timeout: 8000 });
-      await cmdbPage.closeModal();
-    } else {
-      test.skip(true, 'No CI rows found');
-    }
+    await cmdbPage.firstCiRow.click();
+    await expect(cmdbPage.drawer).toBeVisible();
+    await cmdbPage.closeModal();
+    await expect(cmdbPage.drawer).toBeHidden();
   });
 
   test('CMDB-08 — edit CI tags via drawer @regression', async ({ cmdbPage }) => {
@@ -203,7 +194,7 @@ test.describe('CMDB CRUD @regression', () => {
 
     // The drawer re-renders the saved tag chip with key=value format.
     await expect(
-      cmdbPage.page.locator('main').getByText(`${tagKey}=${tagValue}`).first()
+      cmdbPage.drawer.getByText(`${tagKey}=${tagValue}`, { exact: true })
     ).toBeVisible({ timeout: 5_000 });
 
     await cmdbPage.closeDrawer();

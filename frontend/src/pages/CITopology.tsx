@@ -74,14 +74,14 @@ function TreeNode({
         )}
         <button onClick={() => onSelect(node.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
           <span className="text-sm text-primary truncate">{node.display_name || node.name}</span>
-          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${LIFECYCLE_COLORS[node.lifecycle_state] ?? 'bg-emphasis text-secondary'}`}>
+          <span className={`shrink-0 whitespace-nowrap px-1.5 py-0.5 rounded text-xs font-medium ${LIFECYCLE_COLORS[node.lifecycle_state] ?? 'bg-emphasis text-secondary'}`}>
             {t(`lifecycle.${node.lifecycle_state}`, { defaultValue: node.lifecycle_state })}
           </span>
-          {node.cloud_region && <span className="text-xs text-muted">{node.cloud_region}</span>}
+          {node.cloud_region && <span className="hidden truncate text-xs text-muted sm:inline">{node.cloud_region}</span>}
         </button>
         <button
           onClick={() => setShowParentPicker((v) => !v)}
-          className="text-xs text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+          className="shrink-0 whitespace-nowrap text-xs text-muted hover:text-accent focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
         >
           {t('ciTopology.setParent')}
         </button>
@@ -194,9 +194,9 @@ export default function CITopology() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="page-header">
         <div>
-          <h2 className="page-title">{t('ciTopology.title')}</h2>
+          <h1 className="page-title">{t('ciTopology.title')}</h1>
           <p className="text-sm text-secondary mt-0.5">{t('ciTopology.subtitle')}</p>
         </div>
         <select

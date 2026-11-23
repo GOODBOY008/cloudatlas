@@ -5,6 +5,7 @@ import type { TFunction } from 'i18next'
 interface Props {
   children: ReactNode
   fallback?: ReactNode
+  embedded?: boolean
   t: TFunction
 }
 
@@ -37,7 +38,7 @@ class ErrorBoundaryInner extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback
 
       return (
-        <div className="min-h-screen bg-canvas flex items-center justify-center p-8">
+        <div role="alert" className={`${this.props.embedded ? 'min-h-64' : 'min-h-screen'} bg-canvas flex items-center justify-center p-8`}>
           <div className="bg-surface border border-danger/25 rounded-2xl p-8 max-w-lg w-full space-y-4 text-center">
             <div className="text-4xl">⚠️</div>
             <h2 className="page-title">{t('errorBoundary.title')}</h2>
@@ -52,13 +53,13 @@ class ErrorBoundaryInner extends Component<Props, State> {
             <div className="flex gap-3 justify-center pt-2">
               <button
                 onClick={this.handleReset}
-                className="px-4 py-2 bg-accent hover:bg-accent-hover text-on-accent text-sm rounded-lg transition-colors"
+                className="btn-primary"
               >
                 {t('errorBoundary.retry')}
               </button>
               <button
                 onClick={() => window.location.assign('/dashboard')}
-                className="px-4 py-2 bg-emphasis hover:bg-emphasis text-primary text-sm rounded-lg transition-colors"
+                className="btn-secondary"
               >
                 {t('errorBoundary.dashboard')}
               </button>

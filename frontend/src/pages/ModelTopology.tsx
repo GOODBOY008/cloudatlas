@@ -1,3 +1,4 @@
+import { chartColors } from '../lib/chartTheme'
 import { useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../lib/api'
@@ -32,13 +33,13 @@ interface Topology {
 }
 
 const CLASSIFICATION_COLORS: Record<string, string> = {
-  hardware: '#299d87',
-  network: '#22c55e',
-  software: '#f59e0b',
-  cloud: '#06b6d4',
-  security: '#ef4444',
-  storage: '#7b87c2',
-  default: '#64748b',
+  hardware: chartColors.blue,
+  network: chartColors.green,
+  software: chartColors.orange,
+  cloud: chartColors.cyan,
+  security: chartColors.danger,
+  storage: chartColors.purple,
+  default: chartColors.muted,
 }
 
 function getColor(name?: string) {
@@ -68,10 +69,10 @@ const NODE_R = 36
 export default function ModelTopology() {
   const dark = useThemeStore((state) => state.theme === 'dark')
   const graphTheme = {
-    edge: dark ? '#52677e' : '#b5c5d1',
-    accent: dark ? '#5bd1b2' : '#107362',
-    label: dark ? '#e8eef5' : '#1b2636',
-    surface: dark ? '#161f2b' : '#ffffff',
+    edge: 'rgb(var(--border-strong))',
+    accent: 'rgb(var(--accent))',
+    label: 'rgb(var(--text-primary))',
+    surface: 'rgb(var(--surface))',
   }
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id
@@ -121,8 +122,8 @@ export default function ModelTopology() {
     : []
 
   return (
-    <div className="space-y-4">
-      <div>
+    <div className="space-y-4" data-theme={dark ? 'dark' : 'light'}>
+      <div className="page-heading">
         <h1 className="page-title">{t('modelTopology.title')}</h1>
         <p className="text-sm text-secondary mt-0.5">
           {t('modelTopology.subtitle')}
@@ -222,6 +223,16 @@ export default function ModelTopology() {
                       key={n.id}
                       transform={`translate(${n.x},${n.y})`}
                       className="cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${n.display_name} · ${t('modelTopology.ciCount', { count: n.ci_count })}`}
+                      aria-pressed={isSelected}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          setSelected(s => s?.id === n.id ? null : n)
+                        }
+                      }}
                       onMouseEnter={() => setHovered(n.id)}
                       onMouseLeave={() => setHovered(null)}
                       onClick={() => setSelected(s => s?.id === n.id ? null : n)}
@@ -271,7 +282,7 @@ export default function ModelTopology() {
               )}
               <div className="space-y-1">
                 <p className="text-xs text-muted">{t('modelTopology.ciCountLabel')}</p>
-                <p className="text-2xl font-bold text-accent">{selected.ci_count}</p>
+                <p className="text-2xl font-semibold text-accent">{selected.ci_count}</p>
               </div>
               {selectedEdges.length > 0 && (
                 <div>

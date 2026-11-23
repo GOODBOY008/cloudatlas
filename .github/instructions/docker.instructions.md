@@ -41,7 +41,7 @@ CMD ["./cloudatlas"]
 ## Frontend Dockerfile (Multi-Stage + nginx)
 
 ```dockerfile
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY frontend/package*.json ./
 RUN npm ci --frozen-lockfile

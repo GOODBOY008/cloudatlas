@@ -550,16 +550,16 @@ impl AliyunAdapter {
     /// Execute a signed RPC call and return the JSON body.
     async fn call(&self, endpoint: &str, params: BTreeMap<String, String>) -> AppResult<Value> {
         let url = self.signed_url(endpoint, params);
-        let resp =
-            self.http.get(&url).send().await.map_err(|e| {
-                AppError::Internal(anyhow!("Aliyun HTTP request: {}", e.without_url()))
-            })?;
+        let resp = self.http.get(&url).send().await.map_err(|e| {
+            AppError::Internal(
+                anyhow!(e.without_url()).context(format!("Aliyun HTTP request to {endpoint}")),
+            )
+        })?;
 
         let status = resp.status();
-        let body: Value = resp
-            .json()
-            .await
-            .map_err(|e| AppError::Internal(anyhow!("Aliyun response parse: {e}")))?;
+        let body: Value = resp.json().await.map_err(|e| {
+            AppError::Internal(anyhow!(e.without_url()).context("Aliyun response parse"))
+        })?;
 
         if !status.is_success() {
             let code = body["Code"].as_str().unwrap_or("Unknown");
@@ -932,117 +932,7 @@ impl CloudAdapter for AliyunAdapter {
     }
 
     async fn discover_resources(&self, region: Option<&str>) -> AppResult<Vec<DiscoveredResource>> {
-        let regions_to_scan: Vec<String> = if let Some(r) = region {
-            vec![r.to_string()]
-        } else {
-            self.regions.clone()
-        };
-
-        let mut all: Vec<DiscoveredResource> = Vec::new();
-
-        for region_id in &regions_to_scan {
-            tracing::info!(region_id, "Aliyun: scanning region");
-
-            // ECS instances
-            match self.discover_ecs_instances(region_id).await {
-                Ok(mut v) => all.append(&mut v),
-                Err(e) => tracing::warn!(region_id, error = ?e, "ECS instances scan failed"),
-            }
-
-            // ECS disks
-            match self.discover_ecs_disks(region_id).await {
-                Ok(mut v) => all.append(&mut v),
-                Err(e) => tracing::warn!(region_id, error = ?e, "ECS disks scan failed"),
-            }
-
-            // RDS instances
-            match self.discover_rds_instances(region_id).await {
-                Ok(mut v) => all.append(&mut v),
-                Err(e) => tracing::warn!(region_id, error = ?e, "RDS instances scan failed"),
-            }
-
-            // SLB load balancers
-            match self.discover_slb_instances(region_id).await {
-                Ok(mut v) => all.append(&mut v),
-                Err(e) => tracing::warn!(region_id, error = ?e, "SLB scan failed"),
-            }
-
-            // ECS snapshots
-            match self
-                .discover_rpc_page(
-                    &format!("ecs.{region_id}.aliyuncs.com"),
-                    ECS_VERSION,
-                    "DescribeSnapshots",
-                    region_id,
-                    "50",
-                    parse_ecs_snapshots,
-                )
-                .await
-            {
-                Ok(mut v) => all.append(&mut v),
-                Err(e) => tracing::warn!(region_id, error = ?e, "ECS snapshots scan failed"),
-            }
-
-            // VPC EIPs
-            match self
-                .discover_rpc_page(
-                    &format!("vpc.{region_id}.aliyuncs.com"),
-                    VPC_VERSION,
-                    "DescribeEipAddresses",
-                    region_id,
-                    "50",
-                    parse_eip_addresses,
-                )
-                .await
-            {
-                Ok(mut v) => all.append(&mut v),
-                Err(e) => tracing::warn!(region_id, error = ?e, "EIP scan failed"),
-            }
-
-            // ALB load balancers (regional endpoint — the global `alb.aliyuncs.com`
-            // host does not resolve)
-            match self
-                .discover_load_balancers(
-                    &format!("alb.{region_id}.aliyuncs.com"),
-                    ALB_VERSION,
-                    region_id,
-                    parse_alb_instances,
-                )
-                .await
-            {
-                Ok(mut v) => all.append(&mut v),
-                Err(e) => tracing::warn!(region_id, error = ?e, "ALB scan failed"),
-            }
-
-            // NLB load balancers (regional endpoint)
-            match self
-                .discover_load_balancers(
-                    &format!("nlb.{region_id}.aliyuncs.com"),
-                    NLB_VERSION,
-                    region_id,
-                    parse_nlb_instances,
-                )
-                .await
-            {
-                Ok(mut v) => all.append(&mut v),
-                Err(e) => tracing::warn!(region_id, error = ?e, "NLB scan failed"),
-            }
-        }
-
-        // OSS buckets (global API — once, not per region)
-        match self.discover_oss_buckets().await {
-            Ok(mut v) => all.append(&mut v),
-            Err(e) => tracing::warn!(error = ?e, "OSS scan failed"),
-        }
-
-        // ACK clusters (global API — once, not per region)
-        match self.discover_ack_clusters().await {
-            Ok(mut v) => all.append(&mut v),
-            Err(e) => tracing::warn!(error = ?e, "ACK scan failed"),
-        }
-
-        tracing::info!(count = all.len(), "Aliyun resource discovery complete");
-        Ok(all)
+        Ok(self.discover_with_issues(region).await.0)
     }
 
     async fn start_resource(&self, resource_id: &str) -> AppResult<()> {
@@ -1055,6 +945,153 @@ impl CloudAdapter for AliyunAdapter {
         let p = Self::ecs_action_params("StopInstance", resource_id, &self.default_region);
         self.call(ECS_ENDPOINT, p).await?;
         Ok(())
+    }
+}
+
+impl AliyunAdapter {
+    async fn alb_public_endpoints(&self) -> AppResult<BTreeMap<String, String>> {
+        let params = BTreeMap::from([
+            ("Action".into(), "DescribeRegions".into()),
+            ("Version".into(), ALB_VERSION.into()),
+        ]);
+        let body = self.call("alb.cn-hangzhou.aliyuncs.com", params).await?;
+        let regions = body["Regions"]
+            .as_array()
+            .or_else(|| body["Regions"]["Region"].as_array())
+            .ok_or_else(|| AppError::Cloud("ALB region list is missing".into()))?;
+        let endpoints: BTreeMap<_, _> = regions
+            .iter()
+            .filter_map(|entry| {
+                let region = entry["RegionId"].as_str()?;
+                let endpoint = entry["RegionEndpoint"].as_str()?;
+                (endpoint.ends_with(".aliyuncs.com")
+                    && endpoint
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-')))
+                .then(|| (region.to_owned(), endpoint.to_owned()))
+            })
+            .collect();
+        if endpoints.is_empty() {
+            return Err(AppError::Cloud("ALB returned no public endpoints".into()));
+        }
+        Ok(endpoints)
+    }
+
+    pub(crate) async fn discover_with_issues(
+        &self,
+        region: Option<&str>,
+    ) -> (Vec<DiscoveredResource>, Vec<String>) {
+        let regions_to_scan: Vec<String> = if let Some(r) = region {
+            vec![r.to_string()]
+        } else {
+            self.regions.clone()
+        };
+
+        let mut all: Vec<DiscoveredResource> = Vec::new();
+        let mut issues = Vec::new();
+        let alb_endpoints = match self.alb_public_endpoints().await {
+            Ok(endpoints) => Some(endpoints),
+            Err(error) => {
+                tracing::warn!(error = ?error, "ALB region lookup failed; trying configured regions");
+                None
+            }
+        };
+        let mut collect = |source: &'static str,
+                           region: Option<&str>,
+                           result: AppResult<Vec<DiscoveredResource>>| {
+            match result {
+                Ok(resources) => all.extend(resources),
+                Err(error) => {
+                    tracing::warn!(source, region, error = ?error, "Aliyun discovery scope failed");
+                    issues.push(match region {
+                        Some(region) => format!("{source} ({region})"),
+                        None => source.to_string(),
+                    });
+                }
+            }
+        };
+
+        for region_id in &regions_to_scan {
+            tracing::info!(region_id, "Aliyun: scanning region");
+
+            let region = Some(region_id.as_str());
+            collect("ECS", region, self.discover_ecs_instances(region_id).await);
+            collect(
+                "ECS disks",
+                region,
+                self.discover_ecs_disks(region_id).await,
+            );
+            collect("RDS", region, self.discover_rds_instances(region_id).await);
+            collect("CLB", region, self.discover_slb_instances(region_id).await);
+
+            // ECS snapshots
+            collect(
+                "ECS snapshots",
+                region,
+                self.discover_rpc_page(
+                    &format!("ecs.{region_id}.aliyuncs.com"),
+                    ECS_VERSION,
+                    "DescribeSnapshots",
+                    region_id,
+                    "50",
+                    parse_ecs_snapshots,
+                )
+                .await,
+            );
+
+            // VPC EIPs
+            collect(
+                "EIP",
+                region,
+                self.discover_rpc_page(
+                    &format!("vpc.{region_id}.aliyuncs.com"),
+                    VPC_VERSION,
+                    "DescribeEipAddresses",
+                    region_id,
+                    "50",
+                    parse_eip_addresses,
+                )
+                .await,
+            );
+
+            // ALB's supported regions are a subset of the account's ECS regions.
+            let alb_endpoint = match &alb_endpoints {
+                Some(endpoints) => endpoints.get(region_id).cloned(),
+                None => Some(format!("alb.{region_id}.aliyuncs.com")),
+            };
+            if let Some(endpoint) = alb_endpoint {
+                collect(
+                    "ALB",
+                    region,
+                    self.discover_load_balancers(
+                        &endpoint,
+                        ALB_VERSION,
+                        region_id,
+                        parse_alb_instances,
+                    )
+                    .await,
+                );
+            }
+
+            // NLB load balancers (regional endpoint)
+            collect(
+                "NLB",
+                region,
+                self.discover_load_balancers(
+                    &format!("nlb.{region_id}.aliyuncs.com"),
+                    NLB_VERSION,
+                    region_id,
+                    parse_nlb_instances,
+                )
+                .await,
+            );
+        }
+
+        collect("OSS", None, self.discover_oss_buckets().await);
+        collect("ACK", None, self.discover_ack_clusters().await);
+
+        tracing::info!(count = all.len(), "Aliyun resource discovery complete");
+        (all, issues)
     }
 }
 
