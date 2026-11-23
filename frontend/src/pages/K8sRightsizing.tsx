@@ -1,5 +1,5 @@
 import { chartPalette, chartAxis, chartTooltipStyle } from '../lib/chartTheme'
-import { useMoneyFormatter } from '../lib/format'
+import { fmtMoney } from '../lib/format'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -30,6 +30,10 @@ interface Workload {
 }
 interface Summary { cluster_count: number; namespace_count: number; workload_count: number; total_savings: number; total_cost: number; top_namespaces: { namespace: string; cluster_id: string; workload_count: number; potential_savings: number }[] }
 
+function formatEstimate(amount: number) {
+  return fmtMoney(amount, 'USD')
+}
+
 function pct(rec?: number, req?: number) {
   if (!rec || !req || req === 0) return null
   const p = Math.round((1 - rec / req) * 100)
@@ -50,7 +54,6 @@ const K8S_COLUMN_KEYS: Record<string, string> = {
 }
 
 export default function K8sRightsizing() {
-  const fmt = useMoneyFormatter()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id ?? ''
   const { t } = useTranslation()
@@ -115,12 +118,12 @@ export default function K8sRightsizing() {
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('k8sRightsizing.potentialSavingsPerMo')}</p>
-          <p className="text-2xl font-semibold text-success mt-1">{fmt(sum.total_savings)}</p>
+          <p className="text-2xl font-semibold text-success mt-1">{formatEstimate(sum.total_savings)}</p>
         </div>
         <div className="bg-surface rounded-xl border border-strong p-5">
           <p className="text-xs text-secondary uppercase tracking-wider">{t('k8sRightsizing.savingsOpportunity')}</p>
           <p className="text-2xl font-semibold text-accent mt-1">{savingsPct}%</p>
-          <p className="text-xs text-muted mt-1">{t('k8sRightsizing.ofTotalPerMo', { amount: fmt(sum.total_cost) })}</p>
+          <p className="text-xs text-muted mt-1">{t('k8sRightsizing.ofTotalPerMo', { amount: formatEstimate(sum.total_cost) })}</p>
         </div>
       </div>
 
@@ -156,11 +159,11 @@ export default function K8sRightsizing() {
             ) : (
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={nsChartData} layout="vertical" margin={{ left: 8, right: 16 }}>
-                  <XAxis {...chartAxis} type="number" tickFormatter={(v: number) => fmt(v)} tick={{ fill: 'rgb(var(--text-muted))', fontSize: 11 }} />
+                  <XAxis {...chartAxis} type="number" tickFormatter={formatEstimate} tick={{ fill: 'rgb(var(--text-muted))', fontSize: 11 }} />
                   <YAxis {...chartAxis} type="category" dataKey="name" width={100} tick={{ fill: 'rgb(var(--text-secondary))', fontSize: 11 }} />
                   <Tooltip
                     contentStyle={chartTooltipStyle}
-                    formatter={(v: number) => [fmt(v), t('k8sRightsizing.potentialSavings')]}
+                    formatter={(v: number) => [formatEstimate(v), t('k8sRightsizing.potentialSavings')]}
                   />
                   <Bar isAnimationActive={false} maxBarSize={32} dataKey="savings" radius={[0, 4, 4, 0]}>
                     {nsChartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
@@ -183,7 +186,7 @@ export default function K8sRightsizing() {
                   <p className="text-xs text-muted">{t('k8sRightsizing.workloadsTracked', { count: c.workload_count })}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-success font-semibold text-sm">{fmt(c.total_savings)}</p>
+                  <p className="text-success font-semibold text-sm">{formatEstimate(c.total_savings)}</p>
                   <p className="text-xs text-muted">{t('k8sRightsizing.savingsOpportunityHint')}</p>
                 </div>
               </div>
@@ -235,7 +238,7 @@ export default function K8sRightsizing() {
                   </td>
                   <td className="px-4 py-3">
                     {w.potential_savings != null && w.potential_savings > 0
-                      ? <span className="text-success font-semibold">{fmt(w.potential_savings)}</span>
+                      ? <span className="text-success font-semibold">{formatEstimate(w.potential_savings)}</span>
                       : <span className="text-muted">—</span>}
                   </td>
                   <td className="px-4 py-3 text-secondary text-xs">{w.cpu_p95_m != null ? `${Math.round(w.cpu_p95_m)}m` : '—'}</td>

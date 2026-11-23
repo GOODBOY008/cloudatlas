@@ -67,6 +67,34 @@ test.describe('Cost Map reporting', () => {
   });
 });
 
+test('Kubernetes estimates retain their USD pricing in a CNY workspace', async ({ page }) => {
+  await page.route('**/api/v1/organizations', async route => {
+    const response = await route.fetch();
+    const body = await response.json();
+    for (const org of body.data) org.settings = { ...org.settings, currency: 'CNY' };
+    await route.fulfill({ response, json: body });
+  });
+  await page.route('**/k8s/summary', route => route.fulfill({ json: {
+    cluster_count: 1, namespace_count: 1, workload_count: 1, total_cost: 32.85, total_savings: 6.25,
+    top_namespaces: [{ namespace: 'payments', cluster_id: 'prod', workload_count: 1, potential_savings: 6.25 }],
+  } }));
+  await page.route('**/k8s/clusters', route => route.fulfill({ json: { data: [
+    { id: 'prod', name: 'Production', workload_count: 1, total_savings: 6.25 },
+  ] } }));
+  await page.route('**/k8s/workloads*', route => route.fulfill({ json: { data: [
+    { id: 'api', cluster_id: 'prod', cluster_name: 'Production', namespace: 'payments', workload_name: 'API',
+      workload_type: 'Deployment', observation_days: 14, potential_savings: 6.25 },
+  ] } }));
+  await page.goto('/k8s-rightsizing');
+  await expect(page.getByText('of $32.85/mo total')).toBeVisible();
+  await expect(page.getByText('$6.25', { exact: true })).toHaveCount(2);
+  await expect(page.locator('.recharts-xAxis')).toContainText('$0.00');
+  await page.locator('.recharts-bar-rectangle path').hover();
+  await expect(page.locator('.recharts-tooltip-wrapper')).toContainText('$6.25');
+  await page.getByRole('button', { name: 'Table', exact: true }).click();
+  await expect(page.getByRole('row', { name: /API/ }).getByRole('cell', { name: '$6.25' })).toBeVisible();
+});
+
 test('desktop Copilot floats, remembers drag and resize, and stays beneath search', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/dashboard');

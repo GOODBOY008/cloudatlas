@@ -427,8 +427,8 @@ export const workspace = {
   'cloudAccounts.credK8sHint': '使用具有读取权限的服务账号 Bearer 令牌（view ClusterRole）。metrics-server 可选，但需要它才能给出 P95 建议。',
   'cloudAccounts.cfgK8sNamespace': '命名空间（可选）',
   'cloudAccounts.cfgK8sClusterName': '集群名称（可选）',
-  'cloudAccounts.cfgK8sCpuCost': 'CPU 单价 $/vCPU·小时（可选）',
-  'cloudAccounts.cfgK8sMemCost': '内存单价 $/GiB·小时（可选）',
+  'cloudAccounts.cfgK8sCpuCost': 'CPU 单价（美元/vCPU·小时，可选）',
+  'cloudAccounts.cfgK8sMemCost': '内存单价（美元/GiB·小时，可选）',
   'cloudAccounts.cfgAliyunRegionId': '区域 ID（可选，默认 cn-hangzhou）',
   'cloudAccounts.cfgAliyunRegions': '扫描区域，逗号分隔',
   'cloudAccounts.configuration': '配置',
@@ -1607,7 +1607,7 @@ export const workspace = {
 
   // ── K8s 规格优化 ────────────────────────────────────────────────────────────
   'k8sRightsizing.title': 'K8s 规格优化',
-  'k8sRightsizing.subtitle': '面向 Kubernetes 工作负载的 CPU 与内存规格优化建议',
+  'k8sRightsizing.subtitle': '面向 Kubernetes 工作负载的 CPU 与内存规格优化建议。成本和节省金额均以美元估算。',
   'k8sRightsizing.clusters': '集群',
   'k8sRightsizing.workloads': '工作负载',
   'k8sRightsizing.potentialSavingsPerMo': '潜在节省/月',

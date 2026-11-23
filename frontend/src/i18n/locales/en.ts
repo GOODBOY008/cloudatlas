@@ -428,8 +428,8 @@ export const workspace = {
   'cloudAccounts.credK8sHint': 'Uses a service-account bearer token with read access (view ClusterRole). metrics-server is optional but required for P95 recommendations.',
   'cloudAccounts.cfgK8sNamespace': 'Namespace (optional)',
   'cloudAccounts.cfgK8sClusterName': 'Cluster Name (optional)',
-  'cloudAccounts.cfgK8sCpuCost': 'CPU cost $/vCPU-hr (optional)',
-  'cloudAccounts.cfgK8sMemCost': 'Memory cost $/GiB-hr (optional)',
+  'cloudAccounts.cfgK8sCpuCost': 'CPU cost in USD per vCPU-hour (optional)',
+  'cloudAccounts.cfgK8sMemCost': 'Memory cost in USD per GiB-hour (optional)',
   'cloudAccounts.cfgAliyunRegionId': 'Region ID (optional, default cn-hangzhou)',
   'cloudAccounts.cfgAliyunRegions': 'Regions to scan, comma-separated',
   'cloudAccounts.configuration': 'Configuration',
@@ -1608,7 +1608,7 @@ export const workspace = {
 
   // ── K8s Rightsizing ─────────────────────────────────────────────────────────
   'k8sRightsizing.title': 'K8s Rightsizing',
-  'k8sRightsizing.subtitle': 'CPU & memory rightsizing recommendations for Kubernetes workloads',
+  'k8sRightsizing.subtitle': 'CPU and memory recommendations for Kubernetes workloads. Cost and savings estimates are in USD.',
   'k8sRightsizing.clusters': 'Clusters',
   'k8sRightsizing.workloads': 'Workloads',
   'k8sRightsizing.potentialSavingsPerMo': 'Potential Savings/mo',
