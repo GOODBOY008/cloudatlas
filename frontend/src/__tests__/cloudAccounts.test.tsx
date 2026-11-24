@@ -33,9 +33,9 @@ import api from '../lib/api'
 
 const org: Organization = { id: 'org-001', name: 'Acme Corp', slug: 'acme' }
 
-function renderPage() {
+function renderPage(selectedOrg: Organization = org) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  useOrgStore.setState({ currentOrg: org, organizations: [org] })
+  useOrgStore.setState({ currentOrg: selectedOrg, organizations: [selectedOrg] })
   return render(
     <QueryClientProvider client={qc}>
       <CloudAccounts />
@@ -59,6 +59,16 @@ describe('Cloud Accounts credentials', () => {
     const form = screen.getByLabelText(/access key id/i).closest('form')!
     await userEvent.click(form.querySelector('button[type="submit"]')!)
     expect(screen.getByText(/fill in the credential fields/i)).toBeInTheDocument()
+    expect(api.post).not.toHaveBeenCalled()
+  })
+
+  it('opens a blank Alibaba account form in the selected environment', async () => {
+    renderPage({ ...org, workspace: { id: 'shared', name: 'Business', environment: 'prod' } })
+    await screen.findByText('AWS Prod')
+    await userEvent.click(screen.getByRole('button', { name: /add account/i }))
+    expect(screen.getByText(/tagged env=prod/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/accesskey id/i)).toHaveValue('')
+    expect(screen.getByLabelText(/accesskey secret/i)).toHaveValue('')
     expect(api.post).not.toHaveBeenCalled()
   })
 

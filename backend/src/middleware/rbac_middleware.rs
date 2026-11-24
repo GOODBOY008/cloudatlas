@@ -53,10 +53,10 @@ pub fn required_permission(method: &Method, segments: &[&str]) -> Option<Permiss
     match resource {
         // ── Organization administration ─────────────────────────────────────
         "members" | "invites" if mutating => Some(AdminOrg), // invite / revoke / remove / role
-        "cost-centers" if mutating => Some(AdminOrg),
+        "cost-centers" | "business-capabilities" if mutating => Some(AdminOrg),
 
         // ── Pools & budgets ─────────────────────────────────────────────────
-        "pools" | "budgets" if mutating => Some(ManagePools),
+        "pools" | "budgets" | "exchange-rates" | "bi-exports" if mutating => Some(ManagePools),
         "alerts" | "alert-events" if mutating => Some(ManagePools),
 
         // ── Cloud accounts & billing ────────────────────────────────────────
@@ -75,6 +75,7 @@ pub fn required_permission(method: &Method, segments: &[&str]) -> Option<Permiss
         | "ci-object-associations"
         | "ci-groups"
         | "services"
+        | "catalog"
         | "compliance-policies"
         | "ci-baselines"
         | "external-cmdb"
@@ -87,8 +88,8 @@ pub fn required_permission(method: &Method, segments: &[&str]) -> Option<Permiss
         {
             Some(ManageCmdb)
         }
-        "cmdb" if mutating => Some(ManageCmdb), // discovery, stats
-        "compliance" if mutating => Some(ManageCmdb), // run
+        "cmdb" | "metrics" | "demo-data" | "jobs" if mutating => Some(ManageCmdb), // discovery, stats
+        "compliance" if mutating => Some(ManageCmdb),                              // run
 
         // ── FinOps governance ───────────────────────────────────────────────
         "rules" | "assignment-rules" if mutating => Some(ManageRules),
@@ -128,8 +129,8 @@ pub async fn rbac_middleware(
     let path = req.uri().path();
     let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
 
-    if let Some(permission) = required_permission(req.method(), &segments) {
-        if let Some(org_id) = org_id_from_segments(&segments) {
+    if let Some(org_id) = org_id_from_segments(&segments) {
+        if let Some(permission) = required_permission(req.method(), &segments) {
             crate::middleware::rbac::require_permission(
                 &state.db,
                 claims.user_id()?,
@@ -137,6 +138,9 @@ pub async fn rbac_middleware(
                 permission,
             )
             .await?;
+        } else {
+            crate::modules::auth::org_handlers::ensure_member(&state.db, org_id, claims.user_id()?)
+                .await?;
         }
     }
 

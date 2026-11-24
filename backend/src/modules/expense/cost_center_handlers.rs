@@ -168,7 +168,13 @@ pub async fn update_cost_center(
     let org_id: Uuid = existing
         .try_get("organization_id")
         .map_err(|_| AppError::NotFound("Cost center not found".into()))?;
-    ensure_org_member(&state.db, org_id, user_id).await?;
+    crate::middleware::rbac::require_permission(
+        &state.db,
+        user_id,
+        org_id,
+        crate::middleware::rbac::Permission::AdminOrg,
+    )
+    .await?;
 
     let now = Utc::now();
     let row = sqlx::query(
@@ -214,7 +220,13 @@ pub async fn delete_cost_center(
     let org_id: Uuid = existing
         .try_get("organization_id")
         .map_err(|_| AppError::NotFound("Cost center not found".into()))?;
-    ensure_org_member(&state.db, org_id, user_id).await?;
+    crate::middleware::rbac::require_permission(
+        &state.db,
+        user_id,
+        org_id,
+        crate::middleware::rbac::Permission::AdminOrg,
+    )
+    .await?;
 
     let result = sqlx::query("DELETE FROM cost_centers WHERE id = $1")
         .bind(id)
@@ -452,7 +464,13 @@ pub async fn update_business_capability(
     let org_id: Uuid = existing.try_get("organization_id")?;
 
     let user_id = claims.user_id()?;
-    ensure_org_member(&state.db, org_id, user_id).await?;
+    crate::middleware::rbac::require_permission(
+        &state.db,
+        user_id,
+        org_id,
+        crate::middleware::rbac::Permission::AdminOrg,
+    )
+    .await?;
 
     if let Some(cc_id) = body.cost_center_id {
         let ok = sqlx::query("SELECT id FROM cost_centers WHERE id = $1 AND organization_id = $2")
@@ -519,7 +537,13 @@ pub async fn delete_business_capability(
     let org_id: Uuid = existing.try_get("organization_id")?;
 
     let user_id = claims.user_id()?;
-    ensure_org_member(&state.db, org_id, user_id).await?;
+    crate::middleware::rbac::require_permission(
+        &state.db,
+        user_id,
+        org_id,
+        crate::middleware::rbac::Permission::AdminOrg,
+    )
+    .await?;
 
     sqlx::query("DELETE FROM business_capabilities WHERE id = $1")
         .bind(capability_id)

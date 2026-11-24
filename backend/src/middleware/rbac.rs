@@ -33,35 +33,26 @@ pub async fn require_permission(
     org_id: Uuid,
     permission: Permission,
 ) -> AppResult<()> {
-    let row = sqlx::query_as::<_, (String,)>(
+    let roles = sqlx::query_scalar::<_, String>(
         r#"SELECT r.name FROM organization_members om
-           JOIN user_roles ur ON ur.user_id = om.user_id AND ur.organization_id = om.organization_id
-           JOIN roles r ON r.id = ur.role_id
-           WHERE om.organization_id = $1 AND om.user_id = $2
-           ORDER BY r.name ASC LIMIT 1"#,
-    )
-    .bind(org_id)
-    .bind(user_id)
-    .fetch_optional(db)
-    .await?;
-
-    let role_level = match row {
-        Some((ref role,)) if role.eq_ignore_ascii_case("owner") => 40,
-        Some((ref role,)) if role.eq_ignore_ascii_case("admin") => 30,
-        Some((ref role,))
-            if role.eq_ignore_ascii_case("finops") || role.eq_ignore_ascii_case("cmdb_editor") =>
-        {
-            20
-        }
-        Some(_) => 10,
-        None => {
-            return Err(AppError::Forbidden(
-                "Not a member of this organization".into(),
-            ))
-        }
-    };
-
-    if role_level < permission.required_role_level() {
+           JOIN user_roles ur ON ur.user_id=om.user_id AND ur.organization_id=om.organization_id
+           JOIN roles r ON r.id=ur.role_id AND (r.organization_id=om.organization_id OR r.organization_id IS NULL)
+           WHERE om.organization_id=$1 AND om.user_id=$2"#,
+    ).bind(org_id).bind(user_id).fetch_all(db).await?;
+    if roles.is_empty() {
+        return Err(AppError::Forbidden("No role in this environment".into()));
+    }
+    let allowed = roles.iter().any(|role| {
+        let level = match role.to_ascii_lowercase().as_str() {
+            "owner" => 40,
+            "admin" => 30,
+            "finops" => 20,
+            "cmdb editor" | "cmdb_editor" if permission == Permission::ManageCmdb => 20,
+            _ => 10,
+        };
+        level >= permission.required_role_level()
+    });
+    if !allowed {
         return Err(AppError::Forbidden("Insufficient permissions".into()));
     }
     Ok(())

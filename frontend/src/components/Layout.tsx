@@ -185,40 +185,52 @@ export default function Layout() {
     }
   }
 
+  const workspaceName = currentOrg?.workspace?.name || currentOrg?.name
+  const workspaceKey = (org: Organization) => org.workspace?.id || org.id
+  const workspaces = organizations.filter((org, i, all) => all.findIndex(x => workspaceKey(x) === workspaceKey(org)) === i)
+  const environments = organizations.filter(org => org.workspace && org.workspace.id === currentOrg?.workspace?.id)
   const workspace = (
     <div ref={orgMenuRef} className="relative">
       <button
         className="workspace-switch"
-        disabled={organizations.length < 2}
+        disabled={workspaces.length < 2}
         aria-label={t('design.switchWorkspace')}
         aria-expanded={orgMenuOpen}
         onClick={() => setOrgMenuOpen(!orgMenuOpen)}
       >
         <span className="workspace-avatar">
-          {currentOrg?.name.slice(0, 2).toUpperCase() ?? 'CA'}
+          {workspaceName?.slice(0, 2).toUpperCase() ?? 'CA'}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-xs font-semibold text-primary">
-            {currentOrg?.name ?? t('design.workspace')}
+            {workspaceName ?? t('design.workspace')}
           </span>
           <span className="mt-1 block text-[10px] text-muted">
             {t('header.platformTitle')}
           </span>
         </span>
-        {organizations.length > 1 && (
+        {workspaces.length > 1 && (
           <ChevronDown size={14} className="text-muted" />
         )}
       </button>
+      {currentOrg?.workspace && <div className="mx-4 mb-2 flex items-center gap-2">
+        <label htmlFor="workspace-environment" className="text-xs text-secondary">{t('design.environment')}</label>
+        <select id="workspace-environment" value={currentOrg.id} disabled={environments.length < 2}
+          onChange={event => { const org = environments.find(item => item.id === event.target.value); if (org) switchOrg(org) }}
+          className="min-w-0 flex-1 rounded-md border border-edge bg-surface px-2 py-1 text-xs text-primary">
+          {environments.map(org => <option key={org.id} value={org.id}>{org.workspace?.environment}</option>)}
+        </select>
+      </div>}
       {orgMenuOpen && (
         <div className="absolute left-4 right-4 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-edge bg-surface p-1 shadow-popover">
-          {organizations.map((org) => (
+          {workspaces.map((org) => (
             <button
               key={org.id}
               onClick={() => switchOrg(org)}
               className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-xs text-secondary hover:bg-subtle"
             >
-              <span className="truncate">{org.name}</span>
-              {org.id === currentOrg?.id && (
+              <span className="truncate">{org.workspace?.name || org.name}</span>
+              {currentOrg && workspaceKey(org) === workspaceKey(currentOrg) && (
                 <Check size={14} className="shrink-0 text-accent" />
               )}
             </button>
@@ -369,7 +381,7 @@ export default function Layout() {
               }
             >
               <ErrorBoundary key={`${currentOrg?.id ?? 'none'}:${pathname}`} embedded>
-                <Outlet />
+                <Outlet key={currentOrg?.id} />
               </ErrorBoundary>
             </Suspense>
           </div>

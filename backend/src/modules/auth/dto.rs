@@ -47,6 +47,8 @@ pub struct OrganizationResponse {
     pub id: Uuid,
     pub name: String,
     pub slug: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub workspace: Option<serde_json::Value>,
     pub description: Option<String>,
     pub settings: OrganizationSettingsResponse,
     pub created_at: DateTime<Utc>,

@@ -34,6 +34,7 @@ use crate::{
     tag = "organizations"
 )]
 pub async fn list_orgs(
+    key: Option<Extension<crate::modules::api_keys::middleware::ApiKeyScope>>,
     Extension(claims): Extension<Claims>,
     State(state): State<AppState>,
 ) -> AppResult<Json<Value>> {
@@ -41,14 +42,16 @@ pub async fn list_orgs(
 
     let orgs = sqlx::query_as::<_, Organization>(
         r#"
-        SELECT o.id, o.name, o.slug, o.description, o.settings, o.created_at, o.updated_at
+        SELECT o.id, o.name, o.slug, o.description, o.settings, o.created_at, o.updated_at, w.workspace
         FROM organizations o
+        LEFT JOIN organization_workspace_scopes w ON w.organization_id=o.id
         JOIN organization_members om ON om.organization_id = o.id
-        WHERE om.user_id = $1
+        WHERE om.user_id = $1 AND ($2::uuid IS NULL OR o.id=$2)
         ORDER BY o.name
         "#,
     )
     .bind(user_id)
+    .bind(key.map(|Extension(scope)| scope.0))
     .fetch_all(&state.db)
     .await?;
 
@@ -198,9 +201,9 @@ pub async fn get_org(
 
     let org = sqlx::query_as::<_, Organization>(
         r#"
-        SELECT id, name, slug, description, settings, created_at, updated_at
-        FROM organizations
-        WHERE id = $1
+        SELECT o.id, o.name, o.slug, o.description, o.settings, o.created_at, o.updated_at, w.workspace
+        FROM organizations o LEFT JOIN organization_workspace_scopes w ON w.organization_id=o.id
+        WHERE o.id = $1
         "#,
     )
     .bind(org_id)
@@ -250,7 +253,8 @@ pub async fn update_org(
                               ELSE jsonb_set(settings, '{currency}', to_jsonb($4::text)) END,
             updated_at  = $5
         WHERE id = $1
-        RETURNING id, name, slug, description, settings, created_at, updated_at
+        RETURNING id, name, slug, description, settings, created_at, updated_at,
+            (SELECT workspace FROM organization_workspace_scopes WHERE organization_id=$1) AS workspace
         "#,
     )
     .bind(org_id)
@@ -364,7 +368,7 @@ pub async fn list_members(
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /// Return `Forbidden` if `user_id` is not a member of `org_id`.
-async fn ensure_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
+pub(crate) async fn ensure_member(db: &sqlx::PgPool, org_id: Uuid, user_id: Uuid) -> AppResult<()> {
     sqlx::query("SELECT id FROM organization_members WHERE organization_id = $1 AND user_id = $2")
         .bind(org_id)
         .bind(user_id)
@@ -379,6 +383,7 @@ fn org_to_response(org: Organization) -> OrganizationResponse {
         id: org.id,
         name: org.name,
         slug: org.slug,
+        workspace: org.workspace,
         description: org.description,
         settings: OrganizationSettingsResponse {
             currency: org
@@ -402,6 +407,7 @@ mod currency_response_tests {
             id: Uuid::new_v4(),
             name: "Example".to_owned(),
             slug: "example".to_owned(),
+            workspace: None,
             description: None,
             settings,
             created_at: now,

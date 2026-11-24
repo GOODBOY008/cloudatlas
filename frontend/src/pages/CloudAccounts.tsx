@@ -74,12 +74,18 @@ function prefillConfig(cfg: Record<string, unknown>): Record<string, string> {
 }
 
 export default function CloudAccounts() {
+  const scope = useOrgStore(s => s.currentOrg)
+  return <AccountPanel key={scope?.id + '/' + (scope?.workspace?.environment || '')} />
+}
+
+function AccountPanel() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id
+  const defaultProvider = currentOrg?.workspace ? 'alibaba' : 'aws'
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState<NewAccountForm>({ name: '', provider: 'aws', external_id: '', credentials: {}, config: {} })
+  const [form, setForm] = useState<NewAccountForm>({ name: '', provider: defaultProvider, external_id: '', credentials: {}, config: {} })
   const [formError, setFormError] = useState('')
   const [editAcct, setEditAcct] = useState<CloudAccount | null>(null)
   const [editName, setEditName] = useState('')
@@ -130,7 +136,7 @@ export default function CloudAccounts() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cloud-accounts', orgId] })
-      setForm({ name: '', provider: 'aws', external_id: '', credentials: {}, config: {} })
+      setForm({ name: '', provider: defaultProvider, external_id: '', credentials: {}, config: {} })
       setShowForm(false)
       setFormError('')
     },
@@ -216,6 +222,9 @@ export default function CloudAccounts() {
       {showForm && (
         <div className="bg-surface border border-edge rounded-xl p-5 mb-6">
           <h3 className="text-sm font-semibold text-primary mb-4">{t('cloudAccounts.newAccount')}</h3>
+          {currentOrg?.workspace && form.provider === 'alibaba' && <p className="mb-4 text-sm text-secondary">
+            {t('catalog.accountEnv', { env: currentOrg.workspace.environment })}
+          </p>}
           {formError && (
             <div className="mb-3 p-2 rounded bg-danger/10 border border-danger/25 text-danger text-sm">{formError}</div>
           )}

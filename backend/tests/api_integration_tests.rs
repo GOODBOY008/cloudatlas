@@ -6,6 +6,9 @@
 //!
 //! Run locally: `DATABASE_URL=postgres://cloudatlas:cloudatlas@localhost:5432/cloudatlas_test cargo test --test api_integration_tests`
 
+#[path = "support/workspace_environment.rs"]
+mod workspace_environment;
+
 use axum::body::Body;
 use axum::http::{Method, Request, StatusCode};
 use cloudatlas_lib::{config, db, routes, state, state::AppState};

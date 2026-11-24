@@ -1025,7 +1025,6 @@ pub async fn patch_ci_tags(
     .await?
     .ok_or_else(|| AppError::NotFound("CI not found".into()))?;
 
-    let field_changes = json!({ "tags": { "old": old.tags, "new": body.tags } });
     let now = Utc::now();
 
     let ci = sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
@@ -1048,6 +1047,7 @@ pub async fn patch_ci_tags(
     .await?
     .ok_or_else(|| AppError::NotFound("CI not found".into()))?;
 
+    let field_changes = json!({ "tags": { "old": old.tags, "new": ci.tags } });
     write_audit_log(
         &state.db,
         ci_id,
@@ -1548,7 +1548,7 @@ pub async fn ci_topology(
                 c.lifecycle_state::text, c.cloud_region, t.depth + 1
             FROM cis c
             JOIN topo t ON c.parent_ci_id = t.id
-            WHERE c.deleted_at IS NULL AND t.depth < $3
+            WHERE c.organization_id=$2 AND c.deleted_at IS NULL AND t.depth < $3
         )
         SELECT t.id, t.name, t.display_name, t.ci_type_id, t.parent_ci_id,
                t.lifecycle_state, t.cloud_region, t.depth,
@@ -2681,16 +2681,6 @@ pub async fn batch_update_cis(
             }
         }
 
-        let field_changes = json!({
-            "batch_update": {
-                "name": body.name,
-                "tags": body.tags,
-                "pool_id": body.pool_id,
-                "lifecycle_state": body.lifecycle_state,
-                "meta_patch": body.meta_patch,
-            }
-        });
-
         let ci = match sqlx::query_as::<_, Ci>(sqlx::AssertSqlSafe(&*format!(
             r#"
             UPDATE cis
@@ -2735,6 +2725,16 @@ pub async fn batch_update_cis(
                 continue;
             }
         };
+
+        let field_changes = json!({
+            "batch_update": {
+                "name": body.name,
+                "tags": body.tags.as_ref().map(|_| &ci.tags),
+                "pool_id": body.pool_id,
+                "lifecycle_state": body.lifecycle_state,
+                "meta_patch": body.meta_patch,
+            }
+        });
 
         write_audit_log(
             &state.db,

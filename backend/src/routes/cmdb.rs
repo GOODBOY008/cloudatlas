@@ -8,6 +8,31 @@ use axum::{
 
 pub(super) fn router() -> Router<AppState> {
     Router::new()
+        .route("/api/v1/orgs/{org_id}/catalog", get(cmdb::catalog::get))
+        .route(
+            "/api/v1/orgs/{org_id}/catalog/teams",
+            post(cmdb::catalog::create_team),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/catalog/teams/{id}",
+            put(cmdb::catalog::update_team).delete(cmdb::catalog::delete_team),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/catalog/services",
+            post(cmdb::catalog::create_service),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/catalog/services/{id}",
+            put(cmdb::catalog::update_service).delete(cmdb::catalog::delete_service),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/catalog/services/{id}/deployments/{deployment_id}",
+            put(cmdb::catalog::map_deployment),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/catalog/services/{id}/cis",
+            post(cmdb::catalog::bind_ci),
+        )
         .route(
             "/api/v1/orgs/{org_id}/ci-types/{type_id}/attributes",
             get(cmdb::handlers::list_ci_attributes).post(cmdb::handlers::create_ci_attribute),

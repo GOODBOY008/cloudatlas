@@ -19,6 +19,9 @@ use crate::{error::AppError, modules::auth::service::Claims, state::AppState};
 
 use super::handlers::hash_key;
 
+#[derive(Clone, Copy)]
+pub struct ApiKeyScope(pub Uuid);
+
 pub async fn api_key_middleware(
     State(state): State<AppState>,
     req: Request,
@@ -54,6 +57,39 @@ pub async fn api_key_middleware(
         None => return Err(AppError::Unauthorized("Invalid API key".into())),
     };
 
+    // A personal key is issued for one environment, even when the same user has several grants.
+    let path = req.uri().path().trim_end_matches('/');
+    let permitted = match path.strip_prefix("/api/v1/") {
+        Some("organizations" | "auth/me") => req.method() == axum::http::Method::GET,
+        Some(relative) => {
+            let mut parts = relative.split('/');
+            let resource = parts.next();
+            let id = parts.next().and_then(|id| Uuid::parse_str(id).ok());
+            match (resource, id) {
+                (Some("orgs" | "organizations"), Some(id)) => id == org_id,
+                (Some("cost-centers" | "business-capabilities"), Some(id)) => {
+                    let query = if resource == Some("cost-centers") {
+                        "SELECT EXISTS(SELECT 1 FROM cost_centers WHERE id=$1 AND organization_id=$2)"
+                    } else {
+                        "SELECT EXISTS(SELECT 1 FROM business_capabilities WHERE id=$1 AND organization_id=$2)"
+                    };
+                    sqlx::query_scalar::<_, bool>(query)
+                        .bind(id)
+                        .bind(org_id)
+                        .fetch_one(&state.db)
+                        .await?
+                }
+                _ => false,
+            }
+        }
+        None => false,
+    };
+    if !permitted {
+        return Err(AppError::Forbidden(
+            "API key is scoped to another environment or operation".into(),
+        ));
+    }
+
     // Stamp last_used_at.
     let _ = sqlx::query("UPDATE api_keys SET last_used_at = NOW() WHERE key_hash = $1")
         .bind(&key_hash)
@@ -73,7 +109,7 @@ pub async fn api_key_middleware(
     let mut req = req;
     req.extensions_mut().insert(claims);
     req.extensions_mut().insert("api_key"); // marker → auth skips JWT
-    let _ = org_id;
+    req.extensions_mut().insert(ApiKeyScope(org_id));
 
     Ok(next.run(req).await)
 }

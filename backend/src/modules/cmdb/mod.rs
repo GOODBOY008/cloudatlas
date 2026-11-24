@@ -1,5 +1,6 @@
 pub mod analytics_handlers;
 pub mod association_handlers;
+pub mod catalog;
 pub mod classification_handlers;
 pub mod compliance_handlers;
 pub mod dto;

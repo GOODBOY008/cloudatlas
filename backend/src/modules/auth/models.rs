@@ -21,6 +21,8 @@ pub struct Organization {
     pub id: Uuid,
     pub name: String,
     pub slug: String,
+    #[sqlx(default)]
+    pub workspace: Option<serde_json::Value>,
     pub description: Option<String>,
     pub settings: serde_json::Value,
     pub created_at: DateTime<Utc>,

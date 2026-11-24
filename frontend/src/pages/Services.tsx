@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next'
 import api from '../lib/api'
 import { useOrgStore } from '../store/orgStore'
 import { Modal } from '../components/shared/Modal'
+import { WorkspaceCatalog, type Deployment } from './WorkspaceCatalog'
+import type { Organization } from '../types'
 import { CiPicker } from '../components/shared/CiPicker'
 
 interface Service {
@@ -50,8 +52,10 @@ const TIERS = ['critical', 'high', 'medium', 'low']
 function ServiceDetailPanel({
   service,
   onClose,
+  writable = true,
 }: {
-  service: Service
+  writable?: boolean
+  service: Omit<Service, 'created_at' | 'updated_at'>
   onClose: () => void
 }) {
   const { t } = useTranslation()
@@ -94,6 +98,7 @@ function ServiceDetailPanel({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-cis', orgId, service.id] })
       queryClient.invalidateQueries({ queryKey: ['service-costs', orgId, service.id] })
+      queryClient.invalidateQueries({ queryKey: ['workspace-catalog', orgId] })
       setAddCiId('')
       setAddRole('')
       setAddError('')
@@ -107,6 +112,7 @@ function ServiceDetailPanel({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-cis', orgId, service.id] })
       queryClient.invalidateQueries({ queryKey: ['service-costs', orgId, service.id] })
+      queryClient.invalidateQueries({ queryKey: ['workspace-catalog', orgId] })
     },
   })
 
@@ -164,8 +170,7 @@ function ServiceDetailPanel({
               {t('services.configurationItems', { count: cis.length })}
             </h3>
 
-            {/* Add CI form */}
-            <form
+            {writable && <form
               className="bg-subtle/70 rounded-lg p-3 mb-3 space-y-2"
               onSubmit={event => {
                 event.preventDefault()
@@ -196,7 +201,7 @@ function ServiceDetailPanel({
               >
                 {addCIMutation.isPending ? t('services.adding') : t('services.addCi')}
               </button>
-            </form>
+            </form>}
 
             {cis.length === 0 ? (
               <p className="text-muted text-sm">{t('services.noCisLinked')}</p>
@@ -208,7 +213,7 @@ function ServiceDetailPanel({
                       <th className="px-3 py-2 text-left">{t('services.colCi')}</th>
                       <th className="px-3 py-2 text-left">{t('common.type')}</th>
                       <th className="px-3 py-2 text-left">{t('services.colRole')}</th>
-                      <th className="px-3 py-2" />
+                      {writable && <th className="px-3 py-2" />}
                     </tr>
                   </thead>
                   <tbody>
@@ -217,14 +222,14 @@ function ServiceDetailPanel({
                         <td className="px-3 py-2 text-primary font-medium">{c.ci_display_name || c.ci_name}</td>
                         <td className="px-3 py-2 text-secondary text-xs">{c.ci_type_name ?? '—'}</td>
                         <td className="px-3 py-2 text-muted text-xs">{c.role ?? '—'}</td>
-                        <td className="px-3 py-2 text-right">
+                        {writable && <td className="px-3 py-2 text-right">
                           <button
                             onClick={() => removeCIMutation.mutate(c.ci_id)}
                             className="text-danger/70 hover:text-danger text-xs"
                           >
                             {t('services.remove')}
                           </button>
-                        </td>
+                        </td>}
                       </tr>
                     ))}
                   </tbody>
@@ -238,7 +243,20 @@ function ServiceDetailPanel({
   )
 }
 
+function BusinessServices({ org }: { org: Organization }) {
+  const [selected, setSelected] = useState<{ deployment: Deployment; writable: boolean } | null>(null)
+  return <>
+    <WorkspaceCatalog org={org} openDeployment={(deployment, writable) => setSelected({ deployment, writable })} />
+    {selected && <ServiceDetailPanel service={selected.deployment} writable={selected.writable} onClose={() => setSelected(null)} />}
+  </>
+}
+
 export default function Services() {
+  const currentOrg = useOrgStore(state => state.currentOrg)
+  return currentOrg?.workspace ? <BusinessServices key={currentOrg.id} org={currentOrg} /> : <LegacyServices />
+}
+
+function LegacyServices() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { currentOrg } = useOrgStore()

@@ -1,5 +1,6 @@
 /** Messages for sign-in and shared UI, including bilingual route labels. */
 export default {
+  "design.environment": "环境",
   'design.pageNotFound': '未找到页面',
   'design.openNavigation': '打开导航',
   'design.pageNotFoundHint': '此链接不可用，请通过导航或搜索查找功能。',

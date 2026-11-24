@@ -100,7 +100,7 @@ pub async fn cmdb_stats(
 
     // Active services
     let total_services: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM services WHERE organization_id = $1 AND deleted_at IS NULL",
+        "SELECT COUNT(*) FROM visible_business_services WHERE organization_id = $1",
     )
     .bind(org_id)
     .fetch_one(&state.db)

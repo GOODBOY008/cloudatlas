@@ -251,30 +251,22 @@ pub async fn patch_resource_tags(
         return Err(AppError::Validation("tags must be a JSON object".into()));
     }
 
-    let result = sqlx::query(
-        r#"UPDATE resources
-           SET tags       = $3,
-               updated_at = NOW()
-           WHERE id = $1 AND organization_id = $2"#,
+    let tags: Value = sqlx::query_scalar(
+        "UPDATE resources SET tags=$3, updated_at=NOW() WHERE id=$1 AND organization_id=$2 RETURNING tags",
     )
     .bind(resource_id)
     .bind(org_id)
     .bind(&body.tags)
-    .execute(&state.db)
-    .await?;
-
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(format!(
-            "Resource {resource_id} not found"
-        )));
-    }
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::NotFound(format!("Resource {resource_id} not found")))?;
 
     Ok((
         StatusCode::OK,
         Json(json!({
             "data": {
                 "id": resource_id,
-                "tags": body.tags,
+                "tags": tags,
                 "message": "Tags updated"
             }
         })),
@@ -881,8 +873,8 @@ pub async fn global_search(
 
     // Services
     let services = sqlx::query(
-        r#"SELECT id, name, display_name FROM services
-           WHERE organization_id = $1 AND deleted_at IS NULL
+        r#"SELECT id, name, display_name FROM visible_business_services
+           WHERE organization_id = $1
              AND (name ILIKE $2 OR display_name ILIKE $2)
            ORDER BY name LIMIT $3"#,
     )

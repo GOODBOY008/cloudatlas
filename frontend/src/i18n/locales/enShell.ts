@@ -1,5 +1,6 @@
 /** Messages for sign-in and shared UI, including bilingual route labels. */
 export default {
+  "design.environment": "Environment",
   'design.pageNotFound': 'Page not found',
   'design.openNavigation': 'Menu',
   'design.pageNotFoundHint': 'This link is unavailable. Use the navigation or search to find a feature.',
