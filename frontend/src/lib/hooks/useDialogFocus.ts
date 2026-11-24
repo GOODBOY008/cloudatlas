@@ -46,7 +46,11 @@ export function useDialogFocus<T extends HTMLElement>(
       target.focus()
     }
     function onKey(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.isComposing) return
       if (event.key === 'Escape') {
+        // The portaled picker handles Escape after this native panel listener.
+        // Let it return focus to its trigger before dismissing the parent.
+        if (panel?.querySelector('button[aria-haspopup][aria-expanded="true"]')) return
         event.preventDefault()
         closeRef.current()
       }

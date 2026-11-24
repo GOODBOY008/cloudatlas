@@ -10,9 +10,6 @@ export default function Brand({ inverse = false }: { inverse?: boolean }) {
         <span className={`brand-name ${inverse ? 'text-white' : ''}`}>
           CloudAtlas
         </span>
-        <p className={`brand-caption ${inverse ? 'text-white/70' : ''}`}>
-          Cloud intelligence
-        </p>
       </div>
     </div>
   )

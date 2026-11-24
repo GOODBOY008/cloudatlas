@@ -1,3 +1,8 @@
+import { PageTabs } from '../components/shared/PageTabs'
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input, InputArea } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -119,35 +124,27 @@ export default function DriftDetection() {
 
   const visibleDrift = drift.filter(d => statusFilter === 'all' || d.status === statusFilter)
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
-
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">{t('drift.title')}</h1>
-        <button
+        <Button
+          variant="primary"
           onClick={() => {
             setShowModal(true)
             setFormError('')
           }}
-          className="btn-primary"
         >
           {t('drift.captureBaseline')}
-        </button>
+        </Button>
       </div>
 
-      <div className="page-tabs mb-4">
-        {(['drift', 'baselines'] as const).map((tabKey) => (
-          <button aria-pressed={tab === tabKey}
-            key={tabKey}
-            onClick={() => setTab(tabKey)}
-            className="page-tab"
-          >
-            {tabKey === 'drift' ? t('drift.tabDrift') : t('drift.tabBaselines')}
-          </button>
-        ))}
-      </div>
+      <PageTabs
+        value={tab}
+        onValueChange={setTab}
+        className="mb-4"
+        tabs={(['drift', 'baselines'] as const).map(tabKey => ({ value: tabKey, label: tabKey === 'drift' ? t('drift.tabDrift') : t('drift.tabBaselines') }))}
+      />
 
       {tab === 'drift' ? (
         <>
@@ -183,23 +180,23 @@ export default function DriftDetection() {
             </div>
           ) : (
             <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-                <thead className="border-b border-edge text-xs uppercase text-muted">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">{t('cmdb.colCi')}</th>
-                    <th className="px-4 py-3 font-medium">{t('drift.colField')}</th>
-                    <th className="px-4 py-3 font-medium">{t('drift.colBaselineCurrent')}</th>
-                    <th className="px-4 py-3 font-medium">{t('drift.colDetected')}</th>
-                    <th className="px-4 py-3 font-medium">{t('common.status')}</th>
-                    <th className="px-4 py-3 font-medium">{t('drift.colAction')}</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+                <Table.Header variant="compact" className="border-b border-edge">
+                  <Table.Row>
+                    <Table.Head className="px-4 py-3 font-medium">{t('cmdb.colCi')}</Table.Head>
+                    <Table.Head className="px-4 py-3 font-medium">{t('drift.colField')}</Table.Head>
+                    <Table.Head className="px-4 py-3 font-medium">{t('drift.colBaselineCurrent')}</Table.Head>
+                    <Table.Head className="px-4 py-3 font-medium">{t('drift.colDetected')}</Table.Head>
+                    <Table.Head className="px-4 py-3 font-medium">{t('common.status')}</Table.Head>
+                    <Table.Head className="px-4 py-3 font-medium">{t('drift.colAction')}</Table.Head>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
                   {visibleDrift.map((d) => (
-                    <tr key={d.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
-                      <td className="px-4 py-3 text-sm text-primary">{d.ci_name}</td>
-                      <td className="px-4 py-3 text-sm font-mono text-secondary">{d.field_path}</td>
-                      <td className="px-4 py-3">
+                    <Table.Row key={d.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                      <Table.Cell className="px-4 py-3 text-sm text-primary">{d.ci_name}</Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-sm font-mono text-secondary">{d.field_path}</Table.Cell>
+                      <Table.Cell className="px-4 py-3">
                         <div className="flex items-center gap-2 text-xs">
                           <span className="bg-danger/10 border border-danger/25 rounded px-2 py-1">
                             <ValueCell value={d.old_value} />
@@ -209,48 +206,50 @@ export default function DriftDetection() {
                             <ValueCell value={d.new_value} />
                           </span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted">
+                      </Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-xs text-muted">
                         {new Date(d.detected_at).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3">
+                      </Table.Cell>
+                      <Table.Cell className="px-4 py-3">
                         <span className={d.status === 'open'
                           ? 'px-2 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning'
                           : 'px-2 py-0.5 rounded-full text-xs font-medium bg-subtle text-secondary'}>
                           {t('drift.' + d.status)}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      </Table.Cell>
+                      <Table.Cell className="px-4 py-3 whitespace-nowrap">
                         {(d.status === 'open' || d.status === 'acknowledged') && (
                           <>
-                            {d.status === 'open' && <button
+                            {d.status === 'open' && <Button
+                              size="sm" variant="ghost"
                               onClick={() => acknowledgeMutation.mutate(d.id)}
                               disabled={acknowledgeMutation.isPending}
-                              className="text-xs text-accent hover:text-accent disabled:opacity-50"
                             >
                               {t('drift.acknowledge')}
-                            </button>}
-                            <button
+                            </Button>}
+                            <Button
+                              size="sm" variant="ghost"
                               onClick={() => resolveMutation.mutate(d.id)}
                               disabled={resolveMutation.isPending}
-                              className="ml-3 text-xs text-success hover:text-success disabled:opacity-50"
+                              className="ml-3"
                             >
                               {t('drift.resolve')}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                              size="sm" variant="ghost"
                               onClick={() => ignoreMutation.mutate(d.id)}
                               disabled={ignoreMutation.isPending}
-                              className="ml-3 text-xs text-secondary hover:text-secondary disabled:opacity-50"
+                              className="ml-3"
                             >
                               {t('drift.ignore')}
-                            </button>
+                            </Button>
                           </>
                         )}
-                      </td>
-                    </tr>
+                      </Table.Cell>
+                    </Table.Row>
                   ))}
-                </tbody>
-              </table></div>
+                </Table.Body>
+              </Table></div>
             </div>
           )}
         </>
@@ -264,33 +263,33 @@ export default function DriftDetection() {
             </div>
           ) : (
             <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-                <thead className="border-b border-edge text-xs uppercase text-muted">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">{t('drift.colLabel')}</th>
-                    <th className="px-4 py-3 font-medium">{t('cmdb.colCi')}</th>
-                    <th className="px-4 py-3 font-medium">{t('drift.colSnapshot')}</th>
-                    <th className="px-4 py-3 font-medium">{t('drift.colCaptured')}</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+                <Table.Header variant="compact" className="border-b border-edge">
+                  <Table.Row>
+                    <Table.Head className="px-4 py-3 font-medium">{t('drift.colLabel')}</Table.Head>
+                    <Table.Head className="px-4 py-3 font-medium">{t('cmdb.colCi')}</Table.Head>
+                    <Table.Head className="px-4 py-3 font-medium">{t('drift.colSnapshot')}</Table.Head>
+                    <Table.Head className="px-4 py-3 font-medium">{t('drift.colCaptured')}</Table.Head>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
                   {baselines.map((b) => (
-                    <tr key={b.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
-                      <td className="px-4 py-3 text-sm text-primary">{b.label ?? '—'}</td>
-                      <td className="px-4 py-3 text-sm text-secondary">{b.ci_name}</td>
-                      <td className="px-4 py-3">
+                    <Table.Row key={b.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                      <Table.Cell className="px-4 py-3 text-sm text-primary">{b.label ?? '—'}</Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-sm text-secondary">{b.ci_name}</Table.Cell>
+                      <Table.Cell className="px-4 py-3">
                         <code className="text-xs text-secondary font-mono">
                           {JSON.stringify(b.snapshot).slice(0, 100)}
                           {JSON.stringify(b.snapshot).length > 100 ? '…' : ''}
                         </code>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted">
+                      </Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-xs text-muted">
                         {new Date(b.created_at).toLocaleString()}
-                      </td>
-                    </tr>
+                      </Table.Cell>
+                    </Table.Row>
                   ))}
-                </tbody>
-              </table></div>
+                </Table.Body>
+              </Table></div>
             </div>
           )}
         </>
@@ -305,38 +304,33 @@ export default function DriftDetection() {
             <h3 className="text-lg font-semibold text-primary mb-4">{t('drift.captureBaselineTitle')}</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('cmdb.colCi')}</label>
-                <select
+                <SelectField
+                  label={t('cmdb.colCi')}
                   value={form.ci_id}
-                  onChange={(e) => setForm({ ...form, ci_id: e.target.value })}
-                  className={inputCls}
-                >
-                  <option value="">{t('drift.selectCi')}</option>
-                  {cis.map((ci) => (
-                    <option key={ci.id} value={ci.id}>
-                      {ci.display_name} ({providerLabel(ci.cloud_provider)})
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={value => setForm({ ...form, ci_id: value })}
+                  className="w-full"
+                  items={[
+                    { value: "", label: t('drift.selectCi') },
+                    ...cis.map((ci) => ({ value: ci.id, label: `${ci.display_name} (${providerLabel(ci.cloud_provider)})` })),
+                  ]}
+                />
               </div>
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('drift.labelOptional')}</label>
-                <input
+                <Input
+                  label={t('drift.labelOptional')}
                   value={form.label}
                   onChange={(e) => setForm({ ...form, label: e.target.value })}
-                  className={inputCls}
+                  className="w-full"
                   placeholder="e.g. prod-2026-08-13"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">
-                  {t('drift.snapshotLabel')}
-                </label>
-                <textarea
+                <InputArea
+                  label={t('drift.snapshotLabel')}
                   value={form.snapshot}
                   onChange={(e) => setForm({ ...form, snapshot: e.target.value })}
                   rows={6}
-                  className={`${inputCls} font-mono text-xs`}
+                  className="w-full font-mono resize-y"
                   placeholder='{"cpu_count": 4, "memory_gb": 16}'
                 />
               </div>
@@ -346,20 +340,20 @@ export default function DriftDetection() {
                 </div>
               )}
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createBaselineMutation.isPending}
-                  className="btn-primary"
                 >
                   {t('drift.capture')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

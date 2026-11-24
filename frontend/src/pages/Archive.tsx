@@ -1,3 +1,6 @@
+import { PageTabs } from '../components/shared/PageTabs'
+import { Button } from '@cloudflare/kumo/components/button'
+import { Table } from '@cloudflare/kumo/components/table'
 import { storageRecommendationType } from '../lib/objectStorage'
 import { useMoneyFormatter } from '../lib/format'
 import { useState } from 'react'
@@ -67,81 +70,79 @@ export default function Archive() {
       </div>
 
       {/* Tabs */}
-      <div className="page-tabs ">
-        {([
-          { key: 'recommendations', label: t('archive.tabRecommendations', { count: recs.length }) },
-          { key: 'alerts', label: t('archive.tabAlertHistory', { count: events.length }) },
-        ] as const).map(tab => (
-          <button aria-pressed={activeTab === tab.key} key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className="page-tab">
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <PageTabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="mb-5"
+        tabs={[
+          { value: 'recommendations', label: t('archive.tabRecommendations', { count: recs.length }) },
+          { value: 'alerts', label: t('archive.tabAlertHistory', { count: events.length }) },
+        ]}
+      />
 
       {activeTab === 'recommendations' && (
         <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-            <thead><tr className="border-b border-strong">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+            <Table.Header variant="compact"><Table.Row className="border-b border-strong">
               {['common.type', 'archive.colResource', 'archive.colSavingPerMonth', 'common.status', 'archive.colArchived', 'common.actions'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
+                <Table.Head key={h} className="px-4 py-3 text-left">{t(h)}</Table.Head>
               ))}
-            </tr></thead>
-            <tbody className="divide-y divide-edge">
+            </Table.Row></Table.Header>
+            <Table.Body className="divide-y divide-edge">
               {recLoading ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
+                <Table.Row><Table.Cell colSpan={6} className="px-4 py-10 text-center text-muted">{t('common.loading')}</Table.Cell></Table.Row>
               ) : recs.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">{t('archive.noArchivedRecs')}</td></tr>
+                <Table.Row><Table.Cell colSpan={6} className="px-4 py-10 text-center text-muted">{t('archive.noArchivedRecs')}</Table.Cell></Table.Row>
               ) : recs.map(r => (
-                <tr key={r.id} className="hover:bg-subtle">
-                  <td className="px-4 py-3">
+                <Table.Row key={r.id} className="hover:bg-subtle">
+                  <Table.Cell className="px-4 py-3">
                     <span className="px-2 py-0.5 bg-emphasis text-secondary rounded text-xs">{t(`archive.recType.${r.rec_type}`, { defaultValue: storageRecommendationType(r.rec_type) })}</span>
-                  </td>
-                  <td className="px-4 py-3 text-secondary font-mono text-xs">{r.resource_id?.slice(0, 24)}…</td>
-                  <td className="px-4 py-3 text-success font-semibold">{fmt(r.saving ?? 0)}</td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary font-mono text-xs">{r.resource_id?.slice(0, 24)}…</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-success font-semibold">{fmt(r.saving ?? 0)}</Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <span className="px-2 py-0.5 bg-emphasis text-secondary rounded-full text-xs">{t(`status.${r.status}`, { defaultValue: r.status })}</span>
-                  </td>
-                  <td className="px-4 py-3 text-secondary text-xs">{r.created_at?.slice(0, 10)}</td>
-                  <td className="px-4 py-3">
-                    <button
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">{r.created_at?.slice(0, 10)}</Table.Cell>
+                  <Table.Cell className="px-4 py-3">
+                    <Button
+                      size="sm" variant="ghost"
                       onClick={() => reactivate.mutate(r.id)}
                       disabled={reactivate.isPending}
-                      className="text-xs text-accent hover:text-accent disabled:opacity-50"
                     >
                       {t('archive.restore')}
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
 
       {activeTab === 'alerts' && (
         <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-            <thead><tr className="border-b border-strong">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+            <Table.Header variant="compact"><Table.Row className="border-b border-strong">
               {['archive.colAlert', 'archive.colTriggeredAt', 'archive.colCostAtTrigger', 'archive.colMessage'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
+                <Table.Head key={h} className="px-4 py-3 text-left">{t(h)}</Table.Head>
               ))}
-            </tr></thead>
-            <tbody className="divide-y divide-edge">
+            </Table.Row></Table.Header>
+            <Table.Body className="divide-y divide-edge">
               {evLoading ? (
-                <tr><td colSpan={4} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
+                <Table.Row><Table.Cell colSpan={4} className="px-4 py-10 text-center text-muted">{t('common.loading')}</Table.Cell></Table.Row>
               ) : events.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-10 text-center text-muted">{t('archive.noAlertEvents')}</td></tr>
+                <Table.Row><Table.Cell colSpan={4} className="px-4 py-10 text-center text-muted">{t('archive.noAlertEvents')}</Table.Cell></Table.Row>
               ) : events.map(e => (
-                <tr key={e.id} className="hover:bg-subtle">
-                  <td className="px-4 py-3 font-medium text-primary">{e.alert_name ?? t('archive.alert')}</td>
-                  <td className="px-4 py-3 text-secondary">{e.triggered_at?.slice(0, 16)}</td>
-                  <td className="px-4 py-3 text-danger font-semibold">{fmt(e.cost ?? 0)}</td>
-                  <td className="px-4 py-3 text-secondary text-xs">{e.message ?? '—'}</td>
-                </tr>
+                <Table.Row key={e.id} className="hover:bg-subtle">
+                  <Table.Cell className="px-4 py-3 font-medium text-primary">{e.alert_name ?? t('archive.alert')}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary">{e.triggered_at?.slice(0, 16)}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-danger font-semibold">{fmt(e.cost ?? 0)}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">{e.message ?? '—'}</Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
     </div>

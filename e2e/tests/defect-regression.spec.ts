@@ -1,3 +1,4 @@
+import { chooseOption } from '../helpers/chooseOption';
 /**
  * Defect-regression suite — guards the fixes from the 2026-08-15 guided e2e
  * (defect register D-1..D-11 in docs/e2e-guided-test-report-2026-08-15.md).
@@ -23,7 +24,7 @@ test.describe('defect regression', () => {
     await page.getByPlaceholder('My AWS Account').fill(`e2e-d1-account-${RUN}`);
     // Real providers now require credential fields (spec 2026-08-17); the
     // minimal no-secret payload path is the "Other" demo provider.
-    await page.getByLabel(/provider/i).selectOption('other');
+    await chooseOption(page.getByLabel(/provider/i), 'Other');
     await page.getByRole('button', { name: '+ Add Account' }).click(); // submit
 
     await expect(page.getByRole('row', { name: new RegExp(`e2e-d1-account-${RUN}`) })).toBeVisible({ timeout: 10_000 });
@@ -76,8 +77,8 @@ test.describe('defect regression', () => {
       await cmdbPage.goto('/cmdb');
       await page.getByRole('button', { name: '+ New CI' }).click();
       await page.getByPlaceholder('i-1234567890').fill(`e2e-d4-ci-${RUN}`);
-      const typeSelect = page.locator('select').filter({ hasText: 'Select type' });
-      await typeSelect.selectOption({ label: `E2E D4 Type ${RUN}` });
+      const typeSelect = page.locator('form').getByRole('combobox', { name: 'CI Type' });
+      await chooseOption(typeSelect, `E2E D4 Type ${RUN}`);
 
       // D-4: the attribute input appears once the type is chosen.
       const attrInput = page.getByPlaceholder('app_version');
@@ -149,12 +150,12 @@ test.describe('defect regression', () => {
       await row.click();
       await page.getByRole('button', { name: '+ Link CI' }).click();
 
-      const kindSelect = page.locator('select').filter({ hasText: 'Select association type' });
-      await expect(kindSelect).toBeVisible({ timeout: 10_000 });
+      const kindSelect = page.getByRole('dialog').getByRole('combobox', { name: 'Associations', exact: true });
+      await kindSelect.click();
       // Options arrive async (object-association query enables on open) —
       // poll until the seeded cloud_instance templates land.
       await expect
-        .poll(async () => kindSelect.locator('option').count(), { timeout: 10_000 })
+        .poll(async () => page.getByRole('option').count(), { timeout: 10_000 })
         .toBeGreaterThan(1);
     } finally {
       await api.delete(`/api/v1/orgs/${ORG}/cis/${ci.data.id}`);
@@ -175,7 +176,7 @@ test.describe('defect regression', () => {
       await page.goto('/cmdb');
       const row = page.getByRole('row', { name: new RegExp(`e2e-d8-ci-${RUN}`) });
       await expect(row).toBeVisible({ timeout: 10_000 });
-      await row.getByRole('combobox').selectOption({ label: 'Stopped' });
+      await chooseOption(row.getByRole('combobox'), 'Stopped');
 
       await expect(row).toContainText('Stopped', { timeout: 10_000 });
       await expect(page.getByText('Failed to update lifecycle state')).toHaveCount(0);
@@ -190,13 +191,7 @@ test.describe('defect regression', () => {
     test.setTimeout(60_000);
     await page.goto('/alerts');
     await page.getByRole('button', { name: '+ New Alert' }).click();
-    // selectOption({label}) needs an exact string; resolve the Root Pool
-    // option's value first (its label embeds the live budget amount).
-    const poolCombo = page.getByRole('combobox');
-    const rootOption = poolCombo.locator('option', { hasText: 'Root Pool' }).first();
-    await expect(rootOption).toBeAttached({ timeout: 10_000 });
-    const rootValue = await rootOption.getAttribute('value');
-    await poolCombo.selectOption({ value: rootValue! });
+    await chooseOption(page.getByRole('dialog').getByRole('combobox'), /Root Pool/);
     await page.getByPlaceholder(/Warn team lead/i).fill(`e2e-d9 alert ${RUN}`);
     await page.getByRole('button', { name: 'Create Alert' }).click();
 

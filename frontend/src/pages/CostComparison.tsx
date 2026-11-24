@@ -1,3 +1,6 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { SelectField } from '../components/shared/SelectField'
 import { cloudServiceLabel } from '../lib/objectStorage'
 import { chartColors, chartAxis, chartGrid } from '../lib/chartTheme'
 import { fmtMoney, fmtMoneyShort, useOrgCurrency } from '../lib/format'
@@ -91,27 +94,29 @@ export default function CostComparison() {
           <div>
             <label className="text-xs text-secondary mb-2 block">{t('costComparison.periodABaseline')}</label>
             <div className="flex gap-2">
-              <input type="date" value={periodA.start} onChange={e => setPeriodA(p => ({ ...p, start: e.target.value }))}
-                className="flex-1 bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
-              <input type="date" value={periodA.end} onChange={e => setPeriodA(p => ({ ...p, end: e.target.value }))}
-                className="flex-1 bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
+              <Input type="date" aria-label={`${t('costComparison.periodABaseline')} · ${t('biExport.startDate')}`} value={periodA.start} onChange={e => setPeriodA(p => ({ ...p, start: e.target.value }))}
+                className="flex-1" />
+              <Input type="date" aria-label={`${t('costComparison.periodABaseline')} · ${t('biExport.endDate')}`} value={periodA.end} onChange={e => setPeriodA(p => ({ ...p, end: e.target.value }))}
+                className="flex-1" />
             </div>
           </div>
           <div>
             <label className="text-xs text-secondary mb-2 block">{t('costComparison.periodBComparison')}</label>
             <div className="flex gap-2">
-              <input type="date" value={periodB.start} onChange={e => setPeriodB(p => ({ ...p, start: e.target.value }))}
-                className="flex-1 bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
-              <input type="date" value={periodB.end} onChange={e => setPeriodB(p => ({ ...p, end: e.target.value }))}
-                className="flex-1 bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
+              <Input type="date" aria-label={`${t('costComparison.periodBComparison')} · ${t('biExport.startDate')}`} value={periodB.start} onChange={e => setPeriodB(p => ({ ...p, start: e.target.value }))}
+                className="flex-1" />
+              <Input type="date" aria-label={`${t('costComparison.periodBComparison')} · ${t('biExport.endDate')}`} value={periodB.end} onChange={e => setPeriodB(p => ({ ...p, end: e.target.value }))}
+                className="flex-1" />
             </div>
           </div>
           <div>
-            <label className="text-xs text-secondary mb-2 block">{t('costComparison.groupBy')}</label>
-            <select value={dim.labelKey} onChange={e => setDim(DIM_OPTIONS.find(d => d.labelKey === e.target.value) ?? DIM_OPTIONS[0])}
-              className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong">
-              {DIM_OPTIONS.map(d => <option key={d.labelKey} value={d.labelKey}>{t(d.labelKey)}</option>)}
-            </select>
+            <SelectField
+              label={t('costComparison.groupBy')}
+              value={dim.labelKey}
+              onValueChange={value => setDim(DIM_OPTIONS.find(d => d.labelKey === value) ?? DIM_OPTIONS[0])}
+              className="w-full"
+              items={DIM_OPTIONS.map(d => ({ value: d.labelKey, label: t(d.labelKey) }))}
+            />
           </div>
         </div>
       </div>
@@ -164,33 +169,33 @@ export default function CostComparison() {
           <span className="text-xs text-secondary">{t('costComparison.itemsCount', { count: merged.length })}</span>
         </div>
         <div className="overflow-x-auto">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-            <thead><tr className="border-b border-strong">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+            <Table.Header variant="compact"><Table.Row className="border-b border-strong">
               {[t(dim.headerKey), t('costComparison.colPeriodA'), t('costComparison.colPeriodB'), t('costComparison.colDeltaAmount', { currency }), t('costComparison.colDeltaPct')].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{h}</th>
+                <Table.Head key={h} className="px-4 py-3 text-left">{h}</Table.Head>
               ))}
-            </tr></thead>
-            <tbody className="divide-y divide-edge">
+            </Table.Row></Table.Header>
+            <Table.Body className="divide-y divide-edge">
               {merged.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">{t('costComparison.noData')}</td></tr>
+                <Table.Row><Table.Cell colSpan={5} className="px-4 py-10 text-center text-muted">{t('costComparison.noData')}</Table.Cell></Table.Row>
               ) : merged.map((r) => (
-                <tr key={r.key} className="hover:bg-subtle">
-                  <td className="px-4 py-3 font-medium text-primary">{r.full_name ?? r.name}</td>
-                  <td className="px-4 py-3 text-accent">{fmt(r.period_a)}</td>
-                  <td className="px-4 py-3 text-primary">{fmt(r.period_b)}</td>
-                  <td className={`px-4 py-3 font-semibold ${r.delta > 0 ? 'text-danger' : r.delta < 0 ? 'text-success' : 'text-secondary'}`}>
+                <Table.Row key={r.key} className="hover:bg-subtle">
+                  <Table.Cell className="px-4 py-3 font-medium text-primary">{r.full_name ?? r.name}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-accent">{fmt(r.period_a)}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-primary">{fmt(r.period_b)}</Table.Cell>
+                  <Table.Cell className={`px-4 py-3 font-semibold ${r.delta > 0 ? 'text-danger' : r.delta < 0 ? 'text-success' : 'text-secondary'}`}>
                     {r.delta > 0 ? '+' : ''}{fmt(r.delta)}
-                  </td>
-                  <td className={`px-4 py-3 font-semibold ${r.delta_pct > 0 ? 'text-danger' : r.delta_pct < 0 ? 'text-success' : 'text-secondary'}`}>
+                  </Table.Cell>
+                  <Table.Cell className={`px-4 py-3 font-semibold ${r.delta_pct > 0 ? 'text-danger' : r.delta_pct < 0 ? 'text-success' : 'text-secondary'}`}>
                     {r.delta_pct > 0 ? '+' : ''}{r.delta_pct.toFixed(1)}%
                     {Math.abs(r.delta_pct) > 50 && (
                       <span className="ml-1 px-1 bg-danger/10 text-danger rounded text-xs">!</span>
                     )}
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       </div>
     </div>

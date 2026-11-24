@@ -1,3 +1,8 @@
+import { PageTabs } from '../components/shared/PageTabs'
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -113,10 +118,9 @@ export default function ResourceLifecycle() {
           <h1 className="page-title">{t('resourceLifecycle.title')}</h1>
           <p className="text-sm text-secondary mt-1">{t('resourceLifecycle.subtitle')}</p>
         </div>
-        <button onClick={() => setShowCreate(true)}
-          className="btn-primary">
+        <Button variant="primary" onClick={() => setShowCreate(true)}>
           {t('resourceLifecycle.newPolicy')}
-        </button>
+        </Button>
       </div>
 
       {/* Summary cards */}
@@ -136,163 +140,166 @@ export default function ResourceLifecycle() {
       </div>
 
       {/* Tabs */}
-      <div className="page-tabs ">
-        {([
-          { key: 'policies', label: t('resourceLifecycle.tabPolicies', { count: pols.length }) },
-          { key: 'events', label: t('resourceLifecycle.tabEvents', { count: evts.length }) },
-        ] as const).map(tab => (
-          <button aria-pressed={activeTab === tab.key} key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className="page-tab">
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <PageTabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="mb-5"
+        tabs={[
+          { value: 'policies', label: t('resourceLifecycle.tabPolicies', { count: pols.length }) },
+          { value: 'events', label: t('resourceLifecycle.tabEvents', { count: evts.length }) },
+        ]}
+      />
 
       {activeTab === 'policies' && (
         <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-            <thead><tr className="border-b border-strong">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+            <Table.Header variant="compact"><Table.Row className="border-b border-strong">
               {['common.name', 'common.type', 'resourceLifecycle.colThreshold', 'resourceLifecycle.colAction', 'common.active', 'resourceLifecycle.colLastRun', 'common.actions'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
+                <Table.Head key={h} className="px-4 py-3 text-left">{t(h)}</Table.Head>
               ))}
-            </tr></thead>
-            <tbody className="divide-y divide-edge">
+            </Table.Row></Table.Header>
+            <Table.Body className="divide-y divide-edge">
               {policyLoading ? (
-                <tr><td colSpan={7} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
+                <Table.Row><Table.Cell colSpan={7} className="px-4 py-10 text-center text-muted">{t('common.loading')}</Table.Cell></Table.Row>
               ) : pols.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-10 text-center text-muted">{t('resourceLifecycle.noPolicies')}</td></tr>
+                <Table.Row><Table.Cell colSpan={7} className="px-4 py-10 text-center text-muted">{t('resourceLifecycle.noPolicies')}</Table.Cell></Table.Row>
               ) : pols.map(p => (
-                <tr key={p.id} className="hover:bg-subtle">
-                  <td className="px-4 py-3">
+                <Table.Row key={p.id} className="hover:bg-subtle">
+                  <Table.Cell className="px-4 py-3">
                     <p className="font-medium text-primary">{p.name}</p>
                     {p.description && <p className="text-xs text-muted mt-0.5">{p.description}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-secondary text-xs">{t(`resourceLifecycle.policyType.${p.policy_type}`, { defaultValue: p.policy_type })}</td>
-                  <td className="px-4 py-3 text-secondary text-xs">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">{t(`resourceLifecycle.policyType.${p.policy_type}`, { defaultValue: p.policy_type })}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">
                     {p.policy_type === 'ttl' && p.ttl_days != null ? t('resourceLifecycle.ttlDays', { days: p.ttl_days }) : null}
                     {p.policy_type === 'idle_shutdown' && p.idle_days != null ? t('resourceLifecycle.idleDays', { days: p.idle_days }) : null}
                     {p.policy_type !== 'ttl' && p.policy_type !== 'idle_shutdown' ? '—' : null}
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${actionColors[p.action] ?? ''}`}>{t(`resourceLifecycle.action.${p.action}`, { defaultValue: p.action })}</span>
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <span className={`text-xs font-semibold ${p.is_active ? 'text-success' : 'text-muted'}`}>
                       {p.is_active ? t('resourceLifecycle.yes') : t('resourceLifecycle.no')}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-secondary text-xs">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">
                     {p.last_evaluated_at ? new Date(p.last_evaluated_at).toLocaleString() : t('common.never')}
-                  </td>
-                  <td className="px-4 py-3 flex gap-2">
-                    <button onClick={() => evaluatePolicy.mutate(p.id)}
-                      disabled={evaluatingId === p.id}
-                      className="text-xs text-accent hover:text-accent disabled:opacity-50">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => evaluatePolicy.mutate(p.id)}
+                      disabled={evaluatingId === p.id}>
                       {evaluatingId === p.id ? t('resourceLifecycle.running') : t('resourceLifecycle.run')}
-                    </button>
-                    <button onClick={() => { if (confirm(t('resourceLifecycle.confirmDelete'))) deletePolicy.mutate(p.id) }}
-                      className="text-xs text-danger hover:text-danger">
+                    </Button>
+                    <Button size="sm" variant="secondary-destructive" onClick={() => { if (confirm(t('resourceLifecycle.confirmDelete'))) deletePolicy.mutate(p.id) }}>
                       {t('common.delete')}
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
 
       {activeTab === 'events' && (
         <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-            <thead><tr className="border-b border-strong">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+            <Table.Header variant="compact"><Table.Row className="border-b border-strong">
               {['resourceLifecycle.colEvent', 'pools.colResource', 'common.type', 'resourceLifecycle.colPolicy', 'resourceLifecycle.colReason', 'resourceLifecycle.colTime'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
+                <Table.Head key={h} className="px-4 py-3 text-left">{t(h)}</Table.Head>
               ))}
-            </tr></thead>
-            <tbody className="divide-y divide-edge">
+            </Table.Row></Table.Header>
+            <Table.Body className="divide-y divide-edge">
               {eventLoading ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
+                <Table.Row><Table.Cell colSpan={6} className="px-4 py-10 text-center text-muted">{t('common.loading')}</Table.Cell></Table.Row>
               ) : evts.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">{t('resourceLifecycle.noEvents')}</td></tr>
+                <Table.Row><Table.Cell colSpan={6} className="px-4 py-10 text-center text-muted">{t('resourceLifecycle.noEvents')}</Table.Cell></Table.Row>
               ) : evts.map(e => (
-                <tr key={e.id} className="hover:bg-subtle">
-                  <td className="px-4 py-3">
+                <Table.Row key={e.id} className="hover:bg-subtle">
+                  <Table.Cell className="px-4 py-3">
                     <span className={`font-medium capitalize ${eventColors[e.event_type] ?? 'text-secondary'}`}>
                       {t(`resourceLifecycle.eventType.${e.event_type}`, { defaultValue: e.event_type })}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-secondary">{e.cloud_resource_id?.slice(0, 30) ?? '—'}</td>
-                  <td className="px-4 py-3 text-secondary text-xs">{e.resource_type ?? '—'}</td>
-                  <td className="px-4 py-3 text-secondary text-xs">{e.policy_name ?? '—'}</td>
-                  <td className="px-4 py-3 text-secondary text-xs max-w-xs truncate">{e.reason ?? '—'}</td>
-                  <td className="px-4 py-3 text-secondary text-xs">{e.created_at?.slice(0, 16)}</td>
-                </tr>
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 font-mono text-xs text-secondary">{e.cloud_resource_id?.slice(0, 30) ?? '—'}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">{e.resource_type ?? '—'}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">{e.policy_name ?? '—'}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs max-w-xs truncate">{e.reason ?? '—'}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">{e.created_at?.slice(0, 16)}</Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
 
       {/* Create Policy Modal */}
       {showCreate && (
         <NativeDialog className="items-center justify-center p-4" label={t('resourceLifecycle.newPolicyTitle')} onClose={() => setShowCreate(false)}>
-          <div className="dialog-panel p-6 w-full max-w-md space-y-4">
+          <form className="dialog-panel p-6 w-full max-w-md space-y-4" onSubmit={e => { e.preventDefault(); createPolicy.mutate() }}>
             <h2 className="text-lg font-bold text-primary">{t('resourceLifecycle.newPolicyTitle')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('common.name')} *</label>
-                <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                <Input label={`${t('common.name')} *`} value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                  className="w-full"
                   placeholder={t('resourceLifecycle.namePlaceholder')} />
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('resourceLifecycle.policyType')}</label>
-                <select value={form.policy_type} onChange={e => setForm(p => ({ ...p, policy_type: e.target.value }))}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary">
-                  <option value="ttl">{t('resourceLifecycle.typeTtlOption')}</option>
-                  <option value="idle_shutdown">{t('resourceLifecycle.typeIdleOption')}</option>
-                </select>
+                <SelectField
+                  label={t('resourceLifecycle.policyType')}
+                  value={form.policy_type}
+                  onValueChange={value => setForm(p => ({ ...p, policy_type: value }))}
+                  className="w-full"
+                  items={[
+                    { value: "ttl", label: t('resourceLifecycle.typeTtlOption') },
+                    { value: "idle_shutdown", label: t('resourceLifecycle.typeIdleOption') },
+                  ]}
+                />
               </div>
               {form.policy_type === 'ttl' && (
                 <div>
-                  <label className="block text-xs text-secondary mb-1">{t('resourceLifecycle.ttlDaysLabel')}</label>
-                  <input type="number" min={1} value={form.ttl_days}
+                  <Input
+                    label={t('resourceLifecycle.ttlDaysLabel')} type="number" min={1} value={form.ttl_days}
                     onChange={e => setForm(p => ({ ...p, ttl_days: parseInt(e.target.value) || 30 }))}
-                    className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary" />
+                    className="w-full" />
                 </div>
               )}
               {form.policy_type === 'idle_shutdown' && (
                 <div>
-                  <label className="block text-xs text-secondary mb-1">{t('resourceLifecycle.idleDaysLabel')}</label>
-                  <input type="number" min={1} value={form.idle_days}
+                  <Input
+                    label={t('resourceLifecycle.idleDaysLabel')} type="number" min={1} value={form.idle_days}
                     onChange={e => setForm(p => ({ ...p, idle_days: parseInt(e.target.value) || 14 }))}
-                    className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary" />
+                    className="w-full" />
                 </div>
               )}
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('resourceLifecycle.colAction')}</label>
-                <select value={form.action} onChange={e => setForm(p => ({ ...p, action: e.target.value }))}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary">
-                  <option value="flag">{t('resourceLifecycle.optionFlag')}</option>
-                  <option value="notify">{t('resourceLifecycle.optionNotify')}</option>
-                  <option value="stop">{t('resourceLifecycle.optionStop')}</option>
-                  <option value="decommission">{t('resourceLifecycle.optionDecommission')}</option>
-                </select>
+                <SelectField
+                  label={t('resourceLifecycle.colAction')}
+                  value={form.action}
+                  onValueChange={value => setForm(p => ({ ...p, action: value }))}
+                  className="w-full"
+                  items={[
+                    { value: "flag", label: t('resourceLifecycle.optionFlag') },
+                    { value: "notify", label: t('resourceLifecycle.optionNotify') },
+                    { value: "stop", label: t('resourceLifecycle.optionStop') },
+                    { value: "decommission", label: t('resourceLifecycle.optionDecommission') },
+                  ]}
+                />
               </div>
             </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={() => setShowCreate(false)}
-                className="flex-1 py-2 text-sm bg-emphasis text-secondary rounded-lg hover:bg-emphasis">
+              <Button type="button" onClick={() => setShowCreate(false)}
+                className="flex-1">
                 {t('common.cancel')}
-              </button>
-              <button onClick={() => createPolicy.mutate()}
+              </Button>
+              <Button variant="primary" type="submit"
                 disabled={createPolicy.isPending || !form.name.trim()}
-                className="btn-primary flex-1">
+                className="flex-1">
                 {createPolicy.isPending ? t('resourceLifecycle.creating') : t('resourceLifecycle.createPolicy')}
-              </button>
+              </Button>
             </div>
-          </div>
+          </form>
         </NativeDialog>
       )}
     </div>

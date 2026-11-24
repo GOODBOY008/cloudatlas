@@ -1,3 +1,5 @@
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -109,9 +111,6 @@ export default function Integrations() {
     createMutation.mutate({ provider, name: name.trim(), config })
   }
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
-
   return (
     <div>
       <div className="page-header">
@@ -177,13 +176,12 @@ export default function Integrations() {
                       </span>
                     </div>
                     <div className="mt-3 flex items-center gap-3 text-xs">
-                      <button
+                      <Button
                         onClick={() => testMutation.mutate(it.id)}
                         disabled={testMutation.isPending}
-                        className="px-3 py-1.5 bg-subtle hover:bg-emphasis text-primary font-medium rounded-lg disabled:opacity-50"
                       >
                         {t('cloudAccounts.test')}
-                      </button>
+                      </Button>
                       <button
                         onClick={() => toggleMutation.mutate({ id: it.id, is_active: !it.is_active })}
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
@@ -230,24 +228,22 @@ export default function Integrations() {
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
-                <input
+                <Input
+                  label={t('common.name')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className={inputCls}
+                  className="w-full"
                   placeholder={`my-${meta.provider}-connection`}
                 />
               </div>
               {meta.fields.map((f) => (
                 <div key={f}>
-                  <label className="block text-xs font-medium text-secondary mb-1">
-                    {f.replace(/_/g, ' ')}
-                  </label>
-                  <input
+                  <Input
+                    label={f.replace(/_/g, ' ')}
                     type={f.includes('token') || f.includes('key') || f.includes('secret') ? 'password' : 'text'}
                     value={fieldValues[f] ?? ''}
                     onChange={(e) => setFieldValues({ ...fieldValues, [f]: e.target.value })}
-                    className={inputCls}
+                    className="w-full"
                   />
                 </div>
               ))}
@@ -257,20 +253,20 @@ export default function Integrations() {
                 </div>
               )}
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="btn-primary"
                 >
                   {t('integrations.connect')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

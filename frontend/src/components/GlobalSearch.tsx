@@ -1,3 +1,5 @@
+import { InputGroup } from '@cloudflare/kumo/components/input-group'
+import { Button } from '@cloudflare/kumo/components/button'
 import { recommendationTitle, storageRecommendationType } from '../lib/objectStorage'
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -73,28 +75,30 @@ export default function GlobalSearch({ open, onOpenChange: setOpen }: {
     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
     <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t('common.search')} tabIndex={-1}
       className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-edge bg-surface shadow-popover" onClick={(event) => event.stopPropagation()}>
-      <div className="flex items-center gap-3 border-b border-edge px-5 py-5">
-        <Search size={16} className="text-muted" aria-hidden="true" />
-        <input ref={inputRef} role="combobox" aria-expanded="true" aria-controls="global-search-results" aria-autocomplete="list"
-          aria-activedescendant={selectedKey ? `search-${selectedKey}` : undefined} aria-label={t('common.search')}
-          value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('search.placeholder')}
-          onCompositionStart={() => { composing.current = true }}
-          onCompositionEnd={() => { composing.current = false }}
-          onKeyDownCapture={(event) => {
-            // WebKit can report compositionend before the Enter that confirms the candidate.
-            if (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
-              // The dialog's native Escape listener must let the IME dismiss its candidate first.
-              if (event.key === 'Escape') event.stopPropagation()
-              return
-            }
-            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-              event.preventDefault()
-              if (items.length) setActive((selected + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length)
-            }
-            if (event.key === 'Enter' && items[selected]) { event.preventDefault(); go(items[selected].path) }
-          }}
-          className="min-w-0 flex-1 bg-transparent text-sm text-primary" />
-        <button onClick={() => setOpen(false)} aria-label={t('design.closeSearch')} className="rounded border border-edge px-1.5 py-1 text-[10px] text-muted">ESC</button>
+      <div className="flex items-center gap-2 border-b border-edge p-3">
+        <InputGroup className="min-w-0 flex-1">
+          <InputGroup.Addon><Search size={16} aria-hidden="true" /></InputGroup.Addon>
+          <InputGroup.Input ref={inputRef} role="combobox" aria-expanded="true" aria-controls="global-search-results" aria-autocomplete="list"
+            aria-activedescendant={selectedKey ? `search-${selectedKey}` : undefined} aria-label={t('common.search')}
+            value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('search.placeholder')}
+            onCompositionStart={() => { composing.current = true }}
+            onCompositionEnd={() => { composing.current = false }}
+            onKeyDownCapture={(event) => {
+              // WebKit can report compositionend before the Enter that confirms the candidate.
+              if (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
+                // The dialog's native Escape listener must let the IME dismiss its candidate first.
+                if (event.key === 'Escape') event.stopPropagation()
+                return
+              }
+              if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault()
+                if (items.length) setActive((selected + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length)
+              }
+              if (event.key === 'Enter' && items[selected]) { event.preventDefault(); go(items[selected].path) }
+            }}
+          />
+        </InputGroup>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)} aria-label={t('design.closeSearch')}>Esc</Button>
       </div>
       <div className="max-h-[min(420px,60dvh)] overflow-y-auto">
         <div id="global-search-results" role="listbox" aria-label={t('common.search')} aria-busy={loading}>

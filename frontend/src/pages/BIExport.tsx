@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -175,19 +179,16 @@ export default function BIExport() {
     }
   }
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
-
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">{t('biExport.title')}</h1>
-        <button
+        <Button
+          variant="primary"
           onClick={openCreate}
-          className="btn-primary"
         >
           {t('biExport.newExport')}
-        </button>
+        </Button>
       </div>
 
       {isError && (
@@ -221,19 +222,18 @@ export default function BIExport() {
                   {e.last_run_at && (
                     <span className="text-muted">{t('biExport.lastRun', { date: new Date(e.last_run_at).toLocaleDateString() })}</span>
                   )}
-                  <button
+                  <Button
+                    variant="primary"
                     onClick={() => runMutation.mutate(e.id)}
                     disabled={runMutation.isPending}
-                    className="btn-primary"
                   >
                     {t('biExport.run')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => download(e.id)}
-                    className="px-3 py-1.5 bg-subtle hover:bg-emphasis text-primary font-medium rounded-lg"
                   >
                     {t('biExport.download')}
-                  </button>
+                  </Button>
                   <button onClick={() => openEdit(e)} className="text-accent hover:text-accent">
                     {t('common.edit')}
                   </button>
@@ -260,19 +260,19 @@ export default function BIExport() {
                   ) : runs.length === 0 ? (
                     <div className="p-4 text-muted text-xs">{t('biExport.noRuns')}</div>
                   ) : (
-                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-                      <thead className="border-b border-edge text-xs uppercase text-muted">
-                        <tr>
-                          <th className="px-4 py-2 font-medium">{t('common.status')}</th>
-                          <th className="px-4 py-2 font-medium">{t('biExport.colRows')}</th>
-                          <th className="px-4 py-2 font-medium">{t('biExport.colError')}</th>
-                          <th className="px-4 py-2 font-medium">{t('common.created')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+                      <Table.Header variant="compact" className="border-b border-edge">
+                        <Table.Row>
+                          <Table.Head className="px-4 py-2 font-medium">{t('common.status')}</Table.Head>
+                          <Table.Head className="px-4 py-2 font-medium">{t('biExport.colRows')}</Table.Head>
+                          <Table.Head className="px-4 py-2 font-medium">{t('biExport.colError')}</Table.Head>
+                          <Table.Head className="px-4 py-2 font-medium">{t('common.created')}</Table.Head>
+                        </Table.Row>
+                      </Table.Header>
+                      <Table.Body>
                         {runs.map((r) => (
-                          <tr key={r.id} className="border-b border-strong last:border-0">
-                            <td className="px-4 py-2 text-xs">
+                          <Table.Row key={r.id} className="border-b border-strong last:border-0">
+                            <Table.Cell className="px-4 py-2 text-xs">
                               <span
                                 className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                                   r.status === 'completed'
@@ -282,16 +282,16 @@ export default function BIExport() {
                               >
                                 {t(`status.${r.status}`, { defaultValue: r.status })}
                               </span>
-                            </td>
-                            <td className="px-4 py-2 text-xs text-secondary">{r.row_count.toLocaleString()}</td>
-                            <td className="px-4 py-2 text-xs text-muted">{r.error_message ?? '—'}</td>
-                            <td className="px-4 py-2 text-xs text-muted">
+                            </Table.Cell>
+                            <Table.Cell className="px-4 py-2 text-xs text-secondary">{r.row_count.toLocaleString()}</Table.Cell>
+                            <Table.Cell className="px-4 py-2 text-xs text-muted">{r.error_message ?? '—'}</Table.Cell>
+                            <Table.Cell className="px-4 py-2 text-xs text-muted">
                               {new Date(r.created_at).toLocaleString()}
-                            </td>
-                          </tr>
+                            </Table.Cell>
+                          </Table.Row>
                         ))}
-                      </tbody>
-                    </table></div>
+                      </Table.Body>
+                    </Table></div>
                   )}
                 </div>
               )}
@@ -311,61 +311,56 @@ export default function BIExport() {
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
-                <input
+                <Input
+                  label={t('common.name')}
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className={inputCls}
+                  className="w-full"
                   placeholder={t('biExport.namePlaceholder')}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">{t('biExport.format')}</label>
-                  <select
+                  <SelectField
+                    label={t('biExport.format')}
                     value={form.format}
-                    onChange={(e) => setForm({ ...form, format: e.target.value as 'csv' | 'json' })}
-                    className={inputCls}
-                  >
-                    <option value="csv">CSV</option>
-                    <option value="json">JSON</option>
-                  </select>
+                    onValueChange={value => setForm({ ...form, format: value as 'csv' | 'json' })}
+                    className="w-full"
+                    items={[
+                      { value: "csv", label: "CSV" },
+                      { value: "json", label: "JSON" },
+                    ]}
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">{t('biExport.scope')}</label>
-                  <select
+                  <SelectField
+                    label={t('biExport.scope')}
                     value={form.scope}
-                    onChange={(e) =>
-                      setForm({ ...form, scope: e.target.value as ExportForm['scope'] })
-                    }
-                    className={inputCls}
-                  >
-                    {SCOPES.map((s) => (
-                      <option key={s.value} value={s.value}>
-                        {t(s.labelKey)}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={value =>
+                      setForm({ ...form, scope: value as ExportForm['scope'] })}
+                    className="w-full"
+                    items={SCOPES.map((s) => ({ value: s.value, label: t(s.labelKey) }))}
+                  />
                 </div>
               </div>
               {form.scope === 'expenses' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-secondary mb-1">{t('biExport.startDate')}</label>
-                    <input
+                    <Input
+                      label={t('biExport.startDate')}
                       type="date"
                       value={form.start_date}
                       onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                      className={inputCls}
+                      className="w-full"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-secondary mb-1">{t('biExport.endDate')}</label>
-                    <input
+                    <Input
+                      label={t('biExport.endDate')}
                       type="date"
                       value={form.end_date}
                       onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                      className={inputCls}
+                      className="w-full"
                     />
                   </div>
                 </div>
@@ -376,20 +371,20 @@ export default function BIExport() {
                 </div>
               )}
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="btn-primary"
                 >
                   {editingId ? t('biExport.saveChanges') : t('biExport.createExport')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

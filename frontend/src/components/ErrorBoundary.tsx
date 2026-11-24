@@ -1,3 +1,4 @@
+import { Button } from '@cloudflare/kumo/components/button'
 import { Component, ReactNode } from 'react'
 import { withTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
@@ -51,18 +52,16 @@ class ErrorBoundaryInner extends Component<Props, State> {
               </pre>
             )}
             <div className="flex gap-3 justify-center pt-2">
-              <button
+              <Button variant="primary"
                 onClick={this.handleReset}
-                className="btn-primary"
               >
                 {t('errorBoundary.retry')}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => window.location.assign('/dashboard')}
-                className="btn-secondary"
               >
                 {t('errorBoundary.dashboard')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

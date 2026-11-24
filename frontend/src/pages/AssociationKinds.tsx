@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -196,12 +200,12 @@ export default function AssociationKinds() {
       {activeTab === 'kinds' && (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <button
+            <Button
+              variant="primary"
               onClick={() => { resetKindForm(); setShowKindForm(true) }}
-              className="btn-primary"
             >
               {t('assocKinds.newKind')}
-            </button>
+            </Button>
           </div>
 
           {showKindForm && (
@@ -212,32 +216,32 @@ export default function AssociationKinds() {
               {kindError && <p className="text-danger text-sm">{kindError}</p>}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-secondary mb-1">{t('assocKinds.nameKey')}</label>
-                  <input
+                  <Input
+                    label={t('assocKinds.nameKey')}
                     value={kindName}
                     onChange={e => setKindName(e.target.value)}
                     disabled={!!editKindId}
                     placeholder={t('assocKinds.namePlaceholder')}
-                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary disabled:opacity-50"
+                    className="w-full"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-secondary mb-1">{t('cmdb.displayName')}</label>
-                  <input
+                  <Input
+                    label={t('cmdb.displayName')}
                     value={kindDisplay}
                     onChange={e => setKindDisplay(e.target.value)}
                     placeholder={t('assocKinds.displayPlaceholder')}
-                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                    className="w-full"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
-                <input
+                <Input
+                  label={t('common.description')}
                   value={kindDesc}
                   onChange={e => setKindDesc(e.target.value)}
                   placeholder={t('assocKinds.optionalDesc')}
-                  className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                  className="w-full"
                 />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -252,16 +256,16 @@ export default function AssociationKinds() {
                 </span>
               </label>
               <div className="flex gap-3">
-                <button
+                <Button
+                  variant="primary"
                   disabled={kindBusy || !kindName.trim() || !kindDisplay.trim()}
                   onClick={() => editKindId ? updateKindMutation.mutate() : createKindMutation.mutate()}
-                  className="btn-primary"
                 >
                   {kindBusy ? t('assocKinds.saving') : editKindId ? t('assocKinds.update') : t('assocKinds.create')}
-                </button>
-                <button onClick={resetKindForm} className="btn-secondary">
+                </Button>
+                <Button onClick={resetKindForm}>
                   {t('common.cancel')}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -270,54 +274,54 @@ export default function AssociationKinds() {
             <p className="text-muted text-sm">{t('common.loading')}</p>
           ) : (
             <div className="bg-surface rounded-xl border border-edge overflow-hidden">
-              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-muted border-b border-edge">
-                    <th className="text-left px-4 py-3">{t('common.name')}</th>
-                    <th className="text-left px-4 py-3">{t('assocKinds.colDisplay')}</th>
-                    <th className="text-left px-4 py-3">{t('assocKinds.colDirection')}</th>
-                    <th className="text-right px-4 py-3">{t('assocKinds.colUsedIn')}</th>
-                    <th className="text-right px-4 py-3">{t('common.actions')}</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                <Table.Header variant="compact">
+                  <Table.Row className="text-xs text-muted border-b border-edge">
+                    <Table.Head className="text-left px-4 py-3">{t('common.name')}</Table.Head>
+                    <Table.Head className="text-left px-4 py-3">{t('assocKinds.colDisplay')}</Table.Head>
+                    <Table.Head className="text-left px-4 py-3">{t('assocKinds.colDirection')}</Table.Head>
+                    <Table.Head className="text-right px-4 py-3">{t('assocKinds.colUsedIn')}</Table.Head>
+                    <Table.Head className="text-right px-4 py-3">{t('common.actions')}</Table.Head>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
                   {kinds.map(k => (
-                    <tr key={k.id} className="border-b border-edge/60 hover:bg-subtle/30">
-                      <td className="px-4 py-3 font-mono text-xs text-primary">
+                    <Table.Row key={k.id} className="border-b border-edge/60 hover:bg-subtle/30">
+                      <Table.Cell className="px-4 py-3 font-mono text-xs text-primary">
                         {k.name}
                         {k.is_builtin && (
                           <span className="ml-2 px-1.5 py-0.5 bg-emphasis text-secondary text-xs rounded">{t('assocKinds.builtin')}</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-primary">{k.display_name}</td>
-                      <td className="px-4 py-3">
+                      </Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-primary">{k.display_name}</Table.Cell>
+                      <Table.Cell className="px-4 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${k.is_directional ? 'bg-info/10 text-info' : 'bg-emphasis text-secondary'}`}>
                           {k.is_directional ? t('assocKinds.directionalBadge') : t('assocKinds.bidirectionalBadge')}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-right text-accent font-medium">{k.usage_count}</td>
-                      <td className="px-4 py-3 text-right">
+                      </Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-right text-accent font-medium">{k.usage_count}</Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-right">
                         {!k.is_builtin && (
                           <div className="flex justify-end gap-2">
-                            <button
+                            <Button
+                              size="sm" variant="ghost"
                               onClick={() => {
                                 setEditKindId(k.id); setKindName(k.name)
                                 setKindDisplay(k.display_name); setKindDesc(k.description ?? '')
                                 setKindDirectional(k.is_directional); setShowKindForm(true)
                               }}
-                              className="text-xs text-info hover:text-info"
-                            >{t('common.edit')}</button>
-                            <button
+                            >{t('common.edit')}</Button>
+                            <Button
+                              size="sm" variant="secondary-destructive"
                               onClick={() => { if (confirm(t('assocKinds.deleteKindConfirm', { name: k.display_name }))) deleteKindMutation.mutate(k.id) }}
-                              className="text-xs text-danger hover:text-danger"
-                            >{t('common.delete')}</button>
+                            >{t('common.delete')}</Button>
                           </div>
                         )}
-                      </td>
-                    </tr>
+                      </Table.Cell>
+                    </Table.Row>
                   ))}
-                </tbody>
-              </table></div>
+                </Table.Body>
+              </Table></div>
             </div>
           )}
         </div>
@@ -327,12 +331,12 @@ export default function AssociationKinds() {
       {activeTab === 'mappings' && (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <button
+            <Button
+              variant="primary"
               onClick={() => setShowMappingForm(true)}
-              className="btn-primary"
             >
               {t('assocKinds.newMapping')}
-            </button>
+            </Button>
           </div>
 
           {showMappingForm && (
@@ -341,81 +345,74 @@ export default function AssociationKinds() {
               {mapError && <p className="text-danger text-sm">{mapError}</p>}
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs text-secondary mb-1">{t('assocKinds.srcType')}</label>
-                  <select
+                  <SelectField
+                    label={t('assocKinds.srcType')}
                     value={mapSrcType}
-                    onChange={e => setMapSrcType(e.target.value)}
-                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
-                  >
-                    <option value="">{t('assocKinds.selectType')}</option>
-                    {ciTypes.map(t => (
-                      <option key={t.id} value={t.id}>{t.display_name}</option>
-                    ))}
-                  </select>
+                    onValueChange={setMapSrcType}
+                    className="w-full"
+                    items={[
+                      { value: "", label: t('assocKinds.selectType') },
+                      ...ciTypes.map(t => ({ value: t.id, label: t.display_name })),
+                    ]}
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs text-secondary mb-1">{t('assocKinds.kind')}</label>
-                  <select
+                  <SelectField
+                    label={t('assocKinds.kind')}
                     value={mapKindId}
-                    onChange={e => setMapKindId(e.target.value)}
-                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
-                  >
-                    <option value="">{t('assocKinds.selectKind')}</option>
-                    {kinds.map(k => (
-                      <option key={k.id} value={k.id}>{k.display_name}</option>
-                    ))}
-                  </select>
+                    onValueChange={setMapKindId}
+                    className="w-full"
+                    items={[
+                      { value: "", label: t('assocKinds.selectKind') },
+                      ...kinds.map(k => ({ value: k.id, label: k.display_name })),
+                    ]}
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs text-secondary mb-1">{t('assocKinds.dstType')}</label>
-                  <select
+                  <SelectField
+                    label={t('assocKinds.dstType')}
                     value={mapDstType}
-                    onChange={e => setMapDstType(e.target.value)}
-                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
-                  >
-                    <option value="">{t('assocKinds.selectType')}</option>
-                    {ciTypes.map(t => (
-                      <option key={t.id} value={t.id}>{t.display_name}</option>
-                    ))}
-                  </select>
+                    onValueChange={setMapDstType}
+                    className="w-full"
+                    items={[
+                      { value: "", label: t('assocKinds.selectType') },
+                      ...ciTypes.map(t => ({ value: t.id, label: t.display_name })),
+                    ]}
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-secondary mb-1">{t('assocKinds.cardinality')}</label>
-                  <select
+                  <SelectField
+                    label={t('assocKinds.cardinality')}
                     value={mapCardinality}
-                    onChange={e => setMapCardinality(e.target.value)}
-                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
-                  >
-                    {CARDINALITIES.map(c => (
-                      <option key={c} value={c}>{c.replace(/_/g, ':')}</option>
-                    ))}
-                  </select>
+                    onValueChange={setMapCardinality}
+                    className="w-full"
+                    items={CARDINALITIES.map(c => ({ value: c, label: c.replace(/_/g, ':') }))}
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
-                  <input
+                  <Input
+                    label={t('common.description')}
                     value={mapDesc}
                     onChange={e => setMapDesc(e.target.value)}
-                    className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                    className="w-full"
                   />
                 </div>
               </div>
               <div className="flex gap-3">
-                <button
+                <Button
+                  variant="primary"
                   disabled={createMappingMutation.isPending || !mapSrcType || !mapKindId || !mapDstType}
                   onClick={() => createMappingMutation.mutate()}
-                  className="btn-primary"
                 >
                   {createMappingMutation.isPending ? t('assocKinds.saving') : t('assocKinds.createMapping')}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => { setShowMappingForm(false); setMapError('') }}
-                  className="btn-secondary"
                 >
                   {t('common.cancel')}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -424,41 +421,41 @@ export default function AssociationKinds() {
             <p className="text-muted text-sm">{t('common.loading')}</p>
           ) : (
             <div className="bg-surface rounded-xl border border-edge overflow-hidden">
-              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-muted border-b border-edge">
-                    <th className="text-left px-4 py-3">{t('assocKinds.colSrcType')}</th>
-                    <th className="text-center px-4 py-3">{t('assocKinds.colRelation')}</th>
-                    <th className="text-left px-4 py-3">{t('assocKinds.colDstType')}</th>
-                    <th className="text-left px-4 py-3">{t('assocKinds.cardinality')}</th>
-                    <th className="text-right px-4 py-3">{t('assocKinds.colInstances')}</th>
-                    <th className="text-right px-4 py-3">{t('common.actions')}</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                <Table.Header variant="compact">
+                  <Table.Row className="text-xs text-muted border-b border-edge">
+                    <Table.Head className="text-left px-4 py-3">{t('assocKinds.colSrcType')}</Table.Head>
+                    <Table.Head className="text-center px-4 py-3">{t('assocKinds.colRelation')}</Table.Head>
+                    <Table.Head className="text-left px-4 py-3">{t('assocKinds.colDstType')}</Table.Head>
+                    <Table.Head className="text-left px-4 py-3">{t('assocKinds.cardinality')}</Table.Head>
+                    <Table.Head className="text-right px-4 py-3">{t('assocKinds.colInstances')}</Table.Head>
+                    <Table.Head className="text-right px-4 py-3">{t('common.actions')}</Table.Head>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
                   {mappings.map(m => (
-                    <tr key={m.id} className="border-b border-edge/60 hover:bg-subtle/30">
-                      <td className="px-4 py-3 text-primary">{m.src_type_display}</td>
-                      <td className="px-4 py-3 text-center">
+                    <Table.Row key={m.id} className="border-b border-edge/60 hover:bg-subtle/30">
+                      <Table.Cell className="px-4 py-3 text-primary">{m.src_type_display}</Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-center">
                         <span className="text-xs px-2 py-0.5 bg-accent-soft/30 text-accent rounded-full">
                           {m.is_directional ? `→ ${m.kind_display}` : `↔ ${m.kind_display}`}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-primary">{m.dst_type_display}</td>
-                      <td className="px-4 py-3 text-secondary text-xs">{m.cardinality.replace(/_/g, ':')}</td>
-                      <td className="px-4 py-3 text-right text-accent font-medium">{m.instance_count}</td>
-                      <td className="px-4 py-3 text-right">
-                        <button
+                      </Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-primary">{m.dst_type_display}</Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-secondary text-xs">{m.cardinality.replace(/_/g, ':')}</Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-right text-accent font-medium">{m.instance_count}</Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-right">
+                        <Button
+                          size="sm" variant="secondary-destructive"
                           onClick={() => { if (confirm(t('assocKinds.deleteMappingConfirm'))) deleteMappingMutation.mutate(m.id) }}
-                          className="text-xs text-danger hover:text-danger"
                         >
                           {t('common.delete')}
-                        </button>
-                      </td>
-                    </tr>
+                        </Button>
+                      </Table.Cell>
+                    </Table.Row>
                   ))}
-                </tbody>
-              </table></div>
+                </Table.Body>
+              </Table></div>
             </div>
           )}
         </div>

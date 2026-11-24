@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input, InputArea } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useMoneyFormatter } from '../lib/format'
@@ -258,9 +262,6 @@ export default function CostCenters() {
 
   const tree = buildTree(costCenters)
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
-
   const totalCost = costCenters
     .filter((cc) => !cc.parent_id)
     .reduce((s, cc) => s + (cc.current_cost ?? 0), 0)
@@ -276,12 +277,12 @@ export default function CostCenters() {
             </p>
           )}
         </div>
-        <button
+        <Button
+          variant="primary"
           onClick={() => openCreate()}
-          className="btn-primary"
         >
           {t('costCenters.newCostCenter')}
-        </button>
+        </Button>
       </div>
 
       {isError && (
@@ -326,85 +327,74 @@ export default function CostCenters() {
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('common.name')}</label>
-                <input
+                <Input label={t('common.name')}
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className={inputCls}
+                  className="w-full"
                   placeholder={t('costCenters.namePlaceholder')}
                 />
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('costCenters.code')}</label>
-                <input
+                <Input
+                  label={t('costCenters.code')}
+                  required={!editingId}
                   value={form.code}
-                  onChange={(e) =>
-                    setForm({ ...form, code: e.target.value.toUpperCase().replace(/\s/g, '-') })
-                  }
-                  className={`${inputCls} font-mono`}
+                  onChange={e => setForm({ ...form, code: e.target.value.toUpperCase().replace(/\s/g, '-') })}
+                  className="w-full font-mono"
                   placeholder="ENG-PLATFORM"
                 />
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">
-                  {t('costCenters.parentCostCenter')} <span className="text-muted">{t('costCenters.optional')}</span>
-                </label>
-                <select
+                <SelectField
+                  label={<>{t('costCenters.parentCostCenter')} <span className="text-muted">{t('costCenters.optional')}</span></>}
                   value={form.parent_id}
-                  onChange={(e) => setForm({ ...form, parent_id: e.target.value })}
-                  className={inputCls}
-                >
-                  <option value="">{t('costCenters.topLevel')}</option>
-                  {costCenters
+                  onValueChange={value => setForm({ ...form, parent_id: value })}
+                  className="w-full"
+                  items={[
+                    { value: "", label: t('costCenters.topLevel') },
+                    ...costCenters
                     .filter((cc) => cc.id !== editingId)
-                    .map((cc) => (
-                      <option key={cc.id} value={cc.id}>
-                        {cc.name} {cc.code ? `(${cc.code})` : ''}
-                      </option>
-                    ))}
-                </select>
+                    .map((cc) => ({ value: cc.id, label: `${cc.name} ${cc.code ? `(${cc.code})` : ''}` })),
+                  ]}
+                />
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('costCenters.owner')}</label>
-                <input
+                <Input
+                  label={t('costCenters.owner')}
                   value={form.owner}
                   onChange={(e) => setForm({ ...form, owner: e.target.value })}
-                  className={inputCls}
+                  className="w-full"
                   placeholder={t('costCenters.ownerPlaceholder')}
                 />
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">
-                  {t('common.description')} <span className="text-muted">{t('costCenters.optional')}</span>
-                </label>
-                <textarea
+                <InputArea label={<>{t('common.description')} <span className="text-muted">{t('costCenters.optional')}</span></>}
                   rows={2}
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className={`${inputCls} resize-none`}
+                  className="w-full resize-y"
                   placeholder={t('costCenters.descriptionPlaceholder')}
                 />
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
                   type="button"
                   onClick={closeModal}
-                  className="btn-secondary"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="btn-primary"
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? t('costCenters.saving')
                     : editingId
                     ? t('costCenters.update')
                     : t('costCenters.createCostCenter')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -418,57 +408,57 @@ export default function CostCenters() {
             <h3 className="text-sm font-semibold text-primary">{t('costCenters.capabilities')}</h3>
             <p className="text-xs text-muted mt-0.5">{t('costCenters.capabilitiesHint')}</p>
           </div>
-          <button
+          <Button
+            variant="primary"
             onClick={() => {
               setCapForm({ name: '', description: '', cost_center_id: '' })
               setCapError('')
               setShowCapModal(true)
             }}
-            className="btn-primary"
             data-testid="add-capability"
           >
             {t('costCenters.addCapability')}
-          </button>
+          </Button>
         </div>
         {capabilities.length === 0 ? (
           <div className="px-5 py-6 text-center text-muted text-sm">{t('costCenters.noCapabilities')}</div>
         ) : (
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-            <thead className="border-b border-edge text-xs uppercase text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">{t('common.name')}</th>
-                <th className="px-4 py-3 font-medium">{t('costCenters.costCenter')}</th>
-                <th className="px-4 py-3 font-medium">{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+            <Table.Header variant="compact" className="border-b border-edge">
+              <Table.Row>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.name')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('costCenters.costCenter')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.actions')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {capabilities.map((cap) => (
-                <tr key={cap.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
-                  <td className="px-4 py-3">
+                <Table.Row key={cap.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                  <Table.Cell className="px-4 py-3">
                     <p className="text-sm text-primary">{cap.name}</p>
                     {cap.description && <p className="text-xs text-muted">{cap.description}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-secondary">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm text-secondary">
                     {cap.cost_center_name
                       ? `${cap.cost_center_code ? cap.cost_center_code + ' · ' : ''}${cap.cost_center_name}`
                       : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
+                    <Button
+                      size="sm" variant="secondary-destructive"
                       onClick={() => {
                         if (confirm(t('costCenters.deleteCapConfirm', { name: cap.name }))) {
                           deleteCapMutation.mutate(cap.id)
                         }
                       }}
-                      className="text-danger hover:text-danger text-xs"
                     >
                       {t('common.delete')}
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         )}
       </div>
 
@@ -492,53 +482,52 @@ export default function CostCenters() {
               className="space-y-4"
             >
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')} *</label>
-                <input
+                <Input
+                  label={`${t('common.name')} *`}
                   value={capForm.name}
                   onChange={(e) => setCapForm({ ...capForm, name: e.target.value })}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm"
+                  className="w-full"
                   placeholder="Platform Services"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('common.description')}</label>
-                <input
+                <Input
+                  label={t('common.description')}
                   value={capForm.description}
                   onChange={(e) => setCapForm({ ...capForm, description: e.target.value })}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm"
+                  className="w-full"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('costCenters.costCenter')}</label>
-                <select
+                <SelectField
+                  label={t('costCenters.costCenter')}
                   value={capForm.cost_center_id}
-                  onChange={(e) => setCapForm({ ...capForm, cost_center_id: e.target.value })}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm"
-                >
-                  <option value="">{t('costCenters.noCostCenter')}</option>
-                  {costCenters.map((cc) => (
-                    <option key={cc.id} value={cc.id}>{cc.code ? `${cc.code} · ${cc.name}` : cc.name}</option>
-                  ))}
-                </select>
+                  onValueChange={value => setCapForm({ ...capForm, cost_center_id: value })}
+                  className="w-full"
+                  items={[
+                    { value: "", label: t('costCenters.noCostCenter') },
+                    ...costCenters.map((cc) => ({ value: cc.id, label: cc.code ? `${cc.code} · ${cc.name}` : cc.name })),
+                  ]}
+                />
               </div>
               {capError && (
                 <div className="p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">{capError}</div>
               )}
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => setShowCapModal(false)}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createCapMutation.isPending}
-                  className="btn-primary"
                 >
                   {t('costCenters.createCapability')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

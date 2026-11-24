@@ -1,3 +1,4 @@
+import { chooseOption } from '../test/chooseOption'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -94,7 +95,7 @@ describe('Cloud Accounts credentials', () => {
     renderPage()
     await screen.findByText('AWS Prod')
     await userEvent.click(screen.getByRole('button', { name: /add account/i }))
-    await userEvent.selectOptions(screen.getByLabelText(/provider/i), 'other')
+    await chooseOption(screen.getByLabelText(/provider/i), 'Other')
     expect(screen.queryByLabelText(/access key id/i)).not.toBeInTheDocument()
     await userEvent.type(screen.getByLabelText(/account name/i), 'Demo2')
     const form = screen.getByLabelText(/account name/i).closest('form')!
@@ -130,7 +131,7 @@ describe('Cloud Accounts credentials', () => {
     renderPage()
     await screen.findByText('AWS Prod')
     await userEvent.click(screen.getByRole('button', { name: /add account/i }))
-    await userEvent.selectOptions(screen.getByLabelText(/provider/i), 'kubernetes')
+    await chooseOption(screen.getByLabelText(/provider/i), 'Kubernetes')
     expect(screen.getByLabelText(/api server url/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/bearer token/i)).toBeInTheDocument()
     await userEvent.type(screen.getByLabelText(/account name/i), 'k8s-prod')

@@ -1,6 +1,10 @@
+import { Badge } from '@cloudflare/kumo/components/badge'
+import { DropdownMenu } from '@cloudflare/kumo/components/dropdown'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from './shared/SelectField'
 import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { CircleHelp, ChevronDown, ChevronRight, Check, Search, Sun, Moon, Menu, X, LogOut } from 'lucide-react'
+import { CircleHelp, ChevronDown, ChevronsUpDown, Globe, Check, Search, Sun, Moon, Menu, X, LogOut } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import CopilotPanel from './CopilotPanel'
 import CopilotFab from './copilot/CopilotFab'
@@ -85,13 +89,11 @@ export default function Layout() {
   }
   const { organizations, currentOrg, setOrganizations, setCurrentOrg } =
     useOrgStore()
-  const [orgMenuOpen, setOrgMenuOpen] = useState(false)
   const { theme, toggleTheme } = useThemeStore()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [logoutFailed, setLogoutFailed] = useState(false)
-  const orgMenuRef = useRef<HTMLDivElement>(null)
   const mobileNavRef = useDialogFocus<HTMLElement>(mobileNavOpen, () =>
     setMobileNavOpen(false),
   )
@@ -101,7 +103,6 @@ export default function Layout() {
 
   useEffect(() => {
     setMobileNavOpen(false)
-    setOrgMenuOpen(false)
     mainRef.current?.scrollTo(0, 0)
   }, [pathname])
 
@@ -112,22 +113,6 @@ export default function Layout() {
     }
     desktop.addEventListener('change', closeOnDesktop)
     return () => desktop.removeEventListener('change', closeOnDesktop)
-  }, [])
-
-  useEffect(() => {
-    function dismiss(event: MouseEvent) {
-      if (!orgMenuRef.current?.contains(event.target as Node))
-        setOrgMenuOpen(false)
-    }
-    function escape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOrgMenuOpen(false)
-    }
-    document.addEventListener('mousedown', dismiss)
-    document.addEventListener('keydown', escape)
-    return () => {
-      document.removeEventListener('mousedown', dismiss)
-      document.removeEventListener('keydown', escape)
-    }
   }, [])
 
   function switchLanguage() {
@@ -169,7 +154,6 @@ export default function Layout() {
 
   function switchOrg(org: Organization) {
     setCurrentOrg(org)
-    setOrgMenuOpen(false)
     navigate('/dashboard')
   }
 
@@ -190,71 +174,58 @@ export default function Layout() {
   const workspaces = organizations.filter((org, i, all) => all.findIndex(x => workspaceKey(x) === workspaceKey(org)) === i)
   const environments = organizations.filter(org => org.workspace && org.workspace.id === currentOrg?.workspace?.id)
   const workspace = (
-    <div ref={orgMenuRef} className="relative">
-      <button
-        className="workspace-switch"
-        disabled={workspaces.length < 2}
-        aria-label={t('design.switchWorkspace')}
-        aria-expanded={orgMenuOpen}
-        onClick={() => setOrgMenuOpen(!orgMenuOpen)}
-      >
-        <span className="workspace-avatar">
-          {workspaceName?.slice(0, 2).toUpperCase() ?? 'CA'}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-xs font-semibold text-primary">
-            {workspaceName ?? t('design.workspace')}
-          </span>
-          <span className="mt-1 block text-[10px] text-muted">
-            {t('header.platformTitle')}
-          </span>
-        </span>
-        {workspaces.length > 1 && (
-          <ChevronDown size={14} className="text-muted" />
-        )}
-      </button>
-      {currentOrg?.workspace && <div className="mx-4 mb-2 flex items-center gap-2">
-        <label htmlFor="workspace-environment" className="text-xs text-secondary">{t('design.environment')}</label>
-        <select id="workspace-environment" value={currentOrg.id} disabled={environments.length < 2}
-          onChange={event => { const org = environments.find(item => item.id === event.target.value); if (org) switchOrg(org) }}
-          className="min-w-0 flex-1 rounded-md border border-edge bg-surface px-2 py-1 text-xs text-primary">
-          {environments.map(org => <option key={org.id} value={org.id}>{org.workspace?.environment}</option>)}
-        </select>
-      </div>}
-      {orgMenuOpen && (
-        <div className="absolute left-4 right-4 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-edge bg-surface p-1 shadow-popover">
-          {workspaces.map((org) => (
-            <button
-              key={org.id}
-              onClick={() => switchOrg(org)}
-              className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-xs text-secondary hover:bg-subtle"
-            >
-              <span className="truncate">{org.workspace?.name || org.name}</span>
-              {currentOrg && workspaceKey(org) === workspaceKey(currentOrg) && (
-                <Check size={14} className="shrink-0 text-accent" />
-              )}
-            </button>
+    <div className="workspace-selector">
+      <DropdownMenu>
+        <DropdownMenu.Trigger
+          disabled={workspaces.length < 2}
+          aria-label={t('design.switchWorkspace')}
+          render={<button type="button" className="workspace-trigger" />}
+        >
+          <Globe size={16} aria-hidden="true" />
+          <span className="truncate">{workspaceName ?? t('design.workspace')}</span>
+          {workspaces.length > 1 && <ChevronsUpDown size={14} aria-hidden="true" />}
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content align="start">
+          {workspaces.map(org => (
+            <DropdownMenu.Item key={org.id} onClick={() => switchOrg(org)}>
+              {org.workspace?.name || org.name}
+              {currentOrg && workspaceKey(org) === workspaceKey(currentOrg) && <Check size={14} className="ml-auto" />}
+            </DropdownMenu.Item>
           ))}
-        </div>
-      )}
+        </DropdownMenu.Content>
+      </DropdownMenu>
     </div>
   )
 
   const sidebarContents = (mobile: boolean) => (
     <>
-      <div className="sidebar-brand">
-        <Brand />
-        {mobile && (
-          <button
-            className="icon-button"
-            onClick={() => setMobileNavOpen(false)}
-            aria-label={t('design.closeNavigation')}
-          >
+      {mobile && (
+        <div className="sidebar-brand">
+          <Brand />
+          <Button variant="ghost" shape="square" onClick={() => setMobileNavOpen(false)} aria-label={t('design.closeNavigation')}>
             <X size={18} />
-          </button>
-        )}
-      </div>
-      {workspace}
+          </Button>
+        </div>
+      )}
+      {currentOrg?.workspace && (environments.length > 1 ? (
+        <div className="workspace-environment">
+          <SelectField
+            id="workspace-environment"
+            label={t('design.environment')}
+            value={currentOrg.id}
+            onValueChange={id => {
+              const org = environments.find(item => item.id === id)
+              if (org) switchOrg(org)
+            }}
+            items={environments.map(org => ({ value: org.id, label: org.workspace?.environment }))}
+          />
+        </div>
+      ) : (
+        <div className="workspace-context">
+          <span>{t('design.environment')}</span>
+          <Badge variant="secondary">{currentOrg.workspace.environment}</Badge>
+        </div>
+      ))}
       <nav
         aria-label={t('design.primaryNavigation')}
         className="sidebar-navigation"
@@ -282,84 +253,72 @@ export default function Layout() {
       <a href="#main-content" className="skip-link">
         {t('design.skipToContent')}
       </a>
-      <aside className="app-sidebar">
-        {!mobileNavOpen && sidebarContents(false)}
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="app-header">
-          <div className="flex min-w-0 items-center gap-3">
-            <button
-              onClick={(event) => {
-                event.currentTarget.focus()
-                setMobileNavOpen(true)
-              }}
-              aria-label={t('design.openNavigation')}
-              aria-expanded={mobileNavOpen}
-              className="icon-button lg:hidden"
-            >
-              <Menu size={20} />
-            </button>
-            <div className="flex min-w-0 items-center gap-2 text-xs">
-              <span className="hidden text-muted xl:inline">
-                {currentSection
-                  ? t(currentSection.key)
-                  : t('header.platformTitle')}
-              </span>
-              <ChevronRight size={13} className="hidden text-muted xl:block" />
-              <span className="truncate font-medium text-primary">
-                {currentItem ? t(currentItem.labelKey) : 'CloudAtlas'}
-              </span>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-            <button
-              className="search-trigger"
-              onClick={(event) => {
-                event.currentTarget.focus()
-                setSearchOpen(true)
-              }}
-              aria-label={t('common.search')}
-            >
-              <Search size={16} />
-              <span className="mr-5 hidden md:inline">
-                {t('design.searchAnything')}
-              </span>
-              <kbd className="hidden rounded border border-edge bg-surface px-1 py-0.5 text-[10px] md:inline">
-                ⌘ K
-              </kbd>
-            </button>
-            <span className="mx-1 hidden h-5 w-px bg-edge sm:block" />
-            <NavLink to={`/help?article=${helpForPath(pathname)}`} className="icon-button" title={t('help.context')} aria-label={t('help.context')}><CircleHelp size={18} /></NavLink>
-            <NotificationBell />
-            <span className="hidden sm:contents">
-              <BackgroundJobsIndicator />
+      <header className="app-header">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button variant="ghost" shape="square"
+            onClick={(event) => {
+              event.currentTarget.focus()
+              setMobileNavOpen(true)
+            }}
+            aria-label={t('design.openNavigation')}
+            aria-expanded={mobileNavOpen}
+            className="lg:hidden"
+          >
+            <Menu size={20} />
+          </Button>
+          <NavLink to="/dashboard" aria-label="CloudAtlas" className="header-brand"><Brand /></NavLink>
+          {workspace}
+        </div>
+        <div className="header-actions">
+          <button
+            className="search-trigger"
+            onClick={(event) => {
+              event.currentTarget.focus()
+              setSearchOpen(true)
+            }}
+            aria-label={t('common.search')}
+          >
+            <Search size={16} />
+            <span className="mr-5 hidden md:inline">
+              {t('design.searchAnything')}
             </span>
-            <button
-              onClick={switchLanguage}
-              title={t('header.switchLanguage')}
-              aria-label={t('header.switchLanguage')}
-              className="icon-button text-[11px] font-semibold"
-            >
-              {i18n.language === 'zh' ? 'EN' : t('common.languageName')}
-            </button>
-            <button
-              onClick={toggleTheme}
-              title={
-                theme === 'dark'
-                  ? t('header.themeToLight')
-                  : t('header.themeToDark')
-              }
-              aria-label={
-                theme === 'dark'
-                  ? t('header.themeToLight')
-                  : t('header.themeToDark')
-              }
-              className="icon-button"
-            >
-              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-            </button>
-          </div>
-        </header>
+            <kbd className="hidden rounded border border-edge bg-surface px-1 py-0.5 text-[10px] md:inline">
+              ⌘ K
+            </kbd>
+          </button>
+          <span className="mx-1 hidden h-5 w-px bg-edge sm:block" />
+          <NavLink to={`/help?article=${helpForPath(pathname)}`} className="icon-button" title={t('help.context')} aria-label={t('help.context')}><CircleHelp size={18} /></NavLink>
+          <NotificationBell />
+          <span className="hidden sm:contents">
+            <BackgroundJobsIndicator />
+          </span>
+          <Button variant="ghost" shape="square"
+            onClick={switchLanguage}
+            title={t('header.switchLanguage')}
+            aria-label={t('header.switchLanguage')}
+            className="text-xs"
+          >
+            {i18n.language === 'zh' ? 'EN' : t('common.languageName')}
+          </Button>
+          <Button variant="ghost" shape="square"
+            onClick={toggleTheme}
+            title={
+              theme === 'dark'
+                ? t('header.themeToLight')
+                : t('header.themeToDark')
+            }
+            aria-label={
+              theme === 'dark'
+                ? t('header.themeToLight')
+                : t('header.themeToDark')
+            }
+          >
+            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          </Button>
+        </div>
+      </header>
+      <div className="flex min-h-0 flex-1">
+        <aside className="app-sidebar">{!mobileNavOpen && sidebarContents(false)}</aside>
         <main
           ref={mainRef}
           id="main-content"
@@ -367,6 +326,7 @@ export default function Layout() {
           className="app-main"
         >
           <div className="page-content">
+            {currentSection && <p className="page-crumb">{t(currentSection.key)}</p>}
             <Suspense
               fallback={
                 <div
@@ -385,10 +345,6 @@ export default function Layout() {
               </ErrorBoundary>
             </Suspense>
           </div>
-          <footer className="app-footer">
-            <span>CloudAtlas</span>
-            <span>{t('design.footer')}</span>
-          </footer>
         </main>
       </div>
       {mobileNavOpen && (

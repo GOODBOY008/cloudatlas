@@ -1,3 +1,5 @@
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from './shared/SelectField'
 import { useTranslation } from 'react-i18next'
 
 const PER_PAGE_OPTIONS = [20, 50, 100]
@@ -62,25 +64,22 @@ export default function PaginationBar({
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-1.5">
           <span className="text-xs">{t('pagination.perPage')}</span>
-          <select
+          <SelectField
+            aria-label={t('pagination.perPage')}
             data-testid="per-page-select"
-            value={perPage}
-            onChange={(e) => onPerPageChange(Number(e.target.value))}
-            className="bg-subtle text-primary rounded px-1.5 py-1 text-xs border border-strong focus:outline-none focus:border-accent"
-          >
-            {PER_PAGE_OPTIONS.map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
+            value={String(perPage)}
+            onValueChange={value => onPerPageChange(Number(value))}
+            size="sm"
+            items={PER_PAGE_OPTIONS.map((n) => ({ value: String(n), label: n }))}
+          />
         </label>
-        <button
+        <Button size="sm"
           data-testid="prev-page"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="btn-secondary !min-h-8 !py-1 !text-xs"
         >
           {t('pagination.prev')}
-        </button>
+        </Button>
         {pageWindow(page, totalPages).map((p, i) =>
           p === '…' ? (
             <span key={`gap-${i}`} className="px-1 text-muted">…</span>
@@ -101,14 +100,13 @@ export default function PaginationBar({
             </button>
           ),
         )}
-        <button
+        <Button size="sm"
           data-testid="next-page"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="btn-secondary !min-h-8 !py-1 !text-xs"
         >
           {t('pagination.next')}
-        </button>
+        </Button>
       </div>
     </div>
   )

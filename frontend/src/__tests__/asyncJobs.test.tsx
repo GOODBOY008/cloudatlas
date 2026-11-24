@@ -1,3 +1,4 @@
+import { chooseOption } from '../test/chooseOption'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, renderHook, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -151,8 +152,7 @@ describe('BillingImport progress card', () => {
 
   async function submitImport() {
     // Wait for the account list to load (submit is disabled while loading).
-    await screen.findByText(/Aliyun Prod/)
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'acct-1' } })
+    await chooseOption(screen.getByRole('combobox'), /Aliyun Prod/)
     fireEvent.click(screen.getByRole('button', { name: /run import/i }))
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith(expect.stringContaining('/billing/import'), expect.anything()))
   }

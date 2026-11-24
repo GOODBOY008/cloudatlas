@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { paginatedGet } from '../lib/api'
@@ -118,10 +122,6 @@ export default function CMDBAuditLog() {
     )
   const { isLoading, isFetching } = query
 
-  function applySearch() {
-    setFilterCIName(inputCIName)
-  }
-
   function clearFilters() {
     setFilterOp('')
     setFilterResource('')
@@ -141,47 +141,40 @@ export default function CMDBAuditLog() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
         <div>
-          <label className="block text-xs text-secondary mb-1">{t('cmdbAuditLog.operation')}</label>
-          <select
+          <SelectField
+            label={t('cmdbAuditLog.operation')}
             value={filterOp}
-            onChange={e => setFilterOp(e.target.value)}
-            className="bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary"
-          >
-            <option value="">{t('cmdbAuditLog.allOperations')}</option>
-            {OPERATIONS.map(op => (
-              <option key={op} value={op}>{t(`cmdbAuditLog.op.${op}`, { defaultValue: op })}</option>
-            ))}
-          </select>
+            onValueChange={setFilterOp}
+            items={[
+              { value: "", label: t('cmdbAuditLog.allOperations') },
+              ...OPERATIONS.map(op => ({ value: op, label: t(`cmdbAuditLog.op.${op}`, { defaultValue: op }) })),
+            ]}
+          />
         </div>
         <div>
-          <label className="block text-xs text-secondary mb-1">{t('cmdbAuditLog.resourceType')}</label>
-          <select
+          <SelectField
+            label={t('cmdbAuditLog.resourceType')}
             value={filterResource}
-            onChange={e => setFilterResource(e.target.value)}
-            className="bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary"
-          >
-            <option value="">{t('cmdbAuditLog.allResourceTypes')}</option>
-            {RESOURCE_TYPES.map(rt => (
-              <option key={rt} value={rt}>{t(`cmdbAuditLog.resource.${rt}`, { defaultValue: rt })}</option>
-            ))}
-          </select>
+            onValueChange={setFilterResource}
+            items={[
+              { value: "", label: t('cmdbAuditLog.allResourceTypes') },
+              ...RESOURCE_TYPES.map(rt => ({ value: rt, label: t(`cmdbAuditLog.resource.${rt}`, { defaultValue: rt }) })),
+            ]}
+          />
         </div>
-        <div>
-          <label className="block text-xs text-secondary mb-1">{t('cmdbAuditLog.colCiName')}</label>
-          <div className="flex gap-2">
-            <input
-              value={inputCIName}
-              onChange={e => setInputCIName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && applySearch()}
-              placeholder={t('cmdbAuditLog.searchPlaceholder')}
-              className="bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary"
-            />
-            <button
-              onClick={applySearch}
-              className="btn-primary"
-            >{t('common.search')}</button>
-          </div>
-        </div>
+        <form className="flex max-w-full items-end gap-2" onSubmit={event => {
+          event.preventDefault()
+          setFilterCIName(inputCIName.trim())
+        }}>
+          <Input
+            type="search"
+            label={t('cmdbAuditLog.colCiName')}
+            value={inputCIName}
+            onChange={e => setInputCIName(e.currentTarget.value)}
+            placeholder={t('cmdbAuditLog.searchPlaceholder')}
+          />
+          <Button variant="primary" type="submit">{t('common.search')}</Button>
+        </form>
         {(filterOp || filterResource || filterCIName) && (
           <button
             onClick={clearFilters}
@@ -212,45 +205,45 @@ export default function CMDBAuditLog() {
         </div>
       ) : (
         <div className="bg-surface rounded-xl border border-edge overflow-hidden">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-muted border-b border-edge">
-                <th className="text-left px-4 py-3">{t('cmdbAuditLog.colCiName')}</th>
-                <th className="text-left px-4 py-3">{t('cmdb.ciType')}</th>
-                <th className="text-left px-4 py-3">{t('cmdbAuditLog.operation')}</th>
-                <th className="text-left px-4 py-3">{t('cmdbAuditLog.colUser')}</th>
-                <th className="text-left px-4 py-3">{t('cmdbAuditLog.colChanges')}</th>
-                <th className="text-right px-4 py-3">{t('cmdbAuditLog.colTime')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+            <Table.Header variant="compact">
+              <Table.Row className="text-xs text-muted border-b border-edge">
+                <Table.Head className="text-left px-4 py-3">{t('cmdbAuditLog.colCiName')}</Table.Head>
+                <Table.Head className="text-left px-4 py-3">{t('cmdb.ciType')}</Table.Head>
+                <Table.Head className="text-left px-4 py-3">{t('cmdbAuditLog.operation')}</Table.Head>
+                <Table.Head className="text-left px-4 py-3">{t('cmdbAuditLog.colUser')}</Table.Head>
+                <Table.Head className="text-left px-4 py-3">{t('cmdbAuditLog.colChanges')}</Table.Head>
+                <Table.Head className="text-right px-4 py-3">{t('cmdbAuditLog.colTime')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {logs.map(log => (
-                <tr key={log.id} className="border-b border-edge/40 hover:bg-subtle/30">
-                  <td className="px-4 py-3 text-primary">
+                <Table.Row key={log.id} className="border-b border-edge/40 hover:bg-subtle/30">
+                  <Table.Cell className="px-4 py-3 text-primary">
                     {log.ci_name ?? log.resource_name ?? '—'}
                     {log.resource_type && log.resource_type !== 'ci' && (
                       <span className="ml-2 px-1.5 py-0.5 bg-emphasis text-secondary text-xs rounded">
                         {t(`cmdbAuditLog.resource.${log.resource_type}`, { defaultValue: log.resource_type })}
                       </span>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-secondary text-xs">{log.ci_type_name ?? '—'}</td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">{log.ci_type_name ?? '—'}</Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${OPERATION_COLORS[log.operation] ?? 'bg-emphasis text-secondary'}`}>
                       {t(`cmdbAuditLog.op.${log.operation}`, { defaultValue: log.operation })}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-secondary text-xs">{log.user_email ?? '—'}</td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">{log.user_email ?? '—'}</Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <FieldChangesCell changes={log.field_changes} />
-                  </td>
-                  <td className="px-4 py-3 text-right text-muted text-xs whitespace-nowrap">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-right text-muted text-xs whitespace-nowrap">
                     {formatDate(log.created_at)}
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
 

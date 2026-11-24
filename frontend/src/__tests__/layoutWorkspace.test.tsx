@@ -82,8 +82,9 @@ describe('workspace selection in Layout', () => {
   it('keeps persisted state valid when switching workspaces and rehydrating', async () => {
     const view = renderLayout()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Switch workspace' })).toHaveTextContent('Acme Corp'))
-    await userEvent.click(screen.getByRole('button', { name: 'Switch workspace' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Beta Inc' }))
+    screen.getByRole('button', { name: 'Switch workspace' }).focus()
+    await userEvent.keyboard('{ArrowDown}')
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Beta Inc' }))
     await waitFor(() => expect(getOrgCurrency()).toBe('EUR'))
 
     const saved = JSON.parse(localStorage.getItem('cloudatlas-org')!)
@@ -111,8 +112,9 @@ describe('workspace selection in Layout', () => {
     })
     renderLayout()
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/organizations/org-001'))
-    await userEvent.click(screen.getByRole('button', { name: 'Switch workspace' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Beta Inc' }))
+    screen.getByRole('button', { name: 'Switch workspace' }).focus()
+    await userEvent.keyboard('{ArrowDown}')
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Beta Inc' }))
     await waitFor(() => expect(getOrgCurrency()).toBe('EUR'))
     await act(async () => finishFirst({ data: { data: { settings: { currency: 'CNY' } } } }))
     expect(getOrgCurrency()).toBe('EUR')

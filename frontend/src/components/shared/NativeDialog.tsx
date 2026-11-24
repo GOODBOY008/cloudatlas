@@ -1,3 +1,4 @@
+import { KumoPortalProvider } from '@cloudflare/kumo/utils'
 import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 
 interface NativeDialogProps {
@@ -52,7 +53,7 @@ export function NativeDialog({ children, id, className, style, open = true, moda
         pressedBackdrop.current = false
       }}
     >
-      {children}
+      <KumoPortalProvider container={ref}>{children}</KumoPortalProvider>
     </dialog>
   )
 }

@@ -18,12 +18,12 @@
   line-height: 1.55;
 }
 .model-page-header p, .model-meta { margin: .25rem 0 0; }
-.model-catalog-link, .model-inline-verb, .model-view-button, .model-heading, .model-back {
+.model-catalog-link, .model-inline-verb, .model-heading {
   display: inline-flex;
   align-items: center;
   gap: .4rem;
 }
-.model-catalog-link, .model-back, .model-notice button { color: rgb(var(--accent)); font-size: .8125rem; }
+.model-catalog-link, .model-notice button { color: rgb(var(--accent)); font-size: .8125rem; }
 .model-panel {
   min-width: 0;
   border: 1px solid rgb(var(--border));
@@ -34,20 +34,7 @@
 .model-heading { gap: .55rem; font-size: 1.05rem; font-weight: 650; line-height: 1.4; }
 .model-heading svg { color: rgb(var(--accent)); }
 .model-meta { color: rgb(var(--text-muted)); }
-.model-tools, .model-type-select { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; }
-.model-type-select { font-size: .8rem; color: rgb(var(--text-secondary)); }
-.model-type-select select, .model-view-button, .model-back {
-  min-height: 2.25rem;
-  border: 1px solid rgb(var(--border-strong));
-  border-radius: .45rem;
-  background: rgb(var(--surface));
-  color: rgb(var(--text-primary));
-  padding: .35rem .65rem;
-  font-size: .8125rem;
-}
-.model-type-select select { max-width: min(18rem, 100%); }
-.model-view-button:hover, .model-pager button:enabled:hover, .model-back:hover { background: rgb(var(--subtle)); }
-.model-view-button[aria-pressed="true"] { color: rgb(var(--accent)); border-color: rgb(var(--accent)); }
+.model-tools { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; }
 .model-path-surface {
   margin: 0;
   border-radius: 0 0 .8rem .8rem;
@@ -110,17 +97,8 @@
 .model-scope { font-size: .8rem; color: rgb(var(--text-secondary)); }
 .model-inventory { display: grid; grid-template-columns: minmax(12rem, .85fr) minmax(0, 2fr); }
 .model-asset-list { padding: 1rem 1.2rem; border-right: 1px solid rgb(var(--border)); min-width: 0; }
-.model-asset-list label, .model-detail-heading h3 { font-size: .8rem; font-weight: 600; color: rgb(var(--text-secondary)); }
-.model-search-field {
-  display: flex; align-items: center; gap: .4rem;
-  margin: .45rem 0 .65rem; padding: 0 .6rem;
-  border: 1px solid rgb(var(--border-strong)); border-radius: .4rem;
-  background: rgb(var(--canvas)); color: rgb(var(--text-muted));
-}
-.model-search-field:focus-within { outline: 2px solid rgb(var(--accent)); outline-offset: 1px; }
-.model-search-field svg, .model-asset-link > svg, .model-inline-verb svg { flex: none; }
-.model-search-field input { width: 100%; min-width: 0; min-height: 2.25rem; font-size: .8125rem; color: rgb(var(--text-primary)); background: transparent; }
-.model-search-field input:focus-visible { outline: none; }
+.model-detail-heading h3 { font-size: .8rem; font-weight: 600; color: rgb(var(--text-secondary)); }
+.model-asset-link > svg, .model-inline-verb svg { flex: none; }
 .model-asset-options { list-style: none; display: grid; gap: .2rem; }
 .model-asset-link {
   display: flex; align-items: center; justify-content: space-between; gap: .45rem;
@@ -133,7 +111,6 @@
 .model-actual-relations, .model-no-selection { padding: 1rem 1.2rem; min-width: 0; }
 .model-detail-heading { margin-bottom: .75rem; }
 .model-asset-title { font-size: 1.05rem; font-weight: 650; overflow-wrap: anywhere; }
-.model-back { color: rgb(var(--accent)); }
 .model-relations-table { width: 100%; border-collapse: collapse; table-layout: fixed; text-align: start; font-size: .8125rem; }
 .model-relations-table th, .model-relations-table td { padding: .65rem 1.2rem; overflow-wrap: anywhere; text-align: start; }
 .model-relations-table th { font-size: .75rem; font-weight: 600; color: rgb(var(--text-secondary)); background: rgb(var(--subtle)); }
@@ -146,10 +123,8 @@
 .model-inline-verb { color: rgb(var(--text-secondary)); flex-wrap: wrap; gap: .2rem; }
 .model-notice[role="alert"] { color: rgb(var(--danger)); }
 .model-pager { display: flex; align-items: center; gap: .45rem; font-size: .75rem; color: rgb(var(--text-secondary)); }
-.model-pager button { display: grid; place-items: center; min-width: 2rem; min-height: 2rem; border: 1px solid rgb(var(--border)); border-radius: .4rem; }
-.model-pager button:disabled { opacity: .4; }
 .model-asset-list .model-pager, .model-relation-footer { margin-top: .65rem; }
-.model-explorer :is(a,button,select):focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
+.model-explorer :is(a,button):focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
 
 @container model-explorer (max-width: 50rem) {
   .model-path { flex-direction: column; align-items: stretch; }
@@ -166,8 +141,6 @@
   .model-asset-list { border-right: none; border-bottom: 1px solid rgb(var(--border)); }
   .model-panel-header, .model-asset-list, .model-actual-relations { padding: .9rem; }
   .model-tools { width: 100%; }
-  .model-type-select { flex: 1 1 10rem; }
-  .model-type-select select { flex: 1; min-width: 0; }
   .model-path-surface { padding-inline: .9rem; }
   .model-relations-table :is(th,td) { padding: .5rem; }
   .model-isolated { flex-direction: column; align-items: stretch; }
@@ -175,9 +148,5 @@
 }
 
 @media (pointer: coarse) {
-  .model-view-button, .model-type-select select, .model-pager button, .model-back, .model-search-field input {
-    min-height: 2.75rem;
-  }
-  .model-pager button { min-width: 2.75rem; }
   .model-relations-table :is(a,button) { display: inline-flex; align-items: center; min-height: 2.75rem; }
 }

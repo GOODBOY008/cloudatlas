@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Select } from '@cloudflare/kumo/components/select'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { Fragment, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -48,19 +52,19 @@ function ModelConnections({ edges, nodes, onSelect }: {
     const label = (edge: ModelEdge) => [typeLabel(nodes.get(edge.source)!, t), relationLabel(edge, t), typeLabel(nodes.get(edge.target)!, t)].join(' ')
     return label(a).localeCompare(label(b), i18n.language) || a.id.localeCompare(b.id)
   })
-  return <table className="model-relations-table">
+  return <Table className="model-relations-table">
     <caption className="sr-only">{t('modelTopology.definedRelations')}</caption>
-    <thead><tr><th scope="col">{t('modelTopology.sourceType')}</th><th scope="col">{t('modelTopology.relation')}</th><th scope="col">{t('modelTopology.targetType')}</th></tr></thead>
-    <tbody>{ordered.map(edge => {
+    <Table.Header variant="compact"><Table.Row><th scope="col">{t('modelTopology.sourceType')}</th><th scope="col">{t('modelTopology.relation')}</th><th scope="col">{t('modelTopology.targetType')}</th></Table.Row></Table.Header>
+    <Table.Body>{ordered.map(edge => {
       const Icon = edge.directed ? ArrowRight : ArrowLeftRight
-      return <tr key={edge.id}>
-        <td><button onClick={() => onSelect(edge.source)}>{typeLabel(nodes.get(edge.source)!, t)}</button></td>
-        <td><span className="model-inline-verb">{relationLabel(edge, t)} <Icon size={16} role="img" aria-label={t(edge.directed ? 'modelTopology.directed' : 'modelTopology.symmetric')} /></span>
-          <small>{t(`modelTopology.cardinality.${edge.cardinality}`, { defaultValue: edge.cardinality })}</small></td>
-        <td><button onClick={() => onSelect(edge.target)}>{typeLabel(nodes.get(edge.target)!, t)}</button></td>
-      </tr>
-    })}</tbody>
-  </table>
+      return <Table.Row key={edge.id}>
+        <Table.Cell><button onClick={() => onSelect(edge.source)}>{typeLabel(nodes.get(edge.source)!, t)}</button></Table.Cell>
+        <Table.Cell><span className="model-inline-verb">{relationLabel(edge, t)} <Icon size={16} role="img" aria-label={t(edge.directed ? 'modelTopology.directed' : 'modelTopology.symmetric')} /></span>
+          <small>{t(`modelTopology.cardinality.${edge.cardinality}`, { defaultValue: edge.cardinality })}</small></Table.Cell>
+        <Table.Cell><button onClick={() => onSelect(edge.target)}>{typeLabel(nodes.get(edge.target)!, t)}</button></Table.Cell>
+      </Table.Row>
+    })}</Table.Body>
+  </Table>
 }
 
 function Explorer({ org, graph }: { org: Organization; graph: ModelGraph }) {
@@ -112,17 +116,24 @@ function Explorer({ org, graph }: { org: Organization; graph: ModelGraph }) {
           <p className="model-meta">{countLabel}</p>
         </div>
         <div className="model-tools">
-          <label className="model-type-select"><span>{t('modelTopology.selectType')}</span>
-            <select value={focus.id} onChange={e => selectType(e.target.value)}>
-              {[...groups].map(([key, types]) => <optgroup key={key} label={t(`modelTopology.groups.${key}`, { defaultValue: key })}>
-                {types.map(n => <option key={n.id} value={n.id}>{typeLabel(n, t)}</option>)}
-              </optgroup>)}
-            </select>
-          </label>
-          <button type="button" className="model-view-button" aria-pressed={all} onClick={() => setAll(!all)}>
+          <SelectField
+            aria-label={t('modelTopology.selectType')}
+            className="max-w-72"
+            value={focus.id}
+            onValueChange={selectType}
+            items={graph.nodes.map(node => ({ value: node.id, label: typeLabel(node, t) }))}
+          >
+            {[...groups].map(([key, types]) => (
+              <Select.Group key={key}>
+                <Select.GroupLabel>{t(`modelTopology.groups.${key}`, { defaultValue: key })}</Select.GroupLabel>
+                {types.map(node => <Select.Option key={node.id} value={node.id}>{typeLabel(node, t)}</Select.Option>)}
+              </Select.Group>
+            ))}
+          </SelectField>
+          <Button type="button" aria-pressed={all} onClick={() => setAll(!all)}>
             {all ? <Workflow size={15} /> : <List size={15} />}
             {t(all ? 'modelTopology.showMap' : 'modelTopology.showAll')}
-          </button>
+          </Button>
         </div>
       </header>
       {all ? edges.length ? <ModelConnections edges={edges} nodes={nodes} onSelect={selectType} />

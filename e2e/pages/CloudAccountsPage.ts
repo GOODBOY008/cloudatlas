@@ -1,3 +1,4 @@
+import { chooseOption } from '../helpers/chooseOption';
 import { Page, Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
@@ -23,7 +24,7 @@ export class CloudAccountsPage extends BasePage {
     await this.openAddForm();
     await this.page.getByLabel(/account name/i).fill(name);
     const providerSelect = this.page.getByLabel(/provider/i);
-    if (await providerSelect.isVisible()) await providerSelect.selectOption(provider);
+    if (await providerSelect.isVisible()) await chooseOption(providerSelect, provider);
     await this.page.getByLabel(/external id/i).fill(externalId);
     await this.page.locator('form').getByRole('button', { name: /add account/i }).click();
   }
@@ -37,7 +38,7 @@ export class CloudAccountsPage extends BasePage {
     await this.openAddForm();
     await this.page.getByLabel(/account name/i).fill(name);
     const providerSelect = this.page.getByLabel(/provider/i);
-    if (await providerSelect.isVisible()) await providerSelect.selectOption(provider);
+    if (await providerSelect.isVisible()) await chooseOption(providerSelect, provider);
     await this.page.getByLabel(/external id/i).fill(externalId);
     for (const [key, value] of Object.entries(creds)) {
       await this.page.locator(`#cred-${key}`).fill(value);

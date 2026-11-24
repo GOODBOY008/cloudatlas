@@ -1,3 +1,6 @@
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../../components/shared/SelectField'
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -43,20 +46,25 @@ function InventoryForm({ url, currency, done }: { url: string; currency: string;
     <form className="storage-form" onSubmit={submit}>
       <label>
         {t('storage.format')}
-        <select value={native ? 'native' : 'csv'} onChange={(e) => setNative(e.target.value === 'native')}>
-          <option value="csv">{t('storage.normalized')}</option>
-          <option value="native">{t('storage.providerManifest')}</option>
-        </select>
+        <SelectField
+          aria-label={t('storage.format')}
+          value={native ? 'native' : 'csv'}
+          onValueChange={value => setNative(value === 'native')}
+          items={[
+            { value: "csv", label: t('storage.normalized') },
+            { value: "native", label: t('storage.providerManifest') },
+          ]}
+        />
       </label>
       <div className="storage-fields">
         <label>
           {t('storage.prefix')}
-          <input name="prefix" placeholder={t('storage.fullBucket')} maxLength={1024} />
+          <Input aria-label={t('storage.prefix')} name="prefix" placeholder={t('storage.fullBucket')} maxLength={1024} />
         </label>
         {!native && (
           <label>
             {t('storage.captured')}
-            <input name="captured" type="datetime-local" step="1" required />
+            <Input aria-label={t('storage.captured')} name="captured" type="datetime-local" step="1" required />
           </label>
         )}
       </div>
@@ -96,15 +104,15 @@ function InventoryForm({ url, currency, done }: { url: string; currency: string;
         <div className="storage-fields">
           <label>
             {t('storage.storageClass')}
-            <input required name="class" maxLength={128} />
+            <Input aria-label={t('storage.storageClass')} required name="class" maxLength={128} />
           </label>
           <label>
             {t('storage.unitRate', { currency })}
-            <input required name="rate" type="number" min="0" max="1000000" step="any" />
+            <Input aria-label={t('storage.unitRate', { currency })} required name="rate" type="number" min="0" max="1000000" step="any" />
           </label>
           <label>
             {t('storage.priceSource')}
-            <input required name="source" maxLength={512} />
+            <Input aria-label={t('storage.priceSource')} required name="source" maxLength={512} />
           </label>
         </div>
       )}
@@ -113,9 +121,9 @@ function InventoryForm({ url, currency, done }: { url: string; currency: string;
         {t('storage.confirmCoverage')}
       </label>
       {upload.isError && <p role="alert">{failure(upload.error, t('storage.failed'))}</p>}
-      <button className="btn-primary" disabled={upload.isPending}>
+      <Button variant="primary" type="submit" disabled={upload.isPending}>
         {t(upload.isPending ? 'storage.uploading' : 'storage.queue')}
-      </button>
+      </Button>
     </form>
   )
 }
@@ -138,9 +146,9 @@ export function InventoryPanel({
       <div className="storage-row">
         <h4>{t('storage.inventory')}</h4>
         {canImport && (
-          <button className="btn-secondary" onClick={() => setOpen(!open)}>
+          <Button onClick={() => setOpen(!open)}>
             {t(open ? 'common.cancel' : 'storage.import')}
-          </button>
+          </Button>
         )}
       </div>
       {open && (
@@ -245,9 +253,9 @@ export function FindingsPanel({
         <div className="storage-row">
           <h4>{t('storage.objectFindings')}</h4>
           {group && (
-            <button className="btn-secondary" onClick={() => choose('')}>
+            <Button onClick={() => choose('')}>
               {t('storage.allGroups')}
-            </button>
+            </Button>
           )}
         </div>
         {findings.isPending ? (
@@ -264,10 +272,13 @@ export function FindingsPanel({
             {findings.data.data.groups.map((g) => (
               <article className="storage-finding" key={g.gid}>
                 <h5>
-                  {t('storage.signal.' + g.kind)} · {t('storage.copyCount', { count: g.copies })}
+                  {t('storage.signal.' + g.kind + (g.bytes === null ? 'Unknown' : ''))} ·{' '}
+                  {t('storage.copyCount', { count: g.copies })}
                 </h5>
                 <small>
-                  {g.kind === 'verified' ? 'SHA-256' : t('storage.evidence')} · {g.val} · {bytes(g.bytes)}
+                  {g.kind === 'verified' ? 'SHA-256' : t('storage.evidence')} ·{' '}
+                  {g.kind === 'size' ? bytes(g.bytes) : g.val}
+                  {g.kind !== 'size' && g.bytes !== null && <> · {bytes(g.bytes)}</>}
                 </small>
                 {g.kind === 'verified' && (
                   <p>
@@ -281,9 +292,9 @@ export function FindingsPanel({
                 )}
                 <Members group={g} />
                 {!group && g.copies > g.members.length && (
-                  <button className="btn-secondary" onClick={() => choose(g.gid)}>
+                  <Button onClick={() => choose(g.gid)}>
                     {t('storage.allCopies')}
-                  </button>
+                  </Button>
                 )}
               </article>
             ))}
@@ -297,7 +308,8 @@ export function FindingsPanel({
                       <li key={n.id}>
                         {n.name}{' '}
                         <small>
-                          {n.account_name} · {n.region || '—'} · {Math.round(n.similarity * 100)}%
+                          {n.account_name} · {n.region || '—'} · {Math.round(n.similarity * 100)}% ·{' '}
+                          {n.services.join(' / ') || t('storage.alloc.unclaimed')}
                         </small>
                       </li>
                     ))}

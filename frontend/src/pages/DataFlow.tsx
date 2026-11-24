@@ -1,3 +1,5 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Button, LinkButton } from '@cloudflare/kumo/components/button'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -42,8 +44,8 @@ export default function DataFlow() {
   ]
   return <div className="space-y-6">
     <div className="page-header"><div><h1 className="page-title">{t('flow.title')}</h1><p className="page-description">{t('flow.subtitle')}</p></div><div className="flex flex-wrap gap-2">
-      <Link to="/help?article=data-flow" className="btn-secondary"><BookOpen size={16} />{t('help.title')}</Link>
-      <button onClick={() => refetch()} disabled={isFetching} className="btn-secondary"><RefreshCw size={16} />{t('showback.refresh')}</button>
+      <LinkButton href="/help?article=data-flow" variant="secondary"><BookOpen size={16} />{t('help.title')}</LinkButton>
+      <Button onClick={() => refetch()} disabled={isFetching}><RefreshCw size={16} />{t('showback.refresh')}</Button>
     </div></div>
     {isError && <div role="alert" className="rounded-xl border border-danger/25 bg-danger/10 p-4 text-sm text-danger">{t('flow.error')}</div>}
     {data && totals.mismatched > 0 && <div role="alert" className="rounded-xl border border-warning/25 bg-warning/10 p-4 text-sm text-warning">{t('flow.currencyWarning', { count: totals.mismatched, currency: data.currency })} <Link to="/help?article=finops" className="underline">{t('help.title')}</Link></div>}
@@ -51,18 +53,18 @@ export default function DataFlow() {
     <section className="panel p-5"><div className="panel-heading"><div><h2 className="panel-title">{t('flow.pipeline')}</h2><p className="panel-caption">{t('flow.pipelineHint')}</p></div><Activity size={20} className="text-accent" aria-hidden="true" /></div><DataFlowDiagram /></section>
     <section className="panel overflow-hidden">
       <div className="panel-heading p-5"><div><h2 className="panel-title">{t('flow.accounts')}</h2><p className="panel-caption">{data ? t('flow.asOf', { time: new Date(data.as_of).toLocaleString(i18n.language) }) : t('flow.period')}</p></div><Link className="text-link text-sm" to="/cloud-accounts">{t('nav.cloudAccounts')} <ArrowUpRight size={14} className="inline" /></Link></div>
-      {isPending ? <div className="space-y-3 p-5" role="status" aria-label={t('common.loading')}><div className="skeleton h-12" /><div className="skeleton h-12" /></div> : accounts.length === 0 && !isError ? <div className="empty-state"><p>{t('flow.empty')}</p><Link to="/cloud-accounts" className="btn-primary mt-4">{t('nav.cloudAccounts')}</Link></div> : <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}>
-        <table className="w-full min-w-[1080px] text-left text-sm">
-          <thead><tr className="border-y border-edge bg-subtle text-xs text-muted">{['account', 'inventory', 'billing', 'costs', 'discovery', 'import'].map((key) => <th key={key} scope="col" className="px-5 py-3 font-medium">{t(`flow.column.${key}`)}</th>)}</tr></thead>
-          <tbody>{accounts.map((account) => <tr key={account.id} className="border-b border-edge last:border-0">
-            <td className="px-5 py-4 align-top"><p className="font-semibold text-primary">{account.name}</p><p className="mt-1 text-xs text-muted">{account.provider}{!account.is_active && ` · ${t('flow.disabled')}`}</p></td>
-            <td className="px-5 py-4 align-top"><Link to="/cmdb" className="text-link">{t('flow.cisCount', { count: account.cis })}</Link><p className="mt-1 text-xs text-muted">{t('flow.linkedCount', { linked: account.linked_resources, total: account.resources })}</p></td>
-            <td className="px-5 py-4 align-top"><p>{t('flow.rows', { raw: account.raw_rows, daily: account.expense_rows })}</p><p className="mt-1 text-xs text-muted">{t('flow.latestBill', { date: account.latest_expense_date ?? '—' })}</p></td>
-            <td className="px-5 py-4 align-top"><p className="font-medium text-primary">{fmtMoney(account.total_cost, data?.currency)}</p><p className={`mt-1 text-xs ${account.unmatched_rows ? 'text-warning' : 'text-muted'}`}>{t('flow.unmatchedCost', { cost: fmtMoney(account.unmatched_cost, data?.currency) })}</p><p className="mt-1 text-xs text-muted">{t('flow.poolGap', { cost: fmtMoney(account.unallocated_cost, data?.currency) })}</p></td>
-            <td className="px-5 py-4 align-top"><JobState job={account.discovery_job} to="/cloud-accounts" /></td>
-            <td className="px-5 py-4 align-top"><JobState job={account.billing_job} to="/billing-import" /></td>
-          </tr>)}</tbody>
-        </table>
+      {isPending ? <div className="space-y-3 p-5" role="status" aria-label={t('common.loading')}><div className="skeleton h-12" /><div className="skeleton h-12" /></div> : accounts.length === 0 && !isError ? <div className="empty-state"><p>{t('flow.empty')}</p><LinkButton href="/cloud-accounts" variant="primary" className="mt-4">{t('nav.cloudAccounts')}</LinkButton></div> : <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}>
+        <Table className="min-w-[1080px] text-left">
+          <Table.Header variant="compact"><Table.Row className="border-y border-edge bg-subtle text-xs text-muted">{['account', 'inventory', 'billing', 'costs', 'discovery', 'import'].map((key) => <th key={key} scope="col" className="px-5 py-3 font-medium">{t(`flow.column.${key}`)}</th>)}</Table.Row></Table.Header>
+          <Table.Body>{accounts.map((account) => <Table.Row key={account.id} className="border-b border-edge last:border-0">
+            <Table.Cell className="px-5 py-4 align-top"><p className="font-semibold text-primary">{account.name}</p><p className="mt-1 text-xs text-muted">{account.provider}{!account.is_active && ` · ${t('flow.disabled')}`}</p></Table.Cell>
+            <Table.Cell className="px-5 py-4 align-top"><Link to="/cmdb" className="text-link">{t('flow.cisCount', { count: account.cis })}</Link><p className="mt-1 text-xs text-muted">{t('flow.linkedCount', { linked: account.linked_resources, total: account.resources })}</p></Table.Cell>
+            <Table.Cell className="px-5 py-4 align-top"><p>{t('flow.rows', { raw: account.raw_rows, daily: account.expense_rows })}</p><p className="mt-1 text-xs text-muted">{t('flow.latestBill', { date: account.latest_expense_date ?? '—' })}</p></Table.Cell>
+            <Table.Cell className="px-5 py-4 align-top"><p className="font-medium text-primary">{fmtMoney(account.total_cost, data?.currency)}</p><p className={`mt-1 text-xs ${account.unmatched_rows ? 'text-warning' : 'text-muted'}`}>{t('flow.unmatchedCost', { cost: fmtMoney(account.unmatched_cost, data?.currency) })}</p><p className="mt-1 text-xs text-muted">{t('flow.poolGap', { cost: fmtMoney(account.unallocated_cost, data?.currency) })}</p></Table.Cell>
+            <Table.Cell className="px-5 py-4 align-top"><JobState job={account.discovery_job} to="/cloud-accounts" /></Table.Cell>
+            <Table.Cell className="px-5 py-4 align-top"><JobState job={account.billing_job} to="/billing-import" /></Table.Cell>
+          </Table.Row>)}</Table.Body>
+        </Table>
       </div>}
       <p className="border-t border-edge px-5 py-4 text-xs leading-5 text-muted">{t('flow.scope')}</p>
     </section>

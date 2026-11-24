@@ -1,3 +1,4 @@
+import { Table } from '@cloudflare/kumo/components/table'
 import { useMoneyFormatter } from '../lib/format'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -76,21 +77,21 @@ export default function AlertEvents() {
         </div>
       ) : (
         <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-            <thead className="border-b border-edge text-xs uppercase text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">{t('common.type')}</th>
-                <th className="px-4 py-3 font-medium">{t('alertEvents.colThreshold')}</th>
-                <th className="px-4 py-3 font-medium">{t('alertEvents.colActual')}</th>
-                <th className="px-4 py-3 font-medium">{t('alertEvents.colMessage')}</th>
-                <th className="px-4 py-3 font-medium">{t('common.status')}</th>
-                <th className="px-4 py-3 font-medium">{t('alertEvents.colTriggered')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+            <Table.Header variant="compact" className="border-b border-edge">
+              <Table.Row>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.type')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('alertEvents.colThreshold')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('alertEvents.colActual')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('alertEvents.colMessage')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.status')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('alertEvents.colTriggered')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {visible.map((ev) => (
-                <tr key={ev.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
-                  <td className="px-4 py-3">
+                <Table.Row key={ev.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                  <Table.Cell className="px-4 py-3">
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         ev.alert_type === 'absolute'
@@ -100,19 +101,19 @@ export default function AlertEvents() {
                     >
                       {t(`status.${ev.alert_type}`, { defaultValue: ev.alert_type })}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-mono text-secondary">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm font-mono text-secondary">
                     {ev.alert_type === 'percentage'
                       ? `${ev.threshold.toFixed(1)}%`
                       : formatMoney(ev.threshold)}
-                  </td>
-                  <td className="px-4 py-3 text-sm font-mono text-danger">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm font-mono text-danger">
                     {ev.alert_type === 'percentage'
                       ? `${ev.actual_value.toFixed(1)}%`
                       : formatMoney(ev.actual_value)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-secondary max-w-[360px]">{ev.message}</td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm text-secondary max-w-[360px]">{ev.message}</Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     {ev.acknowledged_at ? (
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-subtle text-secondary">
                         {t('alertEvents.acknowledged')}
@@ -122,14 +123,14 @@ export default function AlertEvents() {
                         {t('alertEvents.fired')}
                       </span>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-xs text-muted">
                     {new Date(ev.created_at).toLocaleString()}
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
     </div>

@@ -1,3 +1,4 @@
+import { Button } from '@cloudflare/kumo/components/button'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -80,13 +81,13 @@ export default function BackgroundJobsIndicator() {
 
   return (
     <div className="relative" ref={panelRef}>
-      <button
+      <Button variant="ghost" shape="square"
         onClick={() => setOpen((v) => !v)}
         title={t('jobs.activeJobs')}
         aria-label={t('jobs.activeJobs')}
         aria-expanded={open}
         data-testid="background-jobs-indicator"
-        className="icon-button relative"
+        className="relative"
       >
         <RefreshCw size={18} className={activeJobs.length > 0 ? 'animate-spin' : ''} />
         {activeJobs.length > 0 && (
@@ -97,7 +98,7 @@ export default function BackgroundJobsIndicator() {
             {activeJobs.length > 9 ? '9+' : activeJobs.length}
           </span>
         )}
-      </button>
+      </Button>
 
       {open && (
         <div className="absolute right-0 top-11 w-[340px] max-w-[90dvw] bg-surface border border-strong rounded-xl shadow-popover overflow-hidden z-50">

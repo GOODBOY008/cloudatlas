@@ -1,3 +1,8 @@
+import { Badge } from '@cloudflare/kumo/components/badge'
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -210,12 +215,12 @@ function AccountPanel() {
     <div>
       <div className="page-header">
         <h1 className="page-title">{t('cloudAccounts.title')}</h1>
-        <button
+        <Button
+          variant={showForm ? 'secondary' : 'primary'}
           onClick={() => setShowForm((v) => !v)}
-          className="btn-primary"
         >
           {showForm ? t('common.cancel') : t('cloudAccounts.addAccount')}
-        </button>
+        </Button>
       </div>
 
       {/* Add account form */}
@@ -230,55 +235,48 @@ function AccountPanel() {
           )}
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label htmlFor="account-name" className="block text-xs text-secondary mb-1">{t('cloudAccounts.accountName')}</label>
-              <input
+              <Input
+                label={t('cloudAccounts.accountName')}
                 id="account-name"
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full"
                 placeholder={t('cloudAccounts.namePlaceholder')}
               />
             </div>
             <div>
-              <label htmlFor="provider" className="block text-xs text-secondary mb-1">{t('cloudAccounts.provider')}</label>
-              <select
+              <SelectField
+                label={t('cloudAccounts.provider')}
                 id="provider"
                 value={form.provider}
-                onChange={(e) => setForm({ ...form, provider: e.target.value })}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-              >
-                {CLOUD_PROVIDERS.map((p) => (
-                  <option key={p} value={p}>{providerLabel(p)}</option>
-                ))}
-              </select>
+                onValueChange={value => setForm({ ...form, provider: value })}
+                className="w-full"
+                items={CLOUD_PROVIDERS.map((p) => ({ value: p, label: providerLabel(p) }))}
+              />
             </div>
             {(CREDENTIAL_FIELDS[form.provider] ?? []).map((f) => (
               <div key={f.key}>
-                <label htmlFor={`cred-${f.key}`} className="block text-xs text-secondary mb-1">
-                  {t(f.label)}
-                </label>
-                <input
+                <Input
+                  label={t(f.label)}
                   id={`cred-${f.key}`}
                   type={f.secret ? 'password' : 'text'}
                   value={form.credentials[f.key] ?? ''}
                   onChange={(e) => setForm({ ...form, credentials: { ...form.credentials, [f.key]: e.target.value } })}
-                  className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full"
                 />
               </div>
             ))}
             {(CONFIG_FIELDS[form.provider] ?? []).map((f) => (
               <div key={f.key}>
-                <label htmlFor={`cfg-${f.key}`} className="block text-xs text-secondary mb-1">
-                  {t(f.label)}
-                </label>
-                <input
+                <Input
+                  label={t(f.label)}
                   id={`cfg-${f.key}`}
                   type={f.type ?? 'text'}
                   value={form.config[f.key] ?? ''}
                   placeholder={f.placeholder}
                   onChange={(e) => setForm({ ...form, config: { ...form.config, [f.key]: e.target.value } })}
-                  className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full"
                 />
               </div>
             ))}
@@ -293,23 +291,23 @@ function AccountPanel() {
               </div>
             )}
             <div>
-              <label htmlFor="external-id" className="block text-xs text-secondary mb-1">{t('cloudAccounts.externalId')}</label>
-              <input
+              <Input
+                label={t('cloudAccounts.externalId')}
                 id="external-id"
                 value={form.external_id}
                 onChange={(e) => setForm({ ...form, external_id: e.target.value })}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full"
                 placeholder="123456789012"
               />
             </div>
             <div className="sm:col-span-3 flex justify-end">
-              <button
+              <Button
+                variant="primary"
                 type="submit"
                 disabled={addMutation.isPending}
-                className="btn-primary"
               >
                 {addMutation.isPending ? t('cloudAccounts.adding') : t('cloudAccounts.addAccount')}
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -322,42 +320,42 @@ function AccountPanel() {
       )}
 
       <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-edge text-secondary text-left">
-              <th className="px-4 py-3 font-medium">{t('common.name')}</th>
-              <th className="px-4 py-3 font-medium">{t('cloudAccounts.provider')}</th>
-              <th className="px-4 py-3 font-medium">{t('cloudAccounts.currency')}</th>
-              <th className="px-4 py-3 font-medium">{t('cloudAccounts.resources')}</th>
-              <th className="px-4 py-3 font-medium">{t('cloudAccounts.lastSync')}</th>
-              <th className="px-4 py-3 font-medium">{t('common.status')}</th>
-              <th className="px-4 py-3 font-medium text-right">{t('common.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+          <Table.Header variant="compact">
+            <Table.Row className="border-b border-edge text-secondary text-left">
+              <Table.Head className="px-4 py-3 font-medium">{t('common.name')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('cloudAccounts.provider')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('cloudAccounts.currency')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('cloudAccounts.resources')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('cloudAccounts.lastSync')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('common.status')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium text-right">{t('common.actions')}</Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
             {isLoading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted">{t('common.loading')}</td>
-              </tr>
+              <Table.Row>
+                <Table.Cell colSpan={7} className="px-4 py-8 text-center text-muted">{t('common.loading')}</Table.Cell>
+              </Table.Row>
             ) : data.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted">{t('cloudAccounts.noAccounts')}</td>
-              </tr>
+              <Table.Row>
+                <Table.Cell colSpan={7} className="px-4 py-8 text-center text-muted">{t('cloudAccounts.noAccounts')}</Table.Cell>
+              </Table.Row>
             ) : (
               data.map((acct) => (
-                <tr key={acct.id} className="border-b border-edge hover:bg-subtle/50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-primary">{acct.name}</td>
-                  <td className="px-4 py-3"><ProviderBadge provider={acct.provider} /></td>
-                  <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs font-mono font-medium bg-emphasis text-secondary">{acct.currency}</span></td>
-                  <td className="px-4 py-3 text-secondary">{acct.resource_count.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-secondary text-xs">
+                <Table.Row key={acct.id} className="border-b border-edge hover:bg-subtle/50 transition-colors">
+                  <Table.Cell className="px-4 py-3 font-medium text-primary">{acct.name}</Table.Cell>
+                  <Table.Cell className="px-4 py-3"><ProviderBadge provider={acct.provider} /></Table.Cell>
+                  <Table.Cell className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs font-mono font-medium bg-emphasis text-secondary">{acct.currency}</span></Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary">{acct.resource_count.toLocaleString()}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">
                     {acct.last_sync_at ? new Date(acct.last_sync_at).toLocaleString() : '—'}
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${acct.is_active ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+                      <Badge variant={acct.is_active ? 'success' : 'secondary'}>
                         {acct.is_active ? t('common.active') : t('common.inactive')}
-                      </span>
+                      </Badge>
                       {(() => {
                         const job = activeJobFor(acct.id, 'discovery')
                         if (job) {
@@ -390,10 +388,11 @@ function AccountPanel() {
                         return null
                       })()}
                     </div>
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
-                      <button
+                      <Button
+                        size="sm"
                         onClick={(event) => {
                           event.currentTarget.focus()
                           setEditAcct(acct)
@@ -403,11 +402,11 @@ function AccountPanel() {
                           setEditConfig(prefillConfig(acct.config ?? {}))
                           setEditClear(false)
                         }}
-                        className="px-2.5 py-1 text-xs rounded bg-emphasis hover:bg-emphasis text-primary"
                       >
                         {t('common.edit')}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm"
                         onClick={() => testMutation.mutate(acct.id, {
                           onSuccess: (res) => {
                             const payload = (res as { data?: { data?: { success?: boolean; message?: string } } })?.data?.data
@@ -415,31 +414,30 @@ function AccountPanel() {
                           },
                           onError: () => setAlertMsg(t('cloudAccounts.testFailed')),
                         })}
-                        className="px-2.5 py-1 text-xs rounded bg-info/10 hover:bg-info/20 text-info"
                       >
                         {t('cloudAccounts.test')}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm"
                         onClick={() => syncMutation.mutate(acct.id)}
                         disabled={syncDisabled(acct.id)}
                         title={syncDisabled(acct.id) ? t('jobs.conflictBody') : undefined}
-                        className="px-2.5 py-1 text-xs rounded bg-accent/60 hover:bg-accent-hover/60 disabled:opacity-50 disabled:cursor-not-allowed text-accent"
                       >
                         {syncDisabled(acct.id) ? t('cloudAccounts.syncing') : t('cloudAccounts.sync')}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="secondary-destructive" size="sm"
                         onClick={() => setDeleteAcct(acct)}
-                        className="px-2.5 py-1 text-xs rounded bg-danger/10 hover:bg-danger/10 text-danger"
                       >
                         {t('common.delete')}
-                      </button>
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))
             )}
-          </tbody>
-        </table></div>
+          </Table.Body>
+        </Table></div>
       </div>
     </div>
 
@@ -464,30 +462,29 @@ function AccountPanel() {
           }}
         >
           <div className="flex items-center gap-3 mb-4">
-            <label className="block text-xs text-secondary">{t('cloudAccounts.accountName')}</label>
+            <label id="edit-account-label" htmlFor="edit-account-name" className="text-base font-medium text-primary">{t('cloudAccounts.accountName')}</label>
             {editAcct.has_credentials && (
               <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">
                 {t('cloudAccounts.credsConfigured')}
               </span>
             )}
           </div>
-          <input
+          <Input
             autoFocus
+            id="edit-account-name"
+            aria-labelledby="edit-account-label"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
-            className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent mb-5"
+            className="w-full mb-5"
           />
-          <label className="block text-xs text-secondary mb-1">{t('cloudAccounts.currency')}</label>
-          <p className="text-[11px] text-muted mb-1.5">{t('cloudAccounts.currencyHint')}</p>
-          <select
+          <SelectField
+            label={t('cloudAccounts.currency')}
+            description={t('cloudAccounts.currencyHint')}
             value={editCurrency}
-            onChange={(e) => setEditCurrency(e.target.value)}
-            className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent mb-5"
-          >
-            {['USD', 'CNY', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD'].map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+            onValueChange={setEditCurrency}
+            className="w-full mb-5"
+            items={['USD', 'CNY', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD'].map((c) => ({ value: c, label: c }))}
+          />
 
           {(CREDENTIAL_FIELDS[editAcct.provider] ?? []).length > 0 && (
             <div className="border-t border-edge pt-4 mb-5">
@@ -495,16 +492,14 @@ function AccountPanel() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {(CREDENTIAL_FIELDS[editAcct.provider] ?? []).map((f) => (
                   <div key={f.key}>
-                    <label htmlFor={`edit-cred-${f.key}`} className="block text-xs text-secondary mb-1">
-                      {t(f.label)}
-                    </label>
-                    <input
+                    <Input
+                      label={t(f.label)}
                       id={`edit-cred-${f.key}`}
                       type={f.secret ? 'password' : 'text'}
                       value={editCreds[f.key] ?? ''}
                       onChange={(e) => setEditCreds({ ...editCreds, [f.key]: e.target.value })}
                       placeholder={t('cloudAccounts.credsKeepPlaceholder')}
-                      className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                      className="w-full"
                     />
                   </div>
                 ))}
@@ -530,16 +525,14 @@ function AccountPanel() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {(CONFIG_FIELDS[editAcct.provider] ?? []).map((f) => (
                   <div key={f.key}>
-                    <label htmlFor={`edit-cfg-${f.key}`} className="block text-xs text-secondary mb-1">
-                      {t(f.label)}
-                    </label>
-                    <input
+                    <Input
+                      label={t(f.label)}
                       id={`edit-cfg-${f.key}`}
                       type={f.type ?? 'text'}
                       value={editConfig[f.key] ?? ''}
                       placeholder={f.placeholder}
                       onChange={(e) => setEditConfig({ ...editConfig, [f.key]: e.target.value })}
-                      className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                      className="w-full"
                     />
                   </div>
                 ))}
@@ -548,20 +541,20 @@ function AccountPanel() {
           )}
 
           <div className="flex justify-end gap-2">
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={() => setEditAcct(null)}
-              className="px-3 py-1.5 text-sm text-secondary hover:text-primary transition-colors"
             >
               {t('common.cancel')}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
               type="submit"
               disabled={updateMutation.isPending}
-              className="btn-primary"
             >
               {updateMutation.isPending ? t('cloudAccounts.saving') : t('common.save')}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -574,19 +567,19 @@ function AccountPanel() {
           {t('cloudAccounts.deleteConfirm', { name: deleteAcct.name })}
         </p>
         <div className="flex justify-end gap-2">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => setDeleteAcct(null)}
-            className="px-3 py-1.5 text-sm text-secondary hover:text-primary transition-colors"
           >
             {t('common.cancel')}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="destructive"
             onClick={() => { deleteMutation.mutate(deleteAcct.id); setDeleteAcct(null) }}
             disabled={deleteMutation.isPending}
-            className="px-4 py-1.5 bg-danger-solid hover:bg-danger-solid/90 disabled:opacity-60 text-white text-sm rounded-lg transition-colors"
           >
             {deleteMutation.isPending ? t('cloudAccounts.deleting') : t('common.delete')}
-          </button>
+          </Button>
         </div>
       </Modal>
     )}
@@ -596,12 +589,12 @@ function AccountPanel() {
       <Modal title={t('cloudAccounts.testTitle')} onClose={() => setAlertMsg(null)}>
         <p className="text-sm text-secondary mb-6">{alertMsg}</p>
         <div className="flex justify-end">
-          <button
+          <Button
+            variant="primary"
             onClick={() => setAlertMsg(null)}
-            className="btn-primary"
           >
             {t('cloudAccounts.ok')}
-          </button>
+          </Button>
         </div>
       </Modal>
     )}

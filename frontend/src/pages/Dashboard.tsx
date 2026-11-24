@@ -1,3 +1,4 @@
+import { Button } from '@cloudflare/kumo/components/button'
 import { lazy, Suspense, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -130,10 +131,10 @@ export default function Dashboard() {
             <CalendarDays size={15} />
             {t('dashboard.reportingPeriods')}
           </span>
-          <button className="btn-primary" onClick={() => navigate('/expenses')}>
+          <Button variant="primary" onClick={() => navigate('/expenses')}>
             {t('design.exploreCosts')}
             <ArrowUpRight size={15} />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -148,11 +149,11 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <button className="btn-secondary" onClick={() => navigate('/cloud-accounts')}>
+            <Button onClick={() => navigate('/cloud-accounts')}>
               {t('design.manageAccounts')}
-            </button>
-            <button
-              className="btn-primary"
+            </Button>
+            <Button
+              variant="primary"
               disabled={seeding}
               onClick={() => {
                 setSeedingOrg(orgId)
@@ -168,14 +169,14 @@ export default function Dashboard() {
               }}
             >
               {seeding ? t('common.loading') : t('dashboard.seedDemo')}
-            </button>
-            <button
-              className="icon-button"
+            </Button>
+            <Button
+              variant="ghost" shape="square"
               aria-label={t('common.cancel')}
               onClick={() => setDismissedOrg(orgId)}
             >
               <X size={16} />
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -186,10 +187,10 @@ export default function Dashboard() {
           className="rounded-xl border border-warning/25 bg-warning/10 p-4 text-sm text-warning"
         >
           <p>{t('dashboard.loadFailed')}</p>
-          <button className="btn-secondary mt-3" disabled={coreQueries.some((query) => query.isFetching)}
+          <Button className="mt-3" disabled={coreQueries.some((query) => query.isFetching)}
             onClick={() => coreQueries.filter((query) => query.isError).forEach((query) => void query.refetch())}>
             {t('dashboard.retry')}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -498,20 +499,18 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            className="btn-secondary"
+          <Button
             onClick={() => navigate('/cloud-accounts')}
           >
             <Cloud size={14} />
             {t('design.manageAccounts')}
-          </button>
-          <button
-            className="btn-secondary"
+          </Button>
+          <Button
             onClick={() => navigate('/cmdb')}
           >
             <Boxes size={14} />
             {t('design.reviewAssets')}
-          </button>
+          </Button>
         </div>
       </section>
     </div>

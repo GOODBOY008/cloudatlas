@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="kumo" data-mode="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f8f9fb" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="description" content="CloudAtlas — a clear view of your cloud costs, assets, and operations." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>CloudAtlas</title>
@@ -14,7 +14,8 @@
           var stored = JSON.parse(localStorage.getItem('cloudatlas-theme') || '{}')
           var dark = stored.state && stored.state.theme === 'dark'
           document.documentElement.classList.toggle('dark', Boolean(dark))
-          document.querySelector('meta[name="theme-color"]').content = dark ? '#14161b' : '#f8f9fb'
+          document.documentElement.dataset.mode = dark ? 'dark' : 'light'
+          document.querySelector('meta[name="theme-color"]').content = dark ? '#0d0d0d' : '#ffffff'
         } catch (_) { /* The default light theme also works without storage. */ }
       })()
     </script>

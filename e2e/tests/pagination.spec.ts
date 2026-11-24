@@ -1,3 +1,4 @@
+import { chooseOption } from '../helpers/chooseOption';
 /**
  * Pagination e2e (spec 2026-09-10-list-pagination-design §7):
  * - Resources: navigate pages, per-page selector, filter resets to page 1
@@ -76,7 +77,7 @@ test.describe.serial('pagination (spec 2026-09-10)', () => {
     await seed(api);
 
     await page.goto('/resources');
-    await page.getByTestId('per-page-select').selectOption('20');
+    await chooseOption(page.getByTestId('per-page-select'), '20');
     await expect(page.getByText(/Showing 1–20 of/)).toBeVisible({ timeout: 15_000 });
 
     // First row of page 1 (for the rows-actually-changed assertion).
@@ -100,7 +101,7 @@ test.describe.serial('pagination (spec 2026-09-10)', () => {
 
     await page.goto('/cmdb');
     await expect(page.getByTestId('per-page-select')).toBeVisible({ timeout: 15_000 });
-    await page.getByTestId('per-page-select').selectOption('20');
+    await chooseOption(page.getByTestId('per-page-select'), '20');
 
     // Seed prefix narrows the list to the 30 created CIs → 2 pages.
     await page.getByPlaceholder(/Search .*name|Search by name/i).fill(state.ciPrefix);
@@ -121,7 +122,7 @@ test.describe.serial('pagination (spec 2026-09-10)', () => {
     await seed(api);
 
     await page.goto('/cmdb-audit');
-    await page.getByTestId('per-page-select').selectOption('20');
+    await chooseOption(page.getByTestId('per-page-select'), '20');
 
     // 30+ CI create events guarantee > 1 page; the shared bar (not the old
     // never-rendering prev/next) must appear with a real total.

@@ -1,3 +1,4 @@
+import { Button } from '@cloudflare/kumo/components/button'
 import { MetricCard } from '../components/shared/MetricCard'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -65,7 +66,7 @@ export default function Showback() {
   }
 
   if (isLoading) return <div className="space-y-4" role="status" aria-label={t('common.loading')}><div className="skeleton h-12" /><div className="skeleton h-48" /></div>
-  if (isError && !data) return <div className="panel p-5" role="alert"><p className="text-danger">{t('showback.loadFailed')}</p><button className="btn-secondary mt-4" onClick={() => refetch()}>{t('showback.refresh')}</button></div>
+  if (isError && !data) return <div className="panel p-5" role="alert"><p className="text-danger">{t('showback.loadFailed')}</p><Button className="mt-4" onClick={() => refetch()}>{t('showback.refresh')}</Button></div>
 
   const report = data ?? {
     period_days: 30,
@@ -92,13 +93,12 @@ export default function Showback() {
             {t('showback.subtitle')}
           </p>
         </div>
-        <button
+        <Button
           onClick={() => refetch()}
           disabled={isFetching}
-          className="btn-secondary"
         >
           {isFetching ? t('showback.refreshing') : t('showback.refresh')}
-        </button>
+        </Button>
       </div>
 
       {isError && (

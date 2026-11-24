@@ -1,3 +1,4 @@
+import { Button } from '@cloudflare/kumo/components/button'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -68,12 +69,12 @@ function InviteConfirmation({ token }: { token: string }) {
       <h2 id="invite-heading" className="panel-title">{t(acceptedOrgId ? 'invite.accepted' : 'invite.confirm')}</h2>
       {!token ? <p role="alert" className="text-sm text-danger">{t('invite.missingToken')}</p> : <>
         {identity.isPending && <div className="skeleton h-12" role="status" aria-label={t('common.loading')} />}
-        {identity.isError && <div role="alert" className="space-y-3"><p className="text-sm text-danger">{t('invite.identityFailed')}</p><button className="btn-secondary" onClick={() => void identity.refetch()}>{t('invite.retry')}</button></div>}
+        {identity.isError && <div role="alert" className="space-y-3"><p className="text-sm text-danger">{t('invite.identityFailed')}</p><Button onClick={() => void identity.refetch()}>{t('invite.retry')}</Button></div>}
         {identity.data && <>
           <p className="text-sm text-secondary">{t('invite.signedInAs', { email: identity.data.email })}</p>
           <p className="text-sm leading-6 text-muted">{t(acceptedOrgId ? 'invite.acceptedHint' : 'invite.confirmHint')}</p>
           {error && <p role="alert" className="rounded-lg border border-danger/25 bg-danger/10 p-3 text-sm text-danger">{t(error)}</p>}
-          <button className="btn-primary" disabled={busy} onClick={() => void accept()}>{t(busy ? 'common.loading' : acceptedOrgId ? 'invite.openWorkspace' : 'invite.accept')}</button>
+          <Button variant="primary" disabled={busy} onClick={() => void accept()}>{t(busy ? 'common.loading' : acceptedOrgId ? 'invite.openWorkspace' : 'invite.accept')}</Button>
         </>}
       </>}
       <div><Link className="text-link text-sm" to="/dashboard">{t('invite.back')}</Link></div>

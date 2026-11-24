@@ -1,9 +1,13 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { InputGroup } from '@cloudflare/kumo/components/input-group'
+import { Button } from '@cloudflare/kumo/components/button'
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, ArrowLeftRight, ArrowRight, Check, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import api from '../lib/api'
+import { useSearchDraft } from '../lib/hooks/useSearchDraft'
 import { relationLabel, typeLabel, type ModelEdge, type ModelType } from '../lib/modelTopology'
 import type { CI, Organization, Paginated, PageMeta } from '../types'
 
@@ -20,9 +24,9 @@ function Pager({ meta, change }: { meta: PageMeta; change: (page: number) => voi
   const { t } = useTranslation()
   if (meta.total_pages <= 1) return null
   return <div className="model-pager">
-    <button disabled={meta.page <= 1} onClick={() => change(meta.page - 1)} aria-label={t('modelTopology.prev')}><ChevronLeft size={17} /></button>
+    <Button size="sm" shape="square" disabled={meta.page <= 1} onClick={() => change(meta.page - 1)} aria-label={t('modelTopology.prev')}><ChevronLeft size={17} /></Button>
     <span>{t('modelTopology.page', { page: meta.page, pages: meta.total_pages })}</span>
-    <button disabled={meta.page >= meta.total_pages} onClick={() => change(meta.page + 1)} aria-label={t('modelTopology.next')}><ChevronRight size={17} /></button>
+    <Button size="sm" shape="square" disabled={meta.page >= meta.total_pages} onClick={() => change(meta.page + 1)} aria-label={t('modelTopology.next')}><ChevronRight size={17} /></Button>
   </div>
 }
 
@@ -50,30 +54,30 @@ function DirectRelations({ ci, orgId, definitions }: { ci: CI; orgId: string; de
     <div className="model-detail-heading">
       <div><h3 id="direct-heading">{t('modelTopology.directRelations')}</h3>
         <p className="model-asset-title" aria-live="polite">{ci.display_name || ci.name}</p></div>
-      {location.state?.topologyScope === orgId && <button className="model-back" onClick={() => navigate(-1)}><ArrowLeft size={14} />{t('modelTopology.back')}</button>}
+      {location.state?.topologyScope === orgId && <Button size="sm" onClick={() => navigate(-1)}><ArrowLeft size={14} />{t('modelTopology.back')}</Button>}
     </div>
     {links.isPending ? <p role="status" className="model-notice">{t('modelTopology.loading')}</p>
       : links.isError ? <div role="alert" className="model-notice">{t('modelTopology.linksFailed')} <button onClick={() => links.refetch()}>{t('modelTopology.retry')}</button></div>
       : links.data.data.length === 0 ? <p className="model-notice">{t('modelTopology.noInstanceLinks')}</p>
       : <>
-        <table className="model-relations-table">
+        <Table className="model-relations-table">
           <caption className="sr-only">{t('modelTopology.directRelations')} · {ci.name}</caption>
-          <thead><tr><th scope="col">{t('modelTopology.sourceInstance')}</th><th scope="col">{t('modelTopology.relation')}</th><th scope="col">{t('modelTopology.targetInstance')}</th></tr></thead>
-          <tbody>{links.data.data.map(link => {
+          <Table.Header variant="compact"><Table.Row><th scope="col">{t('modelTopology.sourceInstance')}</th><th scope="col">{t('modelTopology.relation')}</th><th scope="col">{t('modelTopology.targetInstance')}</th></Table.Row></Table.Header>
+          <Table.Body>{links.data.data.map(link => {
             // The instance API supplies a display name. Only borrow direction and
             // translation when the visible model definitions agree on its meaning.
             const matches = definitions.filter(e => e.kind_display === link.association_kind_name)
             const kind = matches[0]
             const unambiguous = kind && matches.every(e => e.kind_name === kind.kind_name && e.directed === kind.directed)
             const Arrow = kind?.directed ? ArrowRight : ArrowLeftRight
-            return <tr key={link.id}>
-              <td>{endpoint(link.src_ci_id, link.src_ci_name)}</td>
-              <td><span className="model-inline-verb">{unambiguous ? relationLabel(kind, t) : link.association_kind_name}
-                {unambiguous && <Arrow size={15} role="img" aria-label={t(kind.directed ? 'modelTopology.directed' : 'modelTopology.symmetric')} />}</span></td>
-              <td>{endpoint(link.dst_ci_id, link.dst_ci_name)}</td>
-            </tr>
-          })}</tbody>
-        </table>
+            return <Table.Row key={link.id}>
+              <Table.Cell>{endpoint(link.src_ci_id, link.src_ci_name)}</Table.Cell>
+              <Table.Cell><span className="model-inline-verb">{unambiguous ? relationLabel(kind, t) : link.association_kind_name}
+                {unambiguous && <Arrow size={15} role="img" aria-label={t(kind.directed ? 'modelTopology.directed' : 'modelTopology.symmetric')} />}</span></Table.Cell>
+              <Table.Cell>{endpoint(link.dst_ci_id, link.dst_ci_name)}</Table.Cell>
+            </Table.Row>
+          })}</Table.Body>
+        </Table>
         <div className="model-relation-footer"><p>{t('modelTopology.linkTotal', { count: links.data.meta.total })}</p>
           <Pager meta={links.data.meta} change={setPage} /></div>
       </>}
@@ -85,7 +89,7 @@ export function ModelInstances({ org, model, definitions, requested }: {
 }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [params, setParams] = useSearchParams()
+  const { params, setParams, searchInput, replaceSearch } = useSearchDraft()
   const search = params.get('q') ?? ''
   const parsed = Number(params.get('page'))
   const page = Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 1
@@ -124,11 +128,19 @@ export function ModelInstances({ org, model, definitions, requested }: {
     </header>
     <div className="model-inventory">
       <section className="model-asset-list" aria-label={t('modelTopology.instanceList')}>
-        <label htmlFor="model-instance-search">{t('modelTopology.searchInstances')}</label>
-        <div className="model-search-field"><Search size={15} aria-hidden="true" />
-          <input id="model-instance-search" type="search" value={search}
-            placeholder={t('modelTopology.searchPlaceholder')}
-            onChange={e => setParams(listParams(e.target.value, 1), { replace: true, preventScrollReset: true })} /></div>
+        <search className="mb-3">
+          <InputGroup label={t('modelTopology.searchInstances')}>
+            <InputGroup.Addon><Search size={16} aria-hidden="true" /></InputGroup.Addon>
+            <InputGroup.Input
+              type="search"
+              name="q"
+              aria-label={t('modelTopology.searchInstances')}
+              value={searchInput}
+              placeholder={t('modelTopology.searchPlaceholder')}
+              onChange={event => replaceSearch(listParams(event.currentTarget.value, 1))}
+            />
+          </InputGroup>
+        </search>
         {list.isPending ? <p role="status" className="model-notice">{t('modelTopology.loadingInstance')}</p>
           : list.isError ? <p role="alert" className="model-notice">{t('modelTopology.assetsFailed')} <button onClick={() => list.refetch()}>{t('modelTopology.retry')}</button></p>
           : <>

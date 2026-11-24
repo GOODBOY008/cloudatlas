@@ -1,3 +1,4 @@
+import { Button } from '@cloudflare/kumo/components/button'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Minus, Plus, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DEFAULT_LAYOUT, type WindowAction, type WindowSize } from '../../lib/copilotWindow'
@@ -26,9 +27,9 @@ export function WindowControls({ size, step }: {
     <div className="copilot-controls" role="group" aria-label={t('copilot.windowControls')}>
       <div className="flex items-center gap-1">
         {directions.map(({ label, Icon, dx, dy }) => (
-          <button type="button" key={label} className="icon-button" aria-label={t(label)} title={t(label)} onClick={() => step('move', dx, dy)}>
+          <Button variant="ghost" shape="square" type="button" key={label} aria-label={t(label)} title={t(label)} onClick={() => step('move', dx, dy)}>
             <Icon size={15} />
-          </button>
+          </Button>
         ))}
         <button type="button" className="text-link ml-auto inline-flex items-center gap-1" onClick={() => setLayout(DEFAULT_LAYOUT)}>
           <RotateCcw size={13} /> {t('copilot.resetLayout')}
@@ -38,13 +39,13 @@ export function WindowControls({ size, step }: {
         {dimensions.map(({ axis, label, less, more, dx, dy }) => (
           <div key={axis} className="flex items-center gap-1">
             <span>{t(label)}</span>
-            <button type="button" className="icon-button" aria-label={t(less)} title={t(less)} onClick={() => step('resize', dx, dy)}>
+            <Button variant="ghost" shape="square" type="button" aria-label={t(less)} title={t(less)} onClick={() => step('resize', dx, dy)}>
               <Minus size={14} />
-            </button>
+            </Button>
             <span className="tabular-nums">{size[axis]}</span>
-            <button type="button" className="icon-button" aria-label={t(more)} title={t(more)} onClick={() => step('resize', -dx, -dy)}>
+            <Button variant="ghost" shape="square" type="button" aria-label={t(more)} title={t(more)} onClick={() => step('resize', -dx, -dy)}>
               <Plus size={14} />
-            </button>
+            </Button>
           </div>
         ))}
       </div>

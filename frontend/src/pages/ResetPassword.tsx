@@ -1,3 +1,5 @@
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -71,39 +73,36 @@ export default function ResetPassword() {
       )}
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="reset-token" className="auth-label">
-            {t('reset.token')}
-          </label>
-          <input
+          <Input
+            label={t('reset.token')}
             id="reset-token"
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            className="auth-input font-mono"
+            className="w-full font-mono"
             placeholder={t('reset.tokenPlaceholder')}
           />
         </div>
         <div>
-          <label htmlFor="reset-password" className="auth-label">
-            {t('reset.newPassword')}
-          </label>
-          <input
+          <Input
+            label={t('reset.newPassword')}
             id="reset-password"
             type="password"
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="auth-input"
+            className="w-full"
             placeholder={t('reset.passwordPlaceholder')}
           />
         </div>
-        <button
+        <Button
+          variant="primary" size="lg"
           type="submit"
           disabled={loading}
-          className="btn-primary !mt-7 w-full !py-3.5"
+          className="!mt-7 w-full"
         >
           {loading ? t('common.loading') : t('reset.submit')}
           <ArrowRight size={15} />
-        </button>
+        </Button>
       </form>
     </AuthShell>
   )

@@ -1,3 +1,5 @@
+import { KumoPortalProvider } from '@cloudflare/kumo/utils'
+import { Button } from '@cloudflare/kumo/components/button'
 import { useId, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
@@ -30,15 +32,14 @@ export function Modal({ title, onClose, children }: ModalProps) {
         >
           <div className="dialog-heading">
             <h2 id={titleId} className="text-base font-semibold text-primary">{title}</h2>
-            <button
+            <Button variant="ghost" shape="square"
               onClick={onClose}
-              className="icon-button"
               aria-label={t('common.close')}
             >
               <X size={18} />
-            </button>
+            </Button>
           </div>
-          <div className="dialog-body">{children}</div>
+          <KumoPortalProvider container={dialogRef}><div className="dialog-body">{children}</div></KumoPortalProvider>
         </div>
       </div>
     </>

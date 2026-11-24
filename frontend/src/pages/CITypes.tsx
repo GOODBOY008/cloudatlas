@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input, InputArea } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -308,19 +312,16 @@ export default function CITypes() {
     createAttrMutation.mutate(payload)
   }
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
-
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">{t('ciTypes.title')}</h1>
-        <button
+        <Button
+          variant="primary"
           onClick={openCreateType}
-          className="btn-primary"
         >
           {t('ciTypes.newType')}
-        </button>
+        </Button>
       </div>
 
       {isError && (
@@ -413,13 +414,15 @@ export default function CITypes() {
                 </dl>
                 {!selected.is_builtin && (
                   <div className="mt-4 flex items-center gap-3">
-                    <input
+                    <Input
+                      aria-label={t('ciTypes.renamePlaceholder')}
                       value={typeForm.display_name}
                       onChange={(e) => setTypeForm({ ...typeForm, display_name: e.target.value })}
-                      className={`${inputCls} max-w-[220px]`}
+                      className="w-full max-w-[220px]"
                       placeholder={t('ciTypes.renamePlaceholder')}
                     />
-                    <button
+                    <Button
+                      size="sm"
                       onClick={() =>
                         typeForm.display_name.trim() &&
                         updateTypeMutation.mutate({
@@ -427,10 +430,9 @@ export default function CITypes() {
                           payload: { display_name: typeForm.display_name.trim() },
                         })
                       }
-                      className="px-3 py-2 bg-subtle hover:bg-emphasis text-primary text-xs font-medium rounded-lg transition-colors"
                     >
                       {t('ciTypes.rename')}
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -439,16 +441,16 @@ export default function CITypes() {
                 <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
                   <h4 className="text-sm font-semibold text-primary">{t('ciTypes.attributes')}</h4>
                   {!selected.is_builtin && (
-                    <button
+                    <Button
+                      variant="primary"
                       onClick={() => {
                         setAttrForm(DEFAULT_ATTR_FORM)
                         setAttrFormError('')
                         setShowAttrModal(true)
                       }}
-                      className="btn-primary"
                     >
                       {t('ciTypes.addAttribute')}
-                    </button>
+                    </Button>
                   )}
                 </div>
                 {attrsLoading ? (
@@ -458,58 +460,58 @@ export default function CITypes() {
                     {t('ciTypes.noAttributes')}
                   </div>
                 ) : (
-                  <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-                    <thead className="border-b border-edge text-xs uppercase text-muted">
-                      <tr>
-                        <th className="px-4 py-3 font-medium">{t('common.name')}</th>
-                        <th className="px-4 py-3 font-medium">{t('common.type')}</th>
-                        <th className="px-4 py-3 font-medium">{t('ciTypes.required')}</th>
-                        <th className="px-4 py-3 font-medium">{t('ciTypes.unique')}</th>
-                        <th className="px-4 py-3 font-medium">{t('ciTypes.colDefault')}</th>
-                        <th className="px-4 py-3 font-medium">{t('ciTypes.colEnumValues')}</th>
-                        <th className="px-4 py-3 font-medium">{t('common.actions')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+                    <Table.Header variant="compact" className="border-b border-edge">
+                      <Table.Row>
+                        <Table.Head className="px-4 py-3 font-medium">{t('common.name')}</Table.Head>
+                        <Table.Head className="px-4 py-3 font-medium">{t('common.type')}</Table.Head>
+                        <Table.Head className="px-4 py-3 font-medium">{t('ciTypes.required')}</Table.Head>
+                        <Table.Head className="px-4 py-3 font-medium">{t('ciTypes.unique')}</Table.Head>
+                        <Table.Head className="px-4 py-3 font-medium">{t('ciTypes.colDefault')}</Table.Head>
+                        <Table.Head className="px-4 py-3 font-medium">{t('ciTypes.colEnumValues')}</Table.Head>
+                        <Table.Head className="px-4 py-3 font-medium">{t('common.actions')}</Table.Head>
+                      </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
                       {attributes.map((a) => (
-                        <tr key={a.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
-                          <td className="px-4 py-3">
+                        <Table.Row key={a.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                          <Table.Cell className="px-4 py-3">
                             <span className="text-sm text-primary">{a.display_name}</span>
                             <span className="block text-xs text-muted font-mono">{a.name}</span>
-                          </td>
-                          <td className="px-4 py-3">
+                          </Table.Cell>
+                          <Table.Cell className="px-4 py-3">
                             <TypeBadge type={a.attribute_type} />
-                          </td>
-                          <td className="px-4 py-3 text-sm text-secondary">
+                          </Table.Cell>
+                          <Table.Cell className="px-4 py-3 text-sm text-secondary">
                             {a.is_required ? '✓' : '—'}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-secondary">
+                          </Table.Cell>
+                          <Table.Cell className="px-4 py-3 text-sm text-secondary">
                             {a.is_unique ? '✓' : '—'}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-secondary font-mono">
+                          </Table.Cell>
+                          <Table.Cell className="px-4 py-3 text-xs text-secondary font-mono">
                             {a.default_value ?? '—'}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-secondary">
+                          </Table.Cell>
+                          <Table.Cell className="px-4 py-3 text-xs text-secondary">
                             {Array.isArray(a.enum_values) ? a.enum_values.join(', ') : '—'}
-                          </td>
-                          <td className="px-4 py-3">
+                          </Table.Cell>
+                          <Table.Cell className="px-4 py-3">
                             {!a.is_builtin && (
-                              <button
+                              <Button
+                                size="sm" variant="secondary-destructive"
                                 onClick={() => {
                                   if (confirm(t('ciTypes.deleteAttrConfirm', { name: a.display_name }))) {
                                     deleteAttrMutation.mutate(a.id)
                                   }
                                 }}
-                                className="text-danger hover:text-danger text-xs"
                               >
                                 {t('common.delete')}
-                              </button>
+                              </Button>
                             )}
-                          </td>
-                        </tr>
+                          </Table.Cell>
+                        </Table.Row>
                       ))}
-                    </tbody>
-                  </table></div>
+                    </Table.Body>
+                  </Table></div>
                 )}
               </div>
 
@@ -517,36 +519,36 @@ export default function CITypes() {
               <div className="bg-surface border border-edge rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
                   <h4 className="text-sm font-semibold text-primary">{t('ciTypes.uniqueConstraints')}</h4>
-                  <button
+                  <Button
+                    variant="primary"
                     onClick={() => {
                       setConstraintName('')
                       setConstraintAttrs(new Set())
                       setConstraintError('')
                       setShowConstraintModal(true)
                     }}
-                    className="btn-primary"
                   >
                     {t('ciTypes.addConstraint')}
-                  </button>
+                  </Button>
                 </div>
                 {constraints.length === 0 ? (
                   <div className="p-5 text-center text-muted text-sm">
                     {t('ciTypes.noConstraints')}
                   </div>
                 ) : (
-                  <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-                    <thead className="border-b border-edge text-xs uppercase text-muted">
-                      <tr>
-                        <th className="px-4 py-3 font-medium">{t('common.name')}</th>
-                        <th className="px-4 py-3 font-medium">{t('ciTypes.constraintAttrs')}</th>
-                        <th className="px-4 py-3 font-medium">{t('common.actions')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+                    <Table.Header variant="compact" className="border-b border-edge">
+                      <Table.Row>
+                        <Table.Head className="px-4 py-3 font-medium">{t('common.name')}</Table.Head>
+                        <Table.Head className="px-4 py-3 font-medium">{t('ciTypes.constraintAttrs')}</Table.Head>
+                        <Table.Head className="px-4 py-3 font-medium">{t('common.actions')}</Table.Head>
+                      </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
                       {constraints.map((c) => (
-                        <tr key={c.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
-                          <td className="px-4 py-3 text-sm text-primary">{c.name}</td>
-                          <td className="px-4 py-3">
+                        <Table.Row key={c.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                          <Table.Cell className="px-4 py-3 text-sm text-primary">{c.name}</Table.Cell>
+                          <Table.Cell className="px-4 py-3">
                             <div className="flex flex-wrap gap-1">
                               {c.attr_names.map((a) => (
                                 <span key={a} className="px-1.5 py-0.5 bg-emphasis text-secondary text-xs rounded font-mono">
@@ -554,23 +556,23 @@ export default function CITypes() {
                                 </span>
                               ))}
                             </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <button
+                          </Table.Cell>
+                          <Table.Cell className="px-4 py-3">
+                            <Button
+                              size="sm" variant="secondary-destructive"
                               onClick={() => {
                                 if (confirm(t('ciTypes.deleteConstraintConfirm', { name: c.name }))) {
                                   deleteConstraintMutation.mutate(c.id)
                                 }
                               }}
-                              className="text-danger hover:text-danger text-xs"
                             >
                               {t('common.delete')}
-                            </button>
-                          </td>
-                        </tr>
+                            </Button>
+                          </Table.Cell>
+                        </Table.Row>
                       ))}
-                    </tbody>
-                  </table></div>
+                    </Table.Body>
+                  </Table></div>
                 )}
               </div>
             </>
@@ -589,62 +591,54 @@ export default function CITypes() {
             <form onSubmit={handleTypeSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.nameSnake')}</label>
-                  <input
+                  <Input
+                    label={t('ciTypes.nameSnake')}
                     value={typeForm.name}
                     onChange={(e) => setTypeForm({ ...typeForm, name: e.target.value })}
-                    className={inputCls}
+                    className="w-full"
                     placeholder="custom_device"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.displayName')}</label>
-                  <input
+                  <Input
+                    label={t('ciTypes.displayName')}
                     value={typeForm.display_name}
                     onChange={(e) => setTypeForm({ ...typeForm, display_name: e.target.value })}
-                    className={inputCls}
+                    className="w-full"
                     placeholder="Custom Device"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.classification')}</label>
-                  <select
+                  <SelectField
+                    label={t('ciTypes.classification')}
                     value={typeForm.classification_id}
-                    onChange={(e) => setTypeForm({ ...typeForm, classification_id: e.target.value })}
-                    className={inputCls}
-                  >
-                    <option value="">{t('ciTypes.none')}</option>
-                    {classifications.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.display_name}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={value => setTypeForm({ ...typeForm, classification_id: value })}
+                    className="w-full"
+                    items={[
+                      { value: "", label: t('ciTypes.none') },
+                      ...classifications.map((c) => ({ value: c.id, label: c.display_name })),
+                    ]}
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.cloudProvider')}</label>
-                  <select
+                  <SelectField
+                    label={t('ciTypes.cloudProvider')}
                     value={typeForm.cloud_provider}
-                    onChange={(e) => setTypeForm({ ...typeForm, cloud_provider: e.target.value })}
-                    className={inputCls}
-                  >
-                    {PROVIDERS.map((p) => (
-                      <option key={p} value={p}>
-                        {p === '' ? t('ciTypes.none') : providerLabel(p)}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={value => setTypeForm({ ...typeForm, cloud_provider: value })}
+                    className="w-full"
+                    items={PROVIDERS.map((p) => ({ value: p, label: p === '' ? t('ciTypes.none') : providerLabel(p) }))}
+                  />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('common.description')}</label>
-                <textarea
+                <InputArea
+                  label={t('common.description')}
                   value={typeForm.description}
                   onChange={(e) => setTypeForm({ ...typeForm, description: e.target.value })}
                   rows={2}
-                  className={inputCls}
+                  className="w-full resize-y"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -668,12 +662,12 @@ export default function CITypes() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.sortOrder')}</label>
-                  <input
+                  <Input
+                    label={t('ciTypes.sortOrder')}
                     type="number"
                     value={typeForm.sort_order}
-                    onChange={(e) => setTypeForm({ ...typeForm, sort_order: Number(e.target.value) })}
-                    className={inputCls}
+                    onChange={e => setTypeForm({ ...typeForm, sort_order: Number(e.target.value) })}
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -683,20 +677,20 @@ export default function CITypes() {
                 </div>
               )}
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => setShowTypeModal(false)}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createTypeMutation.isPending}
-                  className="btn-primary"
                 >
                   {t('ciTypes.createType')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -716,57 +710,50 @@ export default function CITypes() {
             <form onSubmit={handleAttrSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.nameSnake')}</label>
-                  <input
+                  <Input
+                    label={t('ciTypes.nameSnake')}
                     value={attrForm.name}
                     onChange={(e) => setAttrForm({ ...attrForm, name: e.target.value })}
-                    className={inputCls}
+                    className="w-full"
                     placeholder="serial_number"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.displayName')}</label>
-                  <input
+                  <Input
+                    label={t('ciTypes.displayName')}
                     value={attrForm.display_name}
                     onChange={(e) => setAttrForm({ ...attrForm, display_name: e.target.value })}
-                    className={inputCls}
+                    className="w-full"
                     placeholder="Serial Number"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.attributeType')}</label>
-                <select
+                <SelectField
+                  label={t('ciTypes.attributeType')}
                   value={attrForm.attribute_type}
-                  onChange={(e) => setAttrForm({ ...attrForm, attribute_type: e.target.value })}
-                  className={inputCls}
-                >
-                  {ATTRIBUTE_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={value => setAttrForm({ ...attrForm, attribute_type: value })}
+                  className="w-full"
+                  items={ATTRIBUTE_TYPES.map((t) => ({ value: t, label: t }))}
+                />
               </div>
               {attrForm.attribute_type === 'enum' && (
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">
-                    {t('ciTypes.enumValues')}
-                  </label>
-                  <input
+                  <Input
+                    label={t('ciTypes.enumValues')}
                     value={attrForm.enum_values}
                     onChange={(e) => setAttrForm({ ...attrForm, enum_values: e.target.value })}
-                    className={inputCls}
+                    className="w-full"
                     placeholder="small, medium, large"
                   />
                 </div>
               )}
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.defaultValue')}</label>
-                <input
+                <Input
+                  label={t('ciTypes.defaultValue')}
                   value={attrForm.default_value}
                   onChange={(e) => setAttrForm({ ...attrForm, default_value: e.target.value })}
-                  className={inputCls}
+                  className="w-full"
                   placeholder={t('ciTypes.optional')}
                 />
               </div>
@@ -796,20 +783,20 @@ export default function CITypes() {
                 </div>
               )}
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => setShowAttrModal(false)}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createAttrMutation.isPending}
-                  className="btn-primary"
                 >
                   {t('ciTypes.addAttributeSubmit')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -827,11 +814,11 @@ export default function CITypes() {
             </h3>
             <form onSubmit={handleConstraintSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
-                <input
+                <Input
+                  label={t('common.name')}
                   value={constraintName}
                   onChange={(e) => setConstraintName(e.target.value)}
-                  className={inputCls}
+                  className="w-full"
                   placeholder="unique-hostname"
                 />
               </div>
@@ -867,20 +854,20 @@ export default function CITypes() {
                 </div>
               )}
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => setShowConstraintModal(false)}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createConstraintMutation.isPending}
-                  className="btn-primary"
                 >
                   {t('ciTypes.createConstraint')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

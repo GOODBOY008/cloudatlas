@@ -19,3 +19,14 @@ if (!HTMLDialogElement.prototype.showModal) {
     queueMicrotask(() => this.dispatchEvent(new Event('close')))
   }
 }
+
+// jsdom has no layout. Browser tests cover scrolling the active tab into view.
+HTMLElement.prototype.scrollIntoView ??= () => {}
+
+if (!globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}

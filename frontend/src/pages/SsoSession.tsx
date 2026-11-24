@@ -1,3 +1,4 @@
+import { Button } from '@cloudflare/kumo/components/button'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -39,9 +40,9 @@ export default function SsoSession({ onRestored }: { onRestored?: () => void }) 
         <div className="mt-4 space-y-4">
           <p role="alert" className="text-sm text-danger">{t('login.ssoError')}</p>
           <div className="flex flex-wrap items-center gap-4">
-            <button type="button" className="btn-secondary" onClick={() => setFailed(false)}>
+            <Button type="button" onClick={() => setFailed(false)}>
               {t('dashboard.retry')}
-            </button>
+            </Button>
             {onRestored ? (
               <button type="button" className="text-link" onClick={() => {
                 auth.clearTokens()

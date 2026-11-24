@@ -39,7 +39,8 @@ export default function App() {
   const finishRestore = useCallback(() => setRestoringSso(false), [])
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#14161b' : '#f8f9fb')
+    document.documentElement.dataset.mode = theme
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0d0d0d' : '#ffffff')
   }, [theme])
 
   return (

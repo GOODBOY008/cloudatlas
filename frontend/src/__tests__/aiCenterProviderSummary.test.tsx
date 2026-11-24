@@ -58,7 +58,7 @@ describe('AICenter provider summary', () => {
   it('settings tab shows the current AI mode summary (org)', async () => {
     renderPage()
     // Switch to the settings tab (default tab is assistant).
-    const settingsBtn = await screen.findByRole('button', { name: /settings|设置/i })
+    const settingsBtn = await screen.findByRole('tab', { name: /settings|设置/i })
     settingsBtn.click()
     // The summary paragraph appears once provider query resolves.
     expect(await screen.findByText(/Current AI mode: Org config/i)).toBeInTheDocument()

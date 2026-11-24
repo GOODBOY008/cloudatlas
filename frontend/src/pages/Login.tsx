@@ -1,3 +1,5 @@
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -103,23 +105,21 @@ export default function Login() {
       )}
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="login-email" className="auth-label">
-            {t('login.email')}
-          </label>
-          <input
+          <Input
+            label={t('login.email')}
             id="login-email"
             type="email"
             autoComplete="username"
             required
             value={email}
             onChange={(e) => { setEmail(e.target.value); setRequiresTotp(false); setTotpCode('') }}
-            className="auth-input"
+            className="w-full"
             placeholder={t('login.emailPlaceholder')}
           />
         </div>
         <div>
           <div className="flex items-center justify-between gap-3">
-            <label htmlFor="login-password" className="auth-label">
+            <label id="login-password-label" htmlFor="login-password" className="auth-label">
               {t('login.password')}
             </label>
             <button
@@ -131,34 +131,36 @@ export default function Login() {
             </button>
           </div>
           <div className="relative">
-            <input
+            <Input
               id="login-password"
+              aria-labelledby="login-password-label"
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="auth-input pr-12"
+              className="w-full pr-12"
               placeholder={t('login.passwordPlaceholder')}
             />
-            <button
+            <Button
+              variant="ghost" shape="square"
               type="button"
-              className="icon-button absolute right-1 top-1"
+              size="sm"
+              aria-pressed={showPassword}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2"
               onClick={() => setShowPassword(!showPassword)}
               aria-label={t(
                 showPassword ? 'design.hidePassword' : 'design.showPassword',
               )}
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+            </Button>
           </div>
         </div>
         {requiresTotp && (
           <div>
-            <label htmlFor="login-totp" className="auth-label">
-              {t('login.totpCode')}
-            </label>
-            <input
+            <Input
+              label={t('login.totpCode')}
               id="login-totp"
               value={totpCode}
               onChange={(e) => setTotpCode(e.target.value)}
@@ -168,7 +170,7 @@ export default function Login() {
               required
               pattern="[0-9]{6}"
               maxLength={6}
-              className="auth-input"
+              className="w-full"
               placeholder="000000"
             />
           </div>
@@ -181,14 +183,15 @@ export default function Login() {
             {t('login.forgotSent')}
           </div>
         )}
-        <button
+        <Button
+          variant="primary" size="lg"
           type="submit"
           disabled={loading}
-          className="btn-primary !mt-7 w-full !py-3.5"
+          className="!mt-7 w-full"
         >
           {loading ? t('login.signingIn') : t('login.signIn')}
           <ArrowRight size={15} />
-        </button>
+        </Button>
       </form>
       {ssoEnabled && (
         <>
@@ -197,13 +200,13 @@ export default function Login() {
             <span className="text-xs text-muted">{t('login.or')}</span>
             <div className="h-px flex-1 bg-edge" />
           </div>
-          <button
+          <Button
             type="button"
             onClick={loginWithSso}
-            className="btn-secondary w-full"
+            className="w-full"
           >
             {t('login.sso')}
-          </button>
+          </Button>
         </>
       )}
       <div className="mt-6 text-center">

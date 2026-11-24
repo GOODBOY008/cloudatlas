@@ -1,3 +1,4 @@
+import { Button } from '@cloudflare/kumo/components/button'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -32,9 +33,9 @@ export function ReportQueryState({
     return (
       <div className="space-y-3 p-5" role="alert">
         <p className="text-xs text-warning">{errorMessage ?? t('dashboard.sectionLoadFailed')}</p>
-        <button type="button" className="btn-secondary" disabled={query.isFetching} onClick={() => void query.refetch()}>
+        <Button type="button" disabled={query.isFetching} onClick={() => void query.refetch()}>
           {query.isFetching ? t('common.loading') : t('dashboard.retry')}
-        </button>
+        </Button>
       </div>
     )
   }

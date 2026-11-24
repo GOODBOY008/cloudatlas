@@ -1,3 +1,4 @@
+import { chooseOption } from '../test/chooseOption'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { renderHook } from '@testing-library/react'
@@ -67,7 +68,7 @@ describe('PaginationBar', () => {
     expect(last.next.disabled).toBe(true)
   })
 
-  it('fires page and per-page change callbacks', () => {
+  it('fires page and per-page change callbacks', async () => {
     const onPageChange = vi.fn()
     const onPerPageChange = vi.fn()
     renderBar({ page: 2, totalPages: 3, onPageChange, onPerPageChange })
@@ -78,7 +79,7 @@ describe('PaginationBar', () => {
     fireEvent.click(screen.getByTestId('prev-page'))
     expect(onPageChange).toHaveBeenCalledWith(1)
 
-    fireEvent.change(screen.getByTestId('per-page-select'), { target: { value: '100' } })
+    await chooseOption(screen.getByTestId('per-page-select'), '100')
     expect(onPerPageChange).toHaveBeenCalledWith(100)
   })
 

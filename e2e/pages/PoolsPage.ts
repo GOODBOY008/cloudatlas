@@ -1,3 +1,4 @@
+import { chooseOption } from '../helpers/chooseOption';
 import { Page, Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
@@ -18,10 +19,9 @@ export class PoolsPage extends BasePage {
     this.newPoolBtn = page.getByRole('button', { name: /new pool/i });
     this.poolList = page.locator('main');
     this.formHeading = page.getByRole('heading', { name: /new pool|edit pool/i });
-    // Form fields have no labels — use placeholder or positional selectors
     this.nameInput = page.getByRole('textbox').first();
-    this.typeSelect = page.locator('select').first();
-    this.parentSelect = page.locator('select').nth(1);
+    this.typeSelect = page.locator('form').getByRole('combobox').first();
+    this.parentSelect = page.locator('form').getByRole('combobox').nth(1);
     this.descriptionInput = page.getByPlaceholder(/cloud spend|description/i);
     this.budgetInput = page.getByRole('spinbutton');
     this.createPoolBtn = page.getByRole('button', { name: /create pool/i });
@@ -40,7 +40,7 @@ export class PoolsPage extends BasePage {
   async createPool(name: string, type = 'project'): Promise<void> {
     await this.openCreateModal();
     await this.nameInput.fill(name);
-    if (await this.typeSelect.isVisible()) await this.typeSelect.selectOption(type);
+    if (await this.typeSelect.isVisible()) await chooseOption(this.typeSelect, type);
     await this.createPoolBtn.click();
     await this.formHeading.waitFor({ state: 'hidden', timeout: 10_000 });
   }

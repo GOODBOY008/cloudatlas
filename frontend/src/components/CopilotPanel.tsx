@@ -1,3 +1,4 @@
+import { Button } from '@cloudflare/kumo/components/button'
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, GripVertical, Minus, MoveUpLeft, Sparkles } from 'lucide-react'
@@ -57,9 +58,9 @@ function CopilotWindow({ open, desktop }: { open: boolean; desktop: boolean }) {
             </button>
           )}
           tools={desktop && expanded && <WindowControls size={rect} step={step} />}
-          rightSlot={<button type="button" className="icon-button" aria-label={minimizeLabel} title={minimizeLabel} onClick={() => setOpen(false)}>
+          rightSlot={<Button variant="ghost" shape="square" type="button" aria-label={minimizeLabel} title={minimizeLabel} onClick={() => setOpen(false)}>
             {desktop ? <Minus size={17} /> : <ChevronDown size={19} />}
-          </button>}
+          </Button>}
         />
         {desktop && <div className="sr-only" aria-live="polite" aria-atomic="true">
           <span key={feedback.revision}>{feedback.message}</span>

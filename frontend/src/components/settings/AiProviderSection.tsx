@@ -1,3 +1,5 @@
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Sparkles, Trash2 } from 'lucide-react'
@@ -150,7 +152,7 @@ export default function AiProviderSection() {
             type="checkbox"
             checked={enabled}
             onChange={(e) => setEnabled(e.target.checked)}
-            className="w-4 h-4 rounded accent-indigo-600"
+            className="w-4 h-4 rounded"
           />
           <span className="text-sm font-medium text-primary">
             {t('settings.aiProvider.enable')}
@@ -159,14 +161,11 @@ export default function AiProviderSection() {
 
         {/* Base URL */}
         <div>
-          <label className="block text-xs font-medium text-secondary mb-1">
-            {t('settings.aiProvider.baseUrl')}
-          </label>
-          <input
+          <Input label={t('settings.aiProvider.baseUrl')}
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
             placeholder={info?.effective.base_url ?? 'https://api.openai.com/v1'}
-            className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+            className="w-full"
           />
           <p className="mt-1 text-xs text-muted">{t('settings.aiProvider.baseUrlHelp')}</p>
         </div>
@@ -193,12 +192,12 @@ export default function AiProviderSection() {
           {clearKey ? (
             <p className="text-xs text-danger">{t('settings.aiProvider.clearKey')} ✓</p>
           ) : (
-            <input
+            <Input aria-label={info?.api_key_set ? t('settings.aiProvider.apiKeyKeep') : 'sk-…'}
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={info?.api_key_set ? t('settings.aiProvider.apiKeyKeep') : 'sk-…'}
-              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full"
             />
           )}
         </div>
@@ -206,25 +205,19 @@ export default function AiProviderSection() {
         {/* Models */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-secondary mb-1">
-              {t('settings.aiProvider.chatModel')}
-            </label>
-            <input
+            <Input label={t('settings.aiProvider.chatModel')}
               value={chatModel}
               onChange={(e) => setChatModel(e.target.value)}
               placeholder={info?.effective.chat_model ?? 'gpt-4o-mini'}
-              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-secondary mb-1">
-              {t('settings.aiProvider.embedModel')}
-            </label>
-            <input
+            <Input label={t('settings.aiProvider.embedModel')}
               value={embedModel}
               onChange={(e) => setEmbedModel(e.target.value)}
               placeholder={info?.effective.embed_model ?? 'text-embedding-3-small'}
-              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full"
             />
           </div>
         </div>
@@ -251,22 +244,20 @@ export default function AiProviderSection() {
         )}
 
         <div className="flex gap-2">
-          <button
+          <Button variant="primary"
             type="button"
             onClick={save}
             disabled={saving}
-            className="btn-primary"
           >
             {t('settings.aiProvider.save')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={runTest}
             disabled={testing}
-            className="px-4 py-2 bg-subtle hover:bg-emphasis text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             {testing ? t('settings.aiProvider.testing') : t('settings.aiProvider.test')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

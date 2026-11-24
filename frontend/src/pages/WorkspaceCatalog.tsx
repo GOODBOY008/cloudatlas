@@ -1,3 +1,6 @@
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -33,8 +36,6 @@ type Editor =
   | { kind: 'map'; deployment: Deployment }
   | { kind: 'delete'; resource: 'teams' | 'services'; value: Team }
 
-const field = 'w-full rounded-lg border border-strong bg-surface px-3 py-2 text-sm text-primary'
-const caption = 'mb-1 block text-sm text-secondary'
 
 export function WorkspaceCatalog({ org, openDeployment }: {
   org: Organization
@@ -116,7 +117,7 @@ export function WorkspaceCatalog({ org, openDeployment }: {
       <section className="rounded-xl border border-edge bg-surface p-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-semibold text-primary">{t('catalog.teams')}</h2>
-          {steward && <button className="btn-secondary" onClick={() => edit({ kind: 'team' })}>{t('catalog.newTeam')}</button>}
+          {steward && <Button onClick={() => edit({ kind: 'team' })}>{t('catalog.newTeam')}</Button>}
         </div>
         {teams.length === 0 && <p className="mt-2 text-sm text-muted">{t('catalog.noTeams')}</p>}
         <ul className="mt-2 divide-y divide-edge">{teams.map(item => <li key={item.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
@@ -130,7 +131,7 @@ export function WorkspaceCatalog({ org, openDeployment }: {
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-semibold text-primary">{t('catalog.services')}</h2>
-          {steward && <button className="btn-primary" onClick={() => edit({ kind: 'service' })}>{t('services.newService')}</button>}
+          {steward && <Button variant="primary" onClick={() => edit({ kind: 'service' })}>{t('services.newService')}</Button>}
         </div>
         {services.length === 0 && <p className="text-sm text-muted">{t('services.noServices')}</p>}
         {services.map(item => {
@@ -150,7 +151,7 @@ export function WorkspaceCatalog({ org, openDeployment }: {
             <Link className="text-sm text-accent" to={'/object-storage?service=' + item.id}>{t('storage.serviceBuckets')}</Link>
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-edge pt-3">
               <h4 className="text-sm font-medium text-secondary">{t('catalog.envDeployment', { env })}</h4>
-              {writable && <button className="btn-secondary" onClick={() => edit({ kind: 'bind', service: item })}>{t('services.addCi')}</button>}
+              {writable && <Button onClick={() => edit({ kind: 'bind', service: item })}>{t('services.addCi')}</Button>}
             </div>
             {local.length === 0 && <p className="mt-2 text-sm text-muted">{t('catalog.noDeployment', { env })}</p>}
             <ul className="mt-2 space-y-2">{local.map(d => <li key={d.id}>
@@ -165,38 +166,58 @@ export function WorkspaceCatalog({ org, openDeployment }: {
         <h2 className="font-semibold">{t('catalog.unassigned')}</h2>
         <ul>{unmapped.map(d => <li className="mt-2 flex flex-wrap justify-between gap-2 text-sm" key={d.id}>
           <button className="text-accent" onClick={() => openDeployment(d, writable)}>{deploymentName(d)}</button>
-          {writable && <button disabled={!services.length} className="btn-secondary" onClick={() => edit({ kind: 'map', deployment: d })}>{t('catalog.assignDeployment')}</button>}
+          {writable && <Button disabled={!services.length} onClick={() => edit({ kind: 'map', deployment: d })}>{t('catalog.assignDeployment')}</Button>}
         </li>)}</ul>
       </section>}
       {editor && <Modal title={formTitle} onClose={() => { if (!mutation.isPending) setEditor(null) }}>
         <form className="space-y-4" onSubmit={e => { e.preventDefault(); if (!mutation.isPending) mutation.mutate(editor) }}>
           {(editor.kind === 'team' || editor.kind === 'service') && <div>
-            <label htmlFor="catalog-name" className={caption}>{t('catalog.name')}</label>
-            <input id="catalog-name" className={field} maxLength={160} required value={name} onChange={e => setName(e.target.value)} />
+            <Input label={t('catalog.name')} id="catalog-name" className="w-full" maxLength={160} required value={name} onChange={e => setName(e.target.value)} />
           </div>}
           {editor.kind === 'service' && <>
-            <div><label htmlFor="catalog-system" className={caption}>{t('catalog.system')}</label>
-              <input id="catalog-system" className={field} maxLength={160} value={system} onChange={e => setSystem(e.target.value)} /></div>
-            <div><label htmlFor="catalog-team" className={caption}>{t('services.ownerTeam')}</label>
-              <select id="catalog-team" className={field} value={team} onChange={e => setTeam(e.target.value)}>
-                <option value="">{t('catalog.unassignedTeam')}</option>{teams.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-              </select></div>
+            <div><Input label={t('catalog.system')} id="catalog-system" className="w-full" maxLength={160} value={system} onChange={e => setSystem(e.target.value)} /></div>
+            <div><SelectField
+                label={t('services.ownerTeam')}
+                id="catalog-team"
+                className="w-full"
+                value={team}
+                onValueChange={setTeam}
+                items={[
+                  { value: "", label: t('catalog.unassignedTeam') },
+                  ...teams.map(x => ({ value: x.id, label: x.name })),
+                ]}
+              /></div>
           </>}
           {editor.kind === 'bind' && <>
-            <div><label htmlFor="catalog-deployment" className={caption}>{t('catalog.envDeployment', { env })}</label>
-              <select id="catalog-deployment" className={field} value={deployment} onChange={e => setDeployment(e.target.value)}>
-                <option value="">{t('catalog.defaultDeployment')}</option>{deployments.filter(d => d.catalog_service_id === editor.service.id && !d.is_default).map(d => <option key={d.id} value={d.id}>{deploymentName(d)}</option>)}
-              </select></div>
+            <div><SelectField
+                label={t('catalog.envDeployment', { env })}
+                id="catalog-deployment"
+                className="w-full"
+                value={deployment}
+                onValueChange={setDeployment}
+                items={[
+                  { value: "", label: t('catalog.defaultDeployment') },
+                  ...deployments.filter(d => d.catalog_service_id === editor.service.id && !d.is_default).map(d => ({ value: d.id, label: deploymentName(d) })),
+                ]}
+              /></div>
             <CiPicker orgId={org.id} excludeIds={[]} value={ci} onChange={setCi} placeholder={t('services.selectCiPlaceholder')} />
           </>}
-          {editor.kind === 'map' && <div><label htmlFor="catalog-service" className={caption}>{t('catalog.services')}</label>
-            <select id="catalog-service" className={field} required value={service} onChange={e => setService(e.target.value)}>
-              <option value="">—</option>{services.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-            </select></div>}
+          {editor.kind === 'map' && <div><SelectField
+              label={t('catalog.services')}
+              id="catalog-service"
+              className="w-full"
+              required
+              value={service}
+              onValueChange={setService}
+              items={[
+                { value: "", label: "—" },
+                ...services.map(x => ({ value: x.id, label: x.name })),
+              ]}
+            /></div>}
           {editor.kind === 'delete' && <p className="text-sm text-secondary">{t('catalog.deleteHint')}</p>}
           {error && <p role="alert" className="text-sm text-danger">{isAxiosError(error) && error.response?.status === 409 ? t('catalog.conflict') : t('catalog.saveFailed')}</p>}
-          <div className="flex justify-end gap-2"><button type="button" disabled={mutation.isPending} className="btn-secondary" onClick={() => setEditor(null)}>{t('common.cancel')}</button>
-            <button type="submit" disabled={mutation.isPending} className="btn-primary">{editor.kind === 'delete' ? t('common.delete') : t('common.save')}</button></div>
+          <div className="flex justify-end gap-2"><Button type="button" disabled={mutation.isPending} onClick={() => setEditor(null)}>{t('common.cancel')}</Button>
+            <Button variant="primary" type="submit" disabled={mutation.isPending}>{editor.kind === 'delete' ? t('common.delete') : t('common.save')}</Button></div>
         </form>
       </Modal>}
     </div>

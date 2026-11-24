@@ -1,3 +1,6 @@
+import { Input, InputArea } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -187,9 +190,6 @@ export default function FieldTemplates() {
     createMutation.mutate({ name: name.trim(), display_name: displayName.trim() || undefined, attributes })
   }
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
-
   return (
     <div className="space-y-6">
       <div className="page-header">
@@ -197,12 +197,12 @@ export default function FieldTemplates() {
           <h1 className="page-title">{t('fieldTemplates.title')}</h1>
           <p className="text-sm text-secondary mt-0.5">{t('fieldTemplates.subtitle')}</p>
         </div>
-        <button
+        <Button
+          variant="primary"
           onClick={() => setShowModal(true)}
-          className="btn-primary"
         >
           {t('fieldTemplates.newTemplate')}
-        </button>
+        </Button>
       </div>
 
       {isLoading ? (
@@ -295,53 +295,53 @@ export default function FieldTemplates() {
           {/* Bind new type */}
           <div className="flex items-end gap-3">
             <div className="flex-1">
-              <label className="block text-xs text-secondary mb-1">{t('fieldTemplates.bindType')}</label>
-              <select value={bindTypeId} onChange={(e) => setBindTypeId(e.target.value)} className={inputCls}>
-                <option value="">{t('fieldTemplates.selectType')}</option>
-                {ciTypes
+              <SelectField
+                label={t('fieldTemplates.bindType')}
+                value={bindTypeId}
+                onValueChange={setBindTypeId}
+                className="w-full"
+                items={[
+                  { value: "", label: t('fieldTemplates.selectType') },
+                  ...ciTypes
                   .filter((ct) => !boundTypes.some((b) => b.id === ct.id))
-                  .map((ct) => (
-                    <option key={ct.id} value={ct.id}>{ct.display_name}</option>
-                  ))}
-              </select>
+                  .map((ct) => ({ value: ct.id, label: ct.display_name })),
+                ]}
+              />
             </div>
-            <button
+            <Button
               onClick={() => bindTypeId && bindMutation.mutate({ typeIds: [bindTypeId] })}
               disabled={!bindTypeId || bindMutation.isPending}
-              className="px-4 py-2 bg-subtle hover:bg-emphasis disabled:opacity-50 text-primary text-sm rounded-lg transition-colors"
             >
               {t('fieldTemplates.bind')}
-            </button>
+            </Button>
           </div>
 
           {/* Diff + apply */}
           <div className="border-t border-edge pt-4 space-y-3">
             <div className="flex items-end gap-3">
               <div className="flex-1">
-                <label className="block text-xs text-secondary mb-1">{t('fieldTemplates.diffType')}</label>
-                <select
+                <SelectField
+                  label={t('fieldTemplates.diffType')}
                   value={diffTypeId}
-                  onChange={(e) => {
-                    setDiffTypeId(e.target.value)
+                  onValueChange={value => {
+                    setDiffTypeId(value)
                     setActionMessage('')
                   }}
-                  className={inputCls}
+                  className="w-full"
                   data-testid="field-template-diff-select"
-                >
-                  <option value="">{t('fieldTemplates.selectType')}</option>
-                  {ciTypes.map((ct) => (
-                    <option key={ct.id} value={ct.id}>{ct.display_name}</option>
-                  ))}
-                </select>
+                  items={[
+                    { value: "", label: t('fieldTemplates.selectType') },
+                    ...ciTypes.map((ct) => ({ value: ct.id, label: ct.display_name })),
+                  ]}
+                />
               </div>
-              <button
+              <Button
                 onClick={() => diffTypeId && refetchDiff()}
                 disabled={!diffTypeId || diffLoading}
-                className="px-4 py-2 bg-subtle hover:bg-emphasis disabled:opacity-50 text-primary text-sm rounded-lg transition-colors"
                 data-testid="field-template-diff-button"
               >
                 {diffLoading ? t('common.loading') : t('fieldTemplates.showDiff')}
-              </button>
+              </Button>
             </div>
 
             {diff && (
@@ -369,24 +369,23 @@ export default function FieldTemplates() {
                   </div>
                 )}
                 <div className="flex gap-2 pt-1">
-                  <button
+                  <Button
                     onClick={() => applyMutation.mutate(true)}
                     disabled={applyMutation.isPending || !diffTypeId}
-                    className="btn-secondary"
                     data-testid="field-template-dry-run"
                   >
                     {t('fieldTemplates.dryRun')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="primary"
                     onClick={() => {
                       if (confirm(t('fieldTemplates.applyConfirm'))) applyMutation.mutate(false)
                     }}
                     disabled={applyMutation.isPending || !diffTypeId}
-                    className="btn-primary"
                     data-testid="field-template-apply"
                   >
                     {t('fieldTemplates.apply')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -409,43 +408,39 @@ export default function FieldTemplates() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
-                  <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="standard-host-fields" />
+                  <Input label={t('common.name')} value={name} onChange={(e) => setName(e.target.value)} className="w-full" placeholder="standard-host-fields" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">{t('ciTypes.displayName')}</label>
-                  <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputCls} placeholder="Standard Host Fields" />
+                  <Input label={t('ciTypes.displayName')} value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full" placeholder="Standard Host Fields" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-secondary mb-2">
-                  {t('fieldTemplates.attributesJson')} ({ATTRIBUTE_TYPES.length} {t('fieldTemplates.typesSupported')})
-                </label>
-                <textarea
+                <InputArea
+                  label={`${t('fieldTemplates.attributesJson')} (${ATTRIBUTE_TYPES.length} ${t('fieldTemplates.typesSupported')})`}
                   value={attrText}
                   onChange={(e) => setAttrText(e.target.value)}
                   rows={8}
-                  className={`${inputCls} font-mono text-xs`}
+                  className="w-full font-mono resize-y"
                 />
               </div>
               {formError && (
                 <div className="p-3 rounded-lg bg-danger/10 border border-danger/25 text-danger text-sm">{formError}</div>
               )}
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="btn-primary"
                 >
                   {t('fieldTemplates.create')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

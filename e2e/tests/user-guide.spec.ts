@@ -55,9 +55,9 @@ test.describe.serial('User Quick-Start Tutorial @user-guide', () => {
     expect((initialText ?? '').length).toBeGreaterThan(100);
 
     // Tab buttons are visible
-    await expect(expensesPage.main.getByRole('button', { name: 'Overview', exact: true })).toBeVisible();
-    await expect(expensesPage.main.getByRole('button', { name: 'By Service', exact: true })).toBeVisible();
-    await expect(expensesPage.main.getByRole('button', { name: 'Trend', exact: true })).toBeVisible();
+    await expect(expensesPage.main.getByRole('tab', { name: 'Overview', exact: true })).toBeVisible();
+    await expect(expensesPage.main.getByRole('tab', { name: 'By Service', exact: true })).toBeVisible();
+    await expect(expensesPage.main.getByRole('tab', { name: 'Trend', exact: true })).toBeVisible();
 
     // Switch to "By Service" tab — content should update
     await expensesPage.clickTab('By Service');
@@ -83,12 +83,12 @@ test.describe.serial('User Quick-Start Tutorial @user-guide', () => {
     expect(mainText).toMatch(/geographic and dimensional cloud spend visualisation/i);
 
     // View tabs are visible
-    await expect(page.getByRole('button', { name: 'Treemap' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Unit Economics' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Budget Matrix' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Treemap' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Unit Economics' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Budget Matrix' })).toBeVisible();
 
     // Switch to Treemap tab and verify content renders
-    await page.getByRole('button', { name: 'Treemap' }).click();
+    await page.getByRole('tab', { name: 'Treemap' }).click();
     await page.waitForLoadState('networkidle');
     const treemapContent = await page.locator('main').textContent();
     expect((treemapContent ?? '').length).toBeGreaterThan(20);

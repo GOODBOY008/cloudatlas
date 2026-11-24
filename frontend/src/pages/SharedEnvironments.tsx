@@ -1,3 +1,5 @@
+import { Input, InputArea } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -100,10 +102,9 @@ export default function SharedEnvironments() {
           <h1 className="page-title">{t('sharedEnvironments.title')}</h1>
           <p className="text-sm text-secondary mt-1">{t('sharedEnvironments.subtitle')}</p>
         </div>
-        <button onClick={() => setShowCreate(true)}
-          className="btn-primary">
+        <Button variant="primary" onClick={() => setShowCreate(true)}>
           {t('sharedEnvironments.newEnvironment')}
-        </button>
+        </Button>
       </div>
 
       {/* Summary */}
@@ -154,22 +155,21 @@ export default function SharedEnvironments() {
 
               <div className="flex gap-2 mt-auto">
                 {env.status === 'available' && (
-                  <button onClick={() => setBookingEnv(env)}
-                    className="btn-primary flex-1">
+                  <Button variant="primary" onClick={() => setBookingEnv(env)}
+                    className="flex-1">
                     {t('sharedEnvironments.book')}
-                  </button>
+                  </Button>
                 )}
                 {env.status === 'booked' && (
-                  <button onClick={() => releaseEnv.mutate(env.id)}
+                  <Button size="sm" onClick={() => releaseEnv.mutate(env.id)}
                     disabled={releaseEnv.isPending}
-                    className="flex-1 text-xs py-1.5 bg-emphasis hover:bg-emphasis text-primary rounded-md font-medium disabled:opacity-50">
+                    className="flex-1">
                     {t('sharedEnvironments.release')}
-                  </button>
+                  </Button>
                 )}
-                <button onClick={() => { if (confirm(t('sharedEnvironments.confirmDelete'))) deleteEnv.mutate(env.id) }}
-                  className="px-2 py-1.5 text-xs bg-danger/10 hover:bg-danger/10 text-danger rounded-md">
+                <Button variant="secondary-destructive" size="sm" onClick={() => { if (confirm(t('sharedEnvironments.confirmDelete'))) deleteEnv.mutate(env.id) }}>
                   ✕
-                </button>
+                </Button>
               </div>
             </div>
           ))}
@@ -179,40 +179,38 @@ export default function SharedEnvironments() {
       {/* Create Environment Modal */}
       {showCreate && (
         <NativeDialog className="items-center justify-center p-4" label={t('sharedEnvironments.newEnvironmentTitle')} onClose={() => setShowCreate(false)}>
-          <div className="dialog-panel p-6 w-full max-w-md space-y-4">
+          <form className="dialog-panel p-6 w-full max-w-md space-y-4" onSubmit={e => { e.preventDefault(); createEnv.mutate() }}>
             <h2 className="text-lg font-bold text-primary">{t('sharedEnvironments.newEnvironmentTitle')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('common.name')} *</label>
-                <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                <Input label={`${t('common.name')} *`} value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                  className="w-full"
                   placeholder={t('sharedEnvironments.namePlaceholder')} />
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
-                <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary resize-none"
+                <InputArea label={t('common.description')} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                  className="w-full resize-y"
                   rows={2} placeholder={t('sharedEnvironments.descPlaceholder')} />
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('sharedEnvironments.autoReleaseLabel')}</label>
-                <input type="number" min={1} max={72} value={form.auto_release_hours}
+                <Input
+                  label={t('sharedEnvironments.autoReleaseLabel')} type="number" min={1} max={72} value={form.auto_release_hours}
                   onChange={e => setForm(p => ({ ...p, auto_release_hours: parseInt(e.target.value) || 8 }))}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary" />
+                  className="w-full" />
               </div>
             </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={() => setShowCreate(false)}
-                className="flex-1 py-2 text-sm bg-emphasis text-secondary rounded-lg hover:bg-emphasis">
+              <Button type="button" onClick={() => setShowCreate(false)}
+                className="flex-1">
                 {t('common.cancel')}
-              </button>
-              <button onClick={() => createEnv.mutate()}
+              </Button>
+              <Button variant="primary" type="submit"
                 disabled={createEnv.isPending || !form.name.trim()}
-                className="btn-primary flex-1">
+                className="flex-1">
                 {createEnv.isPending ? t('sharedEnvironments.creating') : t('sharedEnvironments.create')}
-              </button>
+              </Button>
             </div>
-          </div>
+          </form>
         </NativeDialog>
       )}
 
@@ -223,34 +221,33 @@ export default function SharedEnvironments() {
             <h2 className="text-lg font-bold text-primary">{t('sharedEnvironments.bookTitle', { name: bookingEnv.name })}</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('sharedEnvironments.startTime')} *</label>
-                <input type="datetime-local" value={bookForm.start_time}
+                <Input
+                  label={`${t('sharedEnvironments.startTime')} *`} type="datetime-local" value={bookForm.start_time}
                   onChange={e => setBookForm(p => ({ ...p, start_time: e.target.value }))}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary" />
+                  className="w-full" />
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('sharedEnvironments.endTime')} *</label>
-                <input type="datetime-local" value={bookForm.end_time}
+                <Input
+                  label={`${t('sharedEnvironments.endTime')} *`} type="datetime-local" value={bookForm.end_time}
                   onChange={e => setBookForm(p => ({ ...p, end_time: e.target.value }))}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary" />
+                  className="w-full" />
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('sharedEnvironments.notes')}</label>
-                <input value={bookForm.notes} onChange={e => setBookForm(p => ({ ...p, notes: e.target.value }))}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                <Input label={t('sharedEnvironments.notes')} value={bookForm.notes} onChange={e => setBookForm(p => ({ ...p, notes: e.target.value }))}
+                  className="w-full"
                   placeholder={t('sharedEnvironments.notesPlaceholder')} />
               </div>
             </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={() => setBookingEnv(null)}
-                className="flex-1 py-2 text-sm bg-emphasis text-secondary rounded-lg hover:bg-emphasis">
+              <Button onClick={() => setBookingEnv(null)}
+                className="flex-1">
                 {t('common.cancel')}
-              </button>
-              <button onClick={() => bookEnv.mutate(bookingEnv.id)}
+              </Button>
+              <Button variant="primary" onClick={() => bookEnv.mutate(bookingEnv.id)}
                 disabled={bookEnv.isPending || !bookForm.start_time || !bookForm.end_time}
-                className="btn-primary flex-1">
+                className="flex-1">
                 {bookEnv.isPending ? t('sharedEnvironments.booking') : t('sharedEnvironments.bookNow')}
-              </button>
+              </Button>
             </div>
           </div>
         </NativeDialog>

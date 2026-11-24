@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -160,40 +164,36 @@ export default function BillingImport() {
         <h3 className="text-sm font-semibold text-primary mb-3">{t('billingImport.triggerImport')}</h3>
         <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
           <div className="min-w-[260px] flex-1">
-            <label className="block text-xs font-medium text-secondary mb-1">{t('billingImport.cloudAccount')}</label>
-            <select
+            <SelectField
+              label={t('billingImport.cloudAccount')}
               value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              className="bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent"
-            >
-              <option value="">{t('billingImport.selectAccount')}</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} ({providerLabel(a.provider)})
-                </option>
-              ))}
-            </select>
+              onValueChange={setAccountId}
+              className="w-full"
+              items={[
+                { value: "", label: t('billingImport.selectAccount') },
+                ...accounts.map((a) => ({ value: a.id, label: `${a.name} (${providerLabel(a.provider)})` })),
+              ]}
+            />
           </div>
           <div className="w-[140px]">
-            <label className="block text-xs font-medium text-secondary mb-1">
-              {t('billingImport.daysLabel')}
-            </label>
-            <input
+            <Input
+              label={t('billingImport.daysLabel')}
               type="number"
+              required
               min={1}
               max={90}
               value={days}
-              onChange={(e) => setDays(Number(e.target.value))}
-              className="bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent"
+              onChange={e => setDays(Number(e.target.value))}
+              className="w-full"
             />
           </div>
-          <button
+          <Button
+            variant="primary"
             type="submit"
             disabled={submitDisabled || importMutation.isPending}
-            className="btn-primary"
           >
             {billingActiveFor(accountId) ? t('billingImport.importing') : t('billingImport.runImport')}
-          </button>
+          </Button>
         </form>
 
         {error && (
@@ -220,21 +220,21 @@ export default function BillingImport() {
                   <span className="text-xs text-muted font-mono">{elapsed}s</span>
                 )}
                 {!confirmCancel ? (
-                  <button
+                  <Button
+                    variant="secondary-destructive" size="sm"
                     onClick={() => setConfirmCancel(true)}
-                    className="px-3 py-1.5 text-xs rounded bg-danger/10 hover:bg-danger/10 text-danger transition-colors"
                   >
                     {t('jobs.cancel')}
-                  </button>
+                  </Button>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <button
+                    <Button
+                      variant="destructive" size="sm"
                       onClick={() => cancelMutation.mutate(job.id)}
                       disabled={cancelMutation.isPending}
-                      className="px-3 py-1.5 text-xs rounded bg-danger-solid hover:bg-danger-solid/90 disabled:opacity-60 text-white"
                     >
                       {t('jobs.cancelConfirm')}
-                    </button>
+                    </Button>
                     <button
                       onClick={() => setConfirmCancel(false)}
                       className="px-3 py-1.5 text-xs rounded text-secondary hover:text-primary"
@@ -310,30 +310,30 @@ export default function BillingImport() {
             {t('billingImport.empty')}
           </div>
         ) : (
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-            <thead className="border-b border-edge text-xs uppercase text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">{t('billingImport.colAccount')}</th>
-                <th className="px-4 py-3 font-medium">{t('billingImport.colProvider')}</th>
-                <th className="px-4 py-3 font-medium">{t('billingImport.colRawRows')}</th>
-                <th className="px-4 py-3 font-medium">{t('billingImport.colExpenseRows')}</th>
-                <th className="px-4 py-3 font-medium">{t('billingImport.colLastImport')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+            <Table.Header variant="compact" className="border-b border-edge">
+              <Table.Row>
+                <Table.Head className="px-4 py-3 font-medium">{t('billingImport.colAccount')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('billingImport.colProvider')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('billingImport.colRawRows')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('billingImport.colExpenseRows')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('billingImport.colLastImport')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {history.map((h) => (
-                <tr key={h.cloud_account_id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
-                  <td className="px-4 py-3 text-sm text-primary">{accountName(h.cloud_account_id)}</td>
-                  <td className="px-4 py-3 text-sm text-secondary">{providerLabel(h.provider)}</td>
-                  <td className="px-4 py-3 text-sm text-secondary">{h.raw_rows.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-secondary">{h.expense_rows.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-xs text-muted">
+                <Table.Row key={h.cloud_account_id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                  <Table.Cell className="px-4 py-3 text-sm text-primary">{accountName(h.cloud_account_id)}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm text-secondary">{providerLabel(h.provider)}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm text-secondary">{h.raw_rows.toLocaleString()}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm text-secondary">{h.expense_rows.toLocaleString()}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-xs text-muted">
                     {h.last_import_at ? new Date(h.last_import_at).toLocaleString() : t('common.never')}
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         )}
       </div>
 
@@ -345,40 +345,40 @@ export default function BillingImport() {
         {recentJobs.length === 0 ? (
           <div className="p-5 text-center text-muted text-sm">{t('billingImport.empty')}</div>
         ) : (
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-            <thead className="border-b border-edge text-xs uppercase text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">{t('billingImport.colAccount')}</th>
-                <th className="px-4 py-3 font-medium">{t('common.status')}</th>
-                <th className="px-4 py-3 font-medium">{t('billingImport.colRawRows')}</th>
-                <th className="px-4 py-3 font-medium">{t('billingImport.daysLabel')}</th>
-                <th className="px-4 py-3 font-medium">{t('billingImport.colTriggeredBy')}</th>
-                <th className="px-4 py-3 font-medium">{t('billingImport.colStarted')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+            <Table.Header variant="compact" className="border-b border-edge">
+              <Table.Row>
+                <Table.Head className="px-4 py-3 font-medium">{t('billingImport.colAccount')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.status')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('billingImport.colRawRows')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('billingImport.daysLabel')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('billingImport.colTriggeredBy')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('billingImport.colStarted')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {recentJobs.map((j) => (
-                <tr key={j.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
-                  <td className="px-4 py-3 text-sm text-primary">{j.account_name ?? accountName(j.cloud_account_id)}</td>
-                  <td className="px-4 py-3"><JobStatusBadge status={j.status} /></td>
-                  <td className="px-4 py-3 text-sm text-secondary">
+                <Table.Row key={j.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                  <Table.Cell className="px-4 py-3 text-sm text-primary">{j.account_name ?? accountName(j.cloud_account_id)}</Table.Cell>
+                  <Table.Cell className="px-4 py-3"><JobStatusBadge status={j.status} /></Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm text-secondary">
                     {j.status === 'succeeded' ? (j.result?.raw_rows_inserted ?? 0).toLocaleString() : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-secondary">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm text-secondary">
                     {j.params?.days != null ? String(j.params.days) : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-secondary">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm text-secondary">
                     {j.triggered_by === 'scheduler'
                       ? t('jobs.triggeredBy.scheduler')
                       : t('jobs.triggeredBy.user')}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-xs text-muted">
                     {j.started_at ? new Date(j.started_at).toLocaleString() : '—'}
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         )}
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { chooseOption } from '../test/chooseOption'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -64,7 +65,7 @@ describe('Compliance policy rule editor', () => {
 
     const field = await screen.findByLabelText('Rule 1 field')
     fireEvent.change(field, { target: { value: 'tags.env' } })
-    fireEvent.change(screen.getByLabelText('Rule 1 operator'), { target: { value: 'eq' } })
+    await chooseOption(screen.getByLabelText('Rule 1 operator'), 'equals')
     fireEvent.change(screen.getByLabelText('Rule 1 value'), { target: { value: 'prod' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Create Policy' }))
@@ -87,12 +88,12 @@ describe('Compliance policy rule editor', () => {
     fireEvent.change(screen.getByPlaceholderText('required-tags'), { target: { value: 'sizes' } })
 
     fireEvent.change(screen.getByLabelText('Rule 1 field'), { target: { value: 'cloud_provider' } })
-    fireEvent.change(screen.getByLabelText('Rule 1 operator'), { target: { value: 'in' } })
+    await chooseOption(screen.getByLabelText('Rule 1 operator'), 'is one of')
     fireEvent.change(screen.getByLabelText('Rule 1 value'), { target: { value: 'aws, gcp' } })
 
     fireEvent.click(screen.getByText('+ Add Rule'))
     fireEvent.change(screen.getByLabelText('Rule 2 field'), { target: { value: 'meta.cpu_count' } })
-    fireEvent.change(screen.getByLabelText('Rule 2 operator'), { target: { value: 'gte' } })
+    await chooseOption(screen.getByLabelText('Rule 2 operator'), '≥')
     fireEvent.change(screen.getByLabelText('Rule 2 value'), { target: { value: '4' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Create Policy' }))
@@ -131,7 +132,7 @@ describe('Compliance policy rule editor', () => {
 
     fireEvent.click(screen.getByText('+ Add Rule'))
     fireEvent.change(screen.getByLabelText('Rule 2 field'), { target: { value: 'tags.team' } })
-    fireEvent.change(screen.getByLabelText('Rule 2 operator'), { target: { value: 'exists' } })
+    await chooseOption(screen.getByLabelText('Rule 2 operator'), 'exists')
 
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
 

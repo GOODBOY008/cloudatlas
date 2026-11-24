@@ -1,3 +1,8 @@
+import { PageTabs } from '../components/shared/PageTabs'
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input, InputArea } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -165,23 +170,19 @@ export default function Settings() {
         >
           <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-muted block mb-1">{t('settings.currency')}</span>
-                <select
+                <SelectField label={t('settings.currency')}
                   value={orgForm.currency ?? 'USD'}
-                  onChange={(e) => setOrgForm({ ...orgForm, currency: e.target.value })}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
-                >
-                  {['USD', 'EUR', 'GBP', 'CNY', 'JPY', 'AUD', 'CAD'].map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                  onValueChange={value => setOrgForm({ ...orgForm, currency: value })}
+                  className="w-full"
+                  items={['USD', 'EUR', 'GBP', 'CNY', 'JPY', 'AUD', 'CAD'].map((c) => ({ value: c, label: c }))}
+                />
               </div>
             <div>
-              <span className="text-muted block mb-1">{t('settings.name')}</span>
-              <input
+              <Input
+                label={t('settings.name')}
                 value={orgForm.name}
                 onChange={(e) => setOrgForm((s) => ({ ...s, name: e.target.value }))}
-                className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full"
               />
             </div>
             <div>
@@ -190,12 +191,12 @@ export default function Settings() {
             </div>
           </div>
           <div>
-            <span className="text-muted block mb-1">{t('settings.description')}</span>
-            <textarea
+            <InputArea
+              label={t('settings.description')}
               value={orgForm.description}
               onChange={(e) => setOrgForm((s) => ({ ...s, description: e.target.value }))}
               rows={2}
-              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full resize-y"
             />
           </div>
           <div>
@@ -204,13 +205,13 @@ export default function Settings() {
           </div>
           <div className="flex items-center justify-end gap-3 pt-1">
             {orgSaveMsg && <span className="text-xs text-secondary">{orgSaveMsg}</span>}
-            <button
+            <Button
+              variant="primary"
               type="submit"
               disabled={updateOrgMutation.isPending || !orgForm.name.trim()}
-              className="btn-primary"
             >
               {updateOrgMutation.isPending ? t('common.loading') : t('settings.save')}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
@@ -224,31 +225,33 @@ export default function Settings() {
 
         {/* Invite Form */}
         <form onSubmit={handleInvite} className="flex flex-wrap gap-3 mb-5">
-          <input
+          <Input
+            aria-label={t('settings.emailPlaceholder')}
             type="email"
             placeholder={t('settings.emailPlaceholder')}
             value={inviteForm.email}
             onChange={(e) => setInviteForm((f) => ({ ...f, email: e.target.value }))}
-            className="min-w-0 basis-full sm:basis-auto flex-1 border border-strong bg-subtle text-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            className="min-w-0 basis-full sm:basis-auto flex-1"
             required
           />
-          <select
+          <SelectField
             value={inviteForm.role}
-            onChange={(e) => setInviteForm((f) => ({ ...f, role: e.target.value }))}
-            className="border border-strong bg-subtle text-primary rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-          >
-            <option value="viewer">{t('settings.role.viewer')}</option>
-            <option value="finops">{t('settings.role.finops')}</option>
-            <option value="cmdb_editor">{t('settings.role.cmdbEditor')}</option>
-            <option value="admin">{t('settings.role.admin')}</option>
-          </select>
-          <button
+            onValueChange={value => setInviteForm((f) => ({ ...f, role: value }))}
+            aria-label={t('settings.role.viewer')}
+            items={[
+              { value: "viewer", label: t('settings.role.viewer') },
+              { value: "finops", label: t('settings.role.finops') },
+              { value: "cmdb_editor", label: t('settings.role.cmdbEditor') },
+              { value: "admin", label: t('settings.role.admin') },
+            ]}
+          />
+          <Button
+            variant="primary"
             type="submit"
             disabled={inviteMutation.isPending}
-            className="btn-primary"
           >
             {inviteMutation.isPending ? t('settings.inviting') : t('settings.invite')}
-          </button>
+          </Button>
         </form>
 
         {inviteError && (
@@ -274,16 +277,17 @@ export default function Settings() {
                   <p className="text-xs text-muted">{m.email}</p>
                 </div>
                 <div className="flex items-center gap-4">
-                  <select
+                  <SelectField
                     value={(m.roles?.[0] ?? t('settings.role.member')).toLowerCase()}
-                    onChange={(e) => roleMutation.mutate({ userId: m.user_id, roleName: e.target.value })}
-                    className="text-xs border border-strong rounded-lg px-2 py-1 bg-subtle text-primary focus:outline-none focus:ring-2 focus:ring-accent"
-                  >
-                    <option value="owner">{t('settings.role.owner')}</option>
-                    <option value="admin">{t('settings.role.admin')}</option>
-                    <option value="member">{t('settings.role.member')}</option>
-                    <option value="viewer">{t('settings.role.viewer')}</option>
-                  </select>
+                    onValueChange={value => roleMutation.mutate({ userId: m.user_id, roleName: value })}
+                    aria-label={t('settings.role.owner')}
+                    items={[
+                      { value: "owner", label: t('settings.role.owner') },
+                      { value: "admin", label: t('settings.role.admin') },
+                      { value: "member", label: t('settings.role.member') },
+                      { value: "viewer", label: t('settings.role.viewer') },
+                    ]}
+                  />
                   <button
                     onClick={() => removeMutation.mutate(m.user_id)}
                     disabled={removeMutation.isPending}
@@ -306,22 +310,17 @@ export default function Settings() {
   return (
     <div>
       <div className="page-header"><h1 className="page-title">{t('settings.title')}</h1></div>
-      <div className="page-tabs mb-6">
-        {([
-          ['org', t('settings.organization')],
-          ['keys', t('settings.apiKeys')],
-          ['security', t('settings.security')],
-          ['aiProvider', t('settings.aiProvider')],
-        ] as const).map(([key, label]) => (
-          <button aria-pressed={activeTab === key}
-            key={key}
-            onClick={() => setActiveTab(key)}
-            className="page-tab"
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <PageTabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="mb-6"
+        tabs={[
+          { value: 'org', label: t('settings.organization') },
+          { value: 'keys', label: t('settings.apiKeys') },
+          { value: 'security', label: t('settings.security') },
+          { value: 'aiProvider', label: t('settings.aiProvider') },
+        ]}
+      />
       {activeTab === 'org' && orgSection}
       {activeTab === 'keys' && <ApiKeysSection />}
       {activeTab === 'security' && <SecuritySection />}
@@ -381,9 +380,6 @@ function FxRatesSection() {
     }
   }
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-2 py-1 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent'
-
   return (
     <div className="bg-surface rounded-xl border border-edge p-6">
       <h3 className="text-base font-semibold text-primary mb-1">{t('settings.fxRates')}</h3>
@@ -395,48 +391,49 @@ function FxRatesSection() {
         <p className="text-sm text-muted">{t('settings.fxNoRates')}</p>
       ) : (
         <div className="overflow-x-auto">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-            <thead className="border-b border-edge text-xs uppercase text-muted">
-              <tr>
-                <th className="px-3 py-2 font-medium">{t('settings.fxFrom')}</th>
-                <th className="px-3 py-2 font-medium">{t('settings.fxTo')}</th>
-                <th className="px-3 py-2 font-medium">{t('settings.fxRate')}</th>
-                <th className="px-3 py-2 font-medium">{t('settings.fxUpdated')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+            <Table.Header variant="compact" className="border-b border-edge">
+              <Table.Row>
+                <Table.Head className="px-3 py-2 font-medium">{t('settings.fxFrom')}</Table.Head>
+                <Table.Head className="px-3 py-2 font-medium">{t('settings.fxTo')}</Table.Head>
+                <Table.Head className="px-3 py-2 font-medium">{t('settings.fxRate')}</Table.Head>
+                <Table.Head className="px-3 py-2 font-medium">{t('settings.fxUpdated')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {rates.map((r, idx) => (
-                <tr key={`${r.from_currency}-${r.to_currency}`} className="border-b border-edge last:border-0">
-                  <td className="px-3 py-2 text-sm font-mono text-primary">{r.from_currency}</td>
-                  <td className="px-3 py-2 text-sm font-mono text-primary">{r.to_currency}</td>
-                  <td className="px-3 py-2">
-                    <input
+                <Table.Row key={`${r.from_currency}-${r.to_currency}`} className="border-b border-edge last:border-0">
+                  <Table.Cell className="px-3 py-2 text-sm font-mono text-primary">{r.from_currency}</Table.Cell>
+                  <Table.Cell className="px-3 py-2 text-sm font-mono text-primary">{r.to_currency}</Table.Cell>
+                  <Table.Cell className="px-3 py-2">
+                    <Input
                       type="number"
                       step="0.0001"
                       min="0"
+                      aria-label={`${t('settings.fxRate')} · ${r.from_currency} → ${r.to_currency}`}
                       value={r.rate}
                       onChange={(e) => updateRate(idx, e.target.value)}
-                      className={`${inputCls} w-32 font-mono`}
+                      className="w-32 font-mono"
                     />
-                  </td>
-                  <td className="px-3 py-2 text-xs text-muted">
+                  </Table.Cell>
+                  <Table.Cell className="px-3 py-2 text-xs text-muted">
                     {r.updated_at ? new Date(r.updated_at).toLocaleString() : '—'}
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
       {rates.length > 0 && (
         <div className="flex justify-end mt-4">
-          <button
+          <Button
+            variant="primary"
             onClick={save}
             disabled={saving}
-            className="btn-primary"
           >
             {saving ? t('common.loading') : t('settings.fxSave')}
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -487,25 +484,23 @@ function ApiKeysSection() {
     loadKeys()
   }
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent'
-
   return (
     <div className="bg-surface rounded-xl border border-edge p-6">
       <h3 className="text-base font-semibold text-primary mb-4">{t('settings.apiKeys')}</h3>
       <div className="flex flex-wrap gap-2 mb-4">
-        <input
+        <Input
+          aria-label={t('settings.keyName')}
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={t('settings.keyName')}
-          className={`${inputCls} flex-1`}
+          className="w-full flex-1"
         />
-        <button
+        <Button
+          variant="primary"
           onClick={createKey}
-          className="btn-primary"
         >
           {t('settings.createKey')}
-        </button>
+        </Button>
       </div>
       {error && <p className="text-xs text-danger mb-3">{error}</p>}
       {revealed && (
@@ -517,32 +512,32 @@ function ApiKeysSection() {
       {keys.length === 0 ? (
         <p className="text-sm text-muted">{t('settings.noKeys')}</p>
       ) : (
-        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-          <thead className="border-b border-edge text-xs uppercase text-muted">
-            <tr>
-              <th className="px-3 py-2 font-medium">{t('settings.name')}</th>
-              <th className="px-3 py-2 font-medium">{t('settings.keyPrefix')}</th>
-              <th className="px-3 py-2 font-medium">{t('settings.keyLastUsed')}</th>
-              <th className="px-3 py-2 font-medium">{t('common.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+          <Table.Header variant="compact" className="border-b border-edge">
+            <Table.Row>
+              <Table.Head className="px-3 py-2 font-medium">{t('settings.name')}</Table.Head>
+              <Table.Head className="px-3 py-2 font-medium">{t('settings.keyPrefix')}</Table.Head>
+              <Table.Head className="px-3 py-2 font-medium">{t('settings.keyLastUsed')}</Table.Head>
+              <Table.Head className="px-3 py-2 font-medium">{t('common.actions')}</Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
             {keys.map((k) => (
-              <tr key={k.id} className="border-b border-edge last:border-0">
-                <td className="px-3 py-2 text-sm text-primary">{k.name}</td>
-                <td className="px-3 py-2 text-xs font-mono text-secondary">{k.key_prefix}…</td>
-                <td className="px-3 py-2 text-xs text-muted">
+              <Table.Row key={k.id} className="border-b border-edge last:border-0">
+                <Table.Cell className="px-3 py-2 text-sm text-primary">{k.name}</Table.Cell>
+                <Table.Cell className="px-3 py-2 text-xs font-mono text-secondary">{k.key_prefix}…</Table.Cell>
+                <Table.Cell className="px-3 py-2 text-xs text-muted">
                   {k.last_used_at ? new Date(k.last_used_at).toLocaleString() : t('common.never')}
-                </td>
-                <td className="px-3 py-2">
-                  <button onClick={() => revokeKey(k.id)} className="text-xs text-danger hover:text-danger">
+                </Table.Cell>
+                <Table.Cell className="px-3 py-2">
+                  <Button size="sm" variant="secondary-destructive" onClick={() => revokeKey(k.id)}>
                     {t('settings.revokeKey')}
-                  </button>
-                </td>
-              </tr>
+                  </Button>
+                </Table.Cell>
+              </Table.Row>
             ))}
-          </tbody>
-        </table></div>
+          </Table.Body>
+        </Table></div>
       )}
     </div>
   )
@@ -596,9 +591,6 @@ function SecuritySection() {
     }
   }
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent'
-
   return (
     <div className="bg-surface rounded-xl border border-edge p-6 max-w-lg">
       <h3 className="text-base font-semibold text-primary mb-4">{t('settings.twoFactor')}</h3>
@@ -606,38 +598,40 @@ function SecuritySection() {
       {error && <p className="text-xs text-danger mb-3">{error}</p>}
       {!secret && !otpauth && (
         <div className="space-y-3">
-          <input
+          <Input
+            aria-label={t('settings.currentPassword')}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder={t('settings.currentPassword')}
-            className={`${inputCls} w-full`}
+            className="w-full"
           />
-          <button
+          <Button
+            variant="primary"
             onClick={enroll}
-            className="btn-primary"
           >
             {t('settings.enable2fa')}
-          </button>
+          </Button>
         </div>
       )}
       {otpauth && (
         <div className="space-y-3">
           <p className="text-xs text-secondary">{t('settings.scanQr')}</p>
           <code className="block text-xs text-secondary break-all bg-subtle rounded-lg p-2">{otpauth}</code>
-          <input
+          <Input
+            aria-label={t('login.totpCode')}
             value={code}
             onChange={(e) => setCode(e.target.value)}
             inputMode="numeric"
             placeholder={t('login.totpCode')}
-            className={`${inputCls} w-full`}
+            className="w-full"
           />
-          <button
+          <Button
+            variant="primary"
             onClick={verify}
-            className="px-4 py-2 bg-success-solid hover:bg-success-solid/90 text-white rounded-lg text-sm font-medium transition-colors"
           >
             {t('settings.verifyAndEnable')}
-          </button>
+          </Button>
         </div>
       )}
       {!otpauth && (

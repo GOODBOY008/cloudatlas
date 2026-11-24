@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { fmtMoney, useOrgCurrency } from '../lib/format'
 import { useState, type FormEvent } from 'react'
@@ -176,27 +180,23 @@ export default function Constraints() {
     }
   }
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
-
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">{t('constraints.title')}</h1>
         <div className="flex items-center gap-3">
-          <button
+          <Button
             onClick={() => evaluateMutation.mutate()}
             disabled={evaluateMutation.isPending}
-            className="px-4 py-2 bg-subtle hover:bg-emphasis text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             {evaluateMutation.isPending ? t('constraints.evaluating') : t('constraints.evaluateNow')}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             onClick={openCreate}
-            className="btn-primary"
           >
             {t('constraints.newConstraint')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -238,25 +238,25 @@ export default function Constraints() {
         </div>
       ) : (
         <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-            <thead className="border-b border-edge text-xs uppercase text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">{t('common.name')}</th>
-                <th className="px-4 py-3 font-medium">{t('common.type')}</th>
-                <th className="px-4 py-3 font-medium">{t('constraints.colLimit')}</th>
-                <th className="px-4 py-3 font-medium">{t('common.active')}</th>
-                <th className="px-4 py-3 font-medium">{t('constraints.colLastTriggered')}</th>
-                <th className="px-4 py-3 font-medium">{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+            <Table.Header variant="compact" className="border-b border-edge">
+              <Table.Row>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.name')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.type')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('constraints.colLimit')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.active')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('constraints.colLastTriggered')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.actions')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {constraints.map((c) => (
-                <tr key={c.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
-                  <td className="px-4 py-3 text-sm text-primary">{c.name}</td>
-                  <td className="px-4 py-3">
+                <Table.Row key={c.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                  <Table.Cell className="px-4 py-3 text-sm text-primary">{c.name}</Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <TypeBadge type={c.constraint_type} />
-                  </td>
-                  <td className="px-4 py-3 text-sm font-mono text-secondary">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm font-mono text-secondary">
                     {c.constraint_type === 'expense_anomaly'
                       ? t('constraints.limitMultiplier', { factor: c.filters?.threshold_factor ?? 2.0 })
                       : c.limit_value !== null
@@ -264,32 +264,32 @@ export default function Constraints() {
                           ? `${c.limit_value}%`
                           : fmtMoney(Number(c.limit_value), currency)
                         : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-secondary">{c.is_active ? '✓' : '✗'}</td>
-                  <td className="px-4 py-3 text-xs text-muted">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm text-secondary">{c.is_active ? '✓' : '✗'}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-xs text-muted">
                     {c.last_triggered_at ? new Date(c.last_triggered_at).toLocaleString() : t('common.never')}
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <div className="flex items-center gap-3 text-xs">
-                      <button onClick={() => openEdit(c)} className="text-accent hover:text-accent">
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(c)}>
                         {t('common.edit')}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm" variant="secondary-destructive"
                         onClick={() => {
                           if (confirm(t('constraints.deleteConfirm', { name: c.name }))) {
                             deleteMutation.mutate(c.id)
                           }
                         }}
-                        className="text-danger hover:text-danger"
                       >
                         {t('common.delete')}
-                      </button>
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
 
@@ -304,54 +304,45 @@ export default function Constraints() {
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
-                <input
+                <Input
+                  label={t('common.name')}
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className={inputCls}
+                  className="w-full"
                   placeholder="prod-monthly-limit"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('common.type')}</label>
-                <select
+                <SelectField
+                  label={t('common.type')}
                   value={form.constraint_type}
-                  onChange={(e) => setForm({ ...form, constraint_type: e.target.value })}
-                  className={inputCls}
-                >
-                  {CONSTRAINT_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {t(`status.${type}`, { defaultValue: type })}
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={value => setForm({ ...form, constraint_type: value })}
+                  className="w-full"
+                  items={CONSTRAINT_TYPES.map((type) => ({ value: type, label: t(`status.${type}`, { defaultValue: type }) }))}
+                />
                 <p className="text-xs text-muted mt-1">{t(TYPE_HINTS[form.constraint_type])}</p>
               </div>
               {form.constraint_type === 'expense_anomaly' ? (
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">
-                    {t('constraints.thresholdFactor')}
-                  </label>
-                  <input
+                  <Input
+                    label={t('constraints.thresholdFactor')}
                     type="number"
                     step="0.1"
                     min="1"
                     value={form.threshold_factor}
                     onChange={(e) => setForm({ ...form, threshold_factor: e.target.value })}
-                    className={inputCls}
+                    className="w-full"
                   />
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">
-                    {t('constraints.limitValue', { unit: form.constraint_type === 'resource_tag_coverage' ? '(%)' : '(' + currency + ')' })}
-                  </label>
-                  <input
+                  <Input
+                    label={t('constraints.limitValue', { unit: form.constraint_type === 'resource_tag_coverage' ? '(%)' : '(' + currency + ')' })}
                     type="number"
                     step="0.01"
                     value={form.limit_value}
                     onChange={(e) => setForm({ ...form, limit_value: e.target.value })}
-                    className={inputCls}
+                    className="w-full"
                   />
                 </div>
               )}
@@ -361,20 +352,20 @@ export default function Constraints() {
                 </div>
               )}
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="btn-primary"
                 >
                   {editingId ? t('constraints.saveChanges') : t('constraints.createConstraint')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

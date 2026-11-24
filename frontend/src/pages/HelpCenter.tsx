@@ -1,13 +1,15 @@
+import { InputGroup } from '@cloudflare/kumo/components/input-group'
+import { Button, LinkButton } from '@cloudflare/kumo/components/button'
 import { BookOpen, Search, ArrowUpRight } from 'lucide-react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import DataFlowDiagram from '../components/DataFlowDiagram'
 import { helpArticles, helpLinkLabels } from '../lib/help'
+import { useSearchDraft } from '../lib/hooks/useSearchDraft'
 
 export default function HelpCenter() {
   const { t } = useTranslation()
-  const [params, setParams] = useSearchParams()
-  const search = params.get('q') ?? ''
+  const { params, setParams, searchInput: search, replaceSearch } = useSearchDraft()
   const terms = search.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean)
   const articles = helpArticles.filter((article) => {
     const content = [t(`help.${article.id}.title`), t(`help.${article.id}.summary`),
@@ -18,11 +20,19 @@ export default function HelpCenter() {
 
   return <div className="space-y-6">
     <div className="page-header"><div><h1 className="page-title">{t('help.title')}</h1><p className="page-description">{t('help.subtitle')}</p></div><BookOpen className="hidden text-accent sm:block" size={32} aria-hidden="true" /></div>
-    <div className="relative max-w-2xl">
-      <Search size={18} className="pointer-events-none absolute left-3 top-3 text-muted" aria-hidden="true" />
-      <input type="search" className="w-full rounded-lg border border-edge bg-surface py-2.5 pl-10 pr-3 text-sm text-primary" value={search} aria-label={t('help.search')} placeholder={t('help.search')}
-        onChange={(event) => { const next = new URLSearchParams(params); event.target.value ? next.set('q', event.target.value) : next.delete('q'); setParams(next, { replace: true }) }} />
-    </div>
+    <search className="max-w-2xl">
+      <InputGroup>
+        <InputGroup.Addon><Search size={18} aria-hidden="true" /></InputGroup.Addon>
+        <InputGroup.Input type="search" name="q" value={search} aria-label={t('help.search')} placeholder={t('help.search')}
+          onChange={event => {
+            const next = new URLSearchParams(params)
+            const value = event.currentTarget.value
+            if (value) next.set('q', value)
+            else next.delete('q')
+            replaceSearch(next)
+          }} />
+      </InputGroup>
+    </search>
     <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
       <nav className="panel p-2" aria-label={t('help.topics')}>
         <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted">{t('help.topics')}</p>
@@ -46,9 +56,9 @@ export default function HelpCenter() {
           </section>)}
         </div>
         <div className="mt-8 border-t border-edge pt-5"><h3 className="mb-3 text-sm font-semibold text-primary">{t('help.related')}</h3><div className="flex flex-wrap gap-2">
-          {selected.links.map((to) => <Link to={to} key={to} className="btn-secondary text-xs">{t(helpLinkLabels[to])}<ArrowUpRight size={14} aria-hidden="true" /></Link>)}
+          {selected.links.map((to) => <LinkButton href={to} key={to} variant="secondary" size="sm">{t(helpLinkLabels[to])}<ArrowUpRight size={14} aria-hidden="true" /></LinkButton>)}
         </div></div>
-      </article> : <div className="empty-state panel"><BookOpen className="empty-state-icon" /><h2 className="font-semibold text-primary">{t('help.noResults')}</h2><p className="text-sm text-muted">{t('help.trySearch')}</p><button className="btn-secondary mt-4" onClick={() => setParams({ article: 'start' })}>{t('help.clear')}</button></div>}
+      </article> : <div className="empty-state panel"><BookOpen className="empty-state-icon" /><h2 className="font-semibold text-primary">{t('help.noResults')}</h2><p className="text-sm text-muted">{t('help.trySearch')}</p><Button className="mt-4" onClick={() => setParams({ article: 'start' })}>{t('help.clear')}</Button></div>}
     </div>
   </div>
 }

@@ -64,19 +64,19 @@ P3 可选项(XLSX、字段分组、列个性化、引用模型、拓扑图位置
 
 ---
 
-## Global Theme Design System (2026-11-17)
+## Global Theme Design System (2026-11-24)
 
-CloudAtlas uses a Cloudflare-inspired console design: neutral surfaces, blue interactions, a small orange brand accent, compact controls, fine borders, and restrained charts. **Light** remains the default with a coordinated **dark** theme; preferences remain persisted under `cloudatlas-theme`. See [UI design system and page audit](docs/ui-design-system.md).
+CloudAtlas uses Cloudflare’s Kumo component library and theme for its console. **Light** remains the default with a coordinated **dark** theme; preferences remain persisted under `cloudatlas-theme`. See [UI design system and page audit](docs/ui-design-system.md).
 
 ### Architecture
 
 | Layer | Implementation |
 |---|---|
 | Theme state | `frontend/src/store/themeStore.ts` — light/dark preference and `toggleTheme()` |
-| Theme synchronization | `App.tsx` sets the HTML `dark` class and browser theme color, including public auth pages |
+| Theme synchronization | `App.tsx` sets Kumo’s `data-mode`, the HTML `dark` class and browser theme color, including public auth pages |
 | Anti-flash | `index.html` restores the saved preference before CSS paints |
-| Tokens and components | `frontend/src/styles.css` — RGB CSS variables, shared shell, panels, controls, tables, and responsive rules |
-| Tailwind | `frontend/tailwind.config.cjs` + `postcss.config.cjs`; CSS is compiled locally by Vite, with no Tailwind CDN |
+| Tokens and components | `frontend/src/styles.css` — Kumo styles, domain colors, shared shell, panels and responsive rules |
+| Tailwind | Tailwind 4 and `@tailwindcss/vite`; `styles.css` scans the application and Kumo distribution, and `frontend/tailwind.config.cjs` maps semantic colors |
 | Typography | Locally bundled Inter Variable, with system and CJK fallbacks |
 | Charts | `frontend/src/lib/chartTheme.ts` — shared palette, axes, grid, and tooltip settings; theme colors live in CSS |
 | Navigation | `Layout.tsx` — collapsible sections, workspace selector, visible search, mobile drawer, and breadcrumbs |
@@ -96,20 +96,20 @@ Use the same semantic class in both themes. Do not add `dark:` color duplicates 
 | Main text | `text-primary` |
 | Secondary text / captions | `text-secondary` / `text-muted` |
 | Accent / selection | `text-accent` / `bg-accent-soft` |
-| Primary action | `bg-accent text-on-accent hover:bg-accent-hover` |
+| Primary action | Kumo `Button variant="primary"` |
 | Status | `success`, `warning`, `danger`, `info`, `violet` (e.g. `bg-danger/10 text-danger border-danger/25`) |
-| Solid status button | `bg-danger-solid text-white` (and equivalent status colors) |
+| Destructive action | Kumo `Button variant="destructive"` or `secondary-destructive` |
 
 ### Component conventions
 
 1. Layout supplies page padding. Page roots should use ordinary flex/grid/spacing containers without extra `p-6` or `mx-auto`.
 2. Use `page-header`, `page-title`, and `page-description` for page headings; `panel`, `panel-heading`, `panel-title`, and `panel-caption` for cards.
-3. Use `btn-primary`, `btn-secondary`, `icon-button`, and `text-link` for shared actions. Icon buttons need an accessible label.
-4. Place tables in `<div className="table-scroll" tabIndex={0}>` so wide columns remain accessible on small screens.
+3. Use Kumo `Button`, `LinkButton`, `Input`, `InputGroup` and `InputArea`. Use `SelectField` for single-value choices. Icon buttons need an accessible label.
+4. Use Kumo `Table` inside `<div className="table-scroll" tabIndex={0}>` so wide columns remain accessible on small screens.
 5. Use `skeleton` for loading placeholders and `empty-state` / `empty-state-icon` for empty panels.
 6. Use semantic CSS variables in chart styles, such as `rgb(var(--border))` and `rgb(var(--text-muted))`. Maps and custom SVGs should consume `useThemeStore` (see `CostMap.tsx` and `ModelTopology.tsx`).
 7. New modal dialogs and detail drawers should reuse `NativeDialog` and `dialog-panel` / `drawer-panel`; the browser owns Escape, focus containment, and restoration. Existing `Modal` and `useDialogFocus` consumers remain supported. Preserve a child's existing `autoFocus` target and capture the launcher before child autofocus runs. Non-modal panels (such as desktop Copilot) must allow Tab focus to leave the panel.
-8. Use `page-tabs` / `page-tab` and `segmented-control` / `segment` for view selectors, with `aria-pressed` on the selected button. Keep new labels in both `i18n/locales/en.ts` and `zh.ts`. Shared design labels use the `design.*` prefix.
+8. Use `PageTabs` for tabbed views. Segmented filter buttons use `aria-pressed`. Keep new labels in both `i18n/locales/en.ts` and `zh.ts`. Shared design labels use the `design.*` prefix.
 9. Respect reduced motion and retain visible keyboard focus. Avoid overriding semantic tokens with page-specific light/dark hacks.
 10. Let `orgStore.setOrganizations` preserve or reconcile workspace selection. Read the selected workspace from the store after reconciliation; only Zustand persistence should write `cloudatlas-org` (a JSON state envelope, not a bare ID).
 

@@ -1,3 +1,4 @@
+import { chooseOption } from '../helpers/chooseOption';
 import { test, expect } from '@playwright/test';
 
 test.describe('Workspace design and accessibility', () => {
@@ -56,6 +57,14 @@ test.describe('Workspace design and accessibility', () => {
     await page.keyboard.press('End');
     await page.keyboard.type(' updated');
     await expect(name).toHaveValue('Focus test account updated');
+    const currency = dialog.getByRole('combobox', { name: 'Currency' });
+    await chooseOption(currency, 'JPY');
+    await expect(currency).toHaveText('JPY');
+    await currency.click();
+    await expect(dialog.getByRole('listbox')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialog.getByRole('listbox')).toBeHidden();
+    await expect(currency).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
     await expect(launcher).toBeFocused();

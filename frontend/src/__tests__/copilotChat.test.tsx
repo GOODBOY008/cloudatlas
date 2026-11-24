@@ -165,7 +165,7 @@ describe('CopilotChat', () => {
     renderChat('/settings')
     await act(async () => { screen.getByText(/How much did we spend this month/i).click() })
     await screen.findByText('previous answer')
-    await act(async () => { screen.getByTitle('New chat').click() })
+    await act(async () => { screen.getByRole('button', { name: 'New chat' }).click() })
     expect((fetchMock.mock.calls[0][1].signal as AbortSignal).aborted).toBe(true)
     expect(screen.queryByText('previous answer')).not.toBeInTheDocument()
     expect(screen.queryByText(/Stopped/)).not.toBeInTheDocument()
@@ -193,7 +193,7 @@ describe('CopilotChat', () => {
     })
     expect(oldSignal?.aborted).toBe(true)
     await act(async () => resolve({ data: { data: [{ id: 'old', title: 'Private old chat', message_count: 1, updated_at: '' }] } }))
-    fireEvent.click(screen.getByTitle('History'))
+    fireEvent.click(screen.getByRole('button', { name: 'History' }))
     expect(screen.queryByText('Private old chat')).not.toBeInTheDocument()
   })
 

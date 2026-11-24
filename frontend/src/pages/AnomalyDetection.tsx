@@ -1,3 +1,8 @@
+import { PageTabs } from '../components/shared/PageTabs'
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { chartColors, chartAxis, chartGrid } from '../lib/chartTheme'
 import { useMoneyFormatter } from '../lib/format'
@@ -83,19 +88,19 @@ export default function AnomalyDetection() {
           <p className="text-sm text-secondary mt-1">{t('anomalyDetection.subtitle')}</p>
         </div>
         <div className="flex gap-3">
-          <button
+          <Button
+            variant="primary"
             onClick={() => evaluate.mutate()}
             disabled={evaluate.isPending}
-            className="px-4 py-2 bg-warning-solid hover:bg-warning-solid/90 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
           >
             {evaluate.isPending ? t('anomalyDetection.evaluating') : t('anomalyDetection.runEvaluate')}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             onClick={() => setShowCreate(true)}
-            className="btn-primary"
           >
             {t('anomalyDetection.addPolicy')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -119,17 +124,12 @@ export default function AnomalyDetection() {
       </div>
 
       {/* Tabs */}
-      <div className="page-tabs ">
-        {(['violations', 'policies'] as const).map(tab => (
-          <button aria-pressed={activeTab === tab}
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className="page-tab"
-          >
-            {tab === 'violations' ? t('anomalyDetection.tabAnomalies', { count: (anomalies ?? []).length }) : t('anomalyDetection.tabPolicies', { count: (constraints ?? []).length })}
-          </button>
-        ))}
-      </div>
+      <PageTabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="mb-5"
+        tabs={(['violations', 'policies'] as const).map(tab => ({ value: tab, label: tab === 'violations' ? t('anomalyDetection.tabAnomalies', { count: (anomalies ?? []).length }) : t('anomalyDetection.tabPolicies', { count: (constraints ?? []).length }) }))}
+      />
 
       {activeTab === 'violations' && (
         <div className="space-y-4">
@@ -153,76 +153,76 @@ export default function AnomalyDetection() {
 
           {/* Anomalies table */}
           <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-strong">
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+              <Table.Header variant="compact">
+                <Table.Row className="border-b border-strong">
                   {['anomalyDetection.colResource', 'common.type', 'anomalyDetection.colDate', 'anomalyDetection.colCost', 'anomalyDetection.colBaseline', 'anomalyDetection.colDeviation', 'anomalyDetection.colZScore'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
+                    <Table.Head key={h} className="px-4 py-3 text-left">{t(h)}</Table.Head>
                   ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-edge">
+                </Table.Row>
+              </Table.Header>
+              <Table.Body className="divide-y divide-edge">
                 {aLoading ? (
-                  <tr><td colSpan={7} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
+                  <Table.Row><Table.Cell colSpan={7} className="px-4 py-10 text-center text-muted">{t('common.loading')}</Table.Cell></Table.Row>
                 ) : (anomalies ?? []).length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-10 text-center text-muted">{t('anomalyDetection.noAnomalies')}</td></tr>
+                  <Table.Row><Table.Cell colSpan={7} className="px-4 py-10 text-center text-muted">{t('anomalyDetection.noAnomalies')}</Table.Cell></Table.Row>
                 ) : (anomalies ?? []).map((a, i) => (
-                  <tr key={i} className="hover:bg-subtle">
-                    <td className="px-4 py-3">
+                  <Table.Row key={i} className="hover:bg-subtle">
+                    <Table.Cell className="px-4 py-3">
                       <div className="font-medium text-primary">{a.resource_name ?? a.cloud_resource_id.slice(0, 20)}</div>
                       <div className="text-xs text-muted">{a.date?.slice(0, 10)}</div>
-                    </td>
-                    <td className="px-4 py-3 text-secondary">{t(`resType.${a.resource_type}`, { defaultValue: a.resource_type })}</td>
-                    <td className="px-4 py-3 text-secondary">{a.date?.slice(0, 10)}</td>
-                    <td className="px-4 py-3 font-semibold text-danger">{fmt(a.cost)}</td>
-                    <td className="px-4 py-3 text-secondary">{fmt(a.mean_cost)}</td>
-                    <td className="px-4 py-3">
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary">{t(`resType.${a.resource_type}`, { defaultValue: a.resource_type })}</Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary">{a.date?.slice(0, 10)}</Table.Cell>
+                    <Table.Cell className="px-4 py-3 font-semibold text-danger">{fmt(a.cost)}</Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary">{fmt(a.mean_cost)}</Table.Cell>
+                    <Table.Cell className="px-4 py-3">
                       <span className={`font-semibold ${a.deviation_pct > 100 ? 'text-danger' : 'text-warning'}`}>
                         +{a.deviation_pct.toFixed(0)}%
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-secondary">{a.z_score.toFixed(2)}</td>
-                  </tr>
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary">{a.z_score.toFixed(2)}</Table.Cell>
+                  </Table.Row>
                 ))}
-              </tbody>
-            </table></div>
+              </Table.Body>
+            </Table></div>
           </div>
         </div>
       )}
 
       {activeTab === 'policies' && (
         <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-strong">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+            <Table.Header variant="compact">
+              <Table.Row className="border-b border-strong">
                 {['anomalyDetection.colPolicyName', 'common.type', 'anomalyDetection.colLimit', 'common.status', 'anomalyDetection.colLastTriggered', 'common.actions'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{t(h)}</th>
+                  <Table.Head key={h} className="px-4 py-3 text-left">{t(h)}</Table.Head>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-edge">
+              </Table.Row>
+            </Table.Header>
+            <Table.Body className="divide-y divide-edge">
               {cLoading ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
+                <Table.Row><Table.Cell colSpan={6} className="px-4 py-10 text-center text-muted">{t('common.loading')}</Table.Cell></Table.Row>
               ) : (constraints ?? []).length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">{t('anomalyDetection.noPolicies')}</td></tr>
+                <Table.Row><Table.Cell colSpan={6} className="px-4 py-10 text-center text-muted">{t('anomalyDetection.noPolicies')}</Table.Cell></Table.Row>
               ) : (constraints ?? []).map(c => (
-                <tr key={c.id} className="hover:bg-subtle">
-                  <td className="px-4 py-3 font-medium text-primary">{c.name}</td>
-                  <td className="px-4 py-3"><span className="px-2 py-0.5 bg-accent-soft text-accent rounded text-xs">{t(`anomalyDetection.constraintType.${c.constraint_type}`, { defaultValue: c.constraint_type })}</span></td>
-                  <td className="px-4 py-3 text-secondary">{c.limit_value != null ? fmt(c.limit_value) : '—'}</td>
-                  <td className="px-4 py-3">
+                <Table.Row key={c.id} className="hover:bg-subtle">
+                  <Table.Cell className="px-4 py-3 font-medium text-primary">{c.name}</Table.Cell>
+                  <Table.Cell className="px-4 py-3"><span className="px-2 py-0.5 bg-accent-soft text-accent rounded text-xs">{t(`anomalyDetection.constraintType.${c.constraint_type}`, { defaultValue: c.constraint_type })}</span></Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary">{c.limit_value != null ? fmt(c.limit_value) : '—'}</Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${c.is_active ? 'bg-success/10 text-success' : 'bg-emphasis text-secondary'}`}>
                       {c.is_active ? t('common.active') : t('common.inactive')}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-secondary text-xs">{c.last_triggered_at ? c.last_triggered_at.slice(0, 16) : t('common.never')}</td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => deleteConstraint.mutate(c.id)} className="text-danger hover:text-danger text-xs">{t('common.delete')}</button>
-                  </td>
-                </tr>
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">{c.last_triggered_at ? c.last_triggered_at.slice(0, 16) : t('common.never')}</Table.Cell>
+                  <Table.Cell className="px-4 py-3">
+                    <Button size="sm" variant="secondary-destructive" onClick={() => deleteConstraint.mutate(c.id)}>{t('common.delete')}</Button>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
 
@@ -234,32 +234,33 @@ export default function AnomalyDetection() {
             <h3 className="text-lg font-semibold text-primary">{t('anomalyDetection.newPolicy')}</h3>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-secondary mb-1 block">{t('common.name')}</label>
-                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
+                <Input label={t('common.name')} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full" />
               </div>
               <div>
-                <label className="text-xs text-secondary mb-1 block">{t('common.type')}</label>
-                <select value={form.constraint_type} onChange={e => setForm(f => ({ ...f, constraint_type: e.target.value }))}
-                  className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong">
-                  {TYPES.map(type => <option key={type} value={type}>{t(`anomalyDetection.constraintType.${type}`, { defaultValue: type })}</option>)}
-                </select>
+                <SelectField
+                  label={t('common.type')}
+                  value={form.constraint_type}
+                  onValueChange={value => setForm(f => ({ ...f, constraint_type: value }))}
+                  className="w-full"
+                  items={TYPES.map(type => ({ value: type, label: t(`anomalyDetection.constraintType.${type}`, { defaultValue: type }) }))}
+                />
               </div>
               <div>
-                <label className="text-xs text-secondary mb-1 block">{t('anomalyDetection.limitValue')}</label>
-                <input type="number" value={form.limit_value} onChange={e => setForm(f => ({ ...f, limit_value: e.target.value }))}
-                  className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
+                <Input label={t('anomalyDetection.limitValue')} type="number" value={form.limit_value} onChange={e => setForm(f => ({ ...f, limit_value: e.target.value }))}
+                  className="w-full" />
               </div>
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowCreate(false)} className="btn-secondary flex-1">{t('common.cancel')}</button>
-              <button
+              <Button onClick={() => setShowCreate(false)} className="flex-1">{t('common.cancel')}</Button>
+              <Button
+                variant="primary"
                 onClick={() => createConstraint.mutate({ name: form.name, constraint_type: form.constraint_type, limit_value: form.limit_value ? parseFloat(form.limit_value) : null })}
                 disabled={!form.name || createConstraint.isPending}
-                className="btn-primary flex-1"
+                className="flex-1"
               >
                 {t('anomalyDetection.create')}
-              </button>
+              </Button>
             </div>
           </div>
         </NativeDialog>

@@ -1,3 +1,6 @@
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../../components/shared/SelectField'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -125,35 +128,34 @@ function Ownership({ org, bucket, writable }: { org: Organization; bucket: Detai
           <div className="storage-fields">
             <label>
               {t('storage.service')}
-              <select
+              <SelectField
+                aria-label={t('storage.service')}
                 value={service}
-                onChange={(e) => {
-                  setService(e.target.value)
+                onValueChange={value => {
+                  setService(value)
                   setDeployment('')
                 }}
                 required
-              >
-                <option value="">{t('storage.selectService')}</option>
-                {choices.data?.services.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.display_name || s.name}
-                  </option>
-                ))}
-              </select>
+                items={[
+                  { value: "", label: t('storage.selectService') },
+                  ...(choices.data?.services.map((s) => ({ value: s.id, label: s.display_name || s.name })) ?? []),
+                ]}
+              />
             </label>
             {grouped && service && (
               <label>
                 {t('storage.deployment')}
-                <select value={deployment} onChange={(e) => setDeployment(e.target.value)}>
-                  <option value="">{t('storage.defaultDeployment')}</option>
-                  {choices.data?.deployments
+                <SelectField
+                  aria-label={t('storage.deployment')}
+                  value={deployment}
+                  onValueChange={setDeployment}
+                  items={[
+                    { value: "", label: t('storage.defaultDeployment') },
+                    ...(choices.data?.deployments
                     .filter((d) => d.catalog_service_id === service && !d.is_default)
-                    .map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.display_name || d.name}
-                      </option>
-                    ))}
-                </select>
+                    .map((d) => ({ value: d.id, label: d.display_name || d.name })) ?? []),
+                  ]}
+                />
               </label>
             )}
           </div>
@@ -163,9 +165,9 @@ function Ownership({ org, bucket, writable }: { org: Organization; bucket: Detai
               {t('storage.openServices')}
             </Link>
           )}
-          <button className="btn-primary" disabled={!service || mutation.isPending}>
+          <Button variant="primary" type="submit" disabled={!service || mutation.isPending}>
             {t('storage.bind')}
-          </button>
+          </Button>
         </form>
       )}
       {!bucket.ci_id && <p className="storage-muted">{t('storage.noCi')}</p>}
@@ -207,9 +209,9 @@ function Allocation({
       <div className="storage-row">
         <h4>{t('storage.serviceAllocation')}</h4>
         {allowed && services.length > 1 && (
-          <button className="btn-secondary" onClick={() => setOpen(!open)}>
+          <Button onClick={() => setOpen(!open)}>
             {t(open ? 'common.cancel' : 'storage.setShares')}
-          </button>
+          </Button>
         )}
       </div>
       {bucket.service_costs.length > 0 ? (
@@ -244,20 +246,20 @@ function Allocation({
         >
           <label>
             {t('storage.effective')}
-            <input name="effective_from" type="date" required defaultValue={period.start_date} />
+            <Input aria-label={t('storage.effective')} name="effective_from" type="date" required defaultValue={period.start_date} />
           </label>
           <div className="storage-fields">
             {services.map(([id, name]) => (
               <label key={id}>
                 {name} (%)
-                <input type="number" name={id} step=".01" min=".01" max="100" required />
+                <Input aria-label={`${name} (%)`} type="number" name={id} step=".01" min=".01" max="100" required />
               </label>
             ))}
           </div>
           {save.isError && <p role="alert">{failure(save.error, t('storage.failed'))}</p>}
-          <button className="btn-primary" disabled={save.isPending}>
+          <Button variant="primary" type="submit" disabled={save.isPending}>
             {t('storage.saveShares')}
-          </button>
+          </Button>
         </form>
       )}
     </section>
@@ -310,9 +312,9 @@ export function BucketDetails({
               {b?.account_name} {b?.region && ' · ' + b.region}
             </p>
           </div>
-          <button className="icon-button" onClick={close} aria-label={t('common.close')}>
+          <Button variant="ghost" shape="square" onClick={close} aria-label={t('common.close')}>
             <X size={20} />
-          </button>
+          </Button>
         </header>
         <div className="storage-detail-body">
           {query.isPending ? (

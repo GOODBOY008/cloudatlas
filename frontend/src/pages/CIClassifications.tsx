@@ -1,3 +1,6 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -115,12 +118,12 @@ export default function CIClassifications() {
             {t('ciClassifications.subtitle')}
           </p>
         </div>
-        <button
+        <Button
+          variant="primary"
           onClick={() => { resetForm(); setShowForm(true) }}
-          className="btn-primary"
         >
           {t('ciClassifications.newClassification')}
-        </button>
+        </Button>
       </div>
 
       {/* Create / Edit Form */}
@@ -134,32 +137,32 @@ export default function CIClassifications() {
           )}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('ciClassifications.nameKey')}</label>
-              <input
+              <Input
+                label={t('ciClassifications.nameKey')}
                 value={name}
                 onChange={e => setName(e.target.value)}
                 disabled={!!editingId}
                 placeholder={t('ciClassifications.namePlaceholder')}
-                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary disabled:opacity-50"
+                className="w-full"
               />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('cmdb.displayName')}</label>
-              <input
+              <Input
+                label={t('cmdb.displayName')}
                 value={displayName}
                 onChange={e => setDisplayName(e.target.value)}
                 placeholder={t('ciClassifications.displayPlaceholder')}
-                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                className="w-full"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
-            <input
+            <Input
+              label={t('common.description')}
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder={t('ciClassifications.optionalDesc')}
-              className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+              className="w-full"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -178,29 +181,28 @@ export default function CIClassifications() {
               </div>
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('ciClassifications.sortOrder')}</label>
-              <input
+              <Input
+                label={t('ciClassifications.sortOrder')}
                 type="number"
                 value={sortOrder}
                 onChange={e => setSortOrder(Number(e.target.value))}
-                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                className="w-full"
               />
             </div>
           </div>
           <div className="flex gap-3">
-            <button
+            <Button
+              variant="primary"
               disabled={busy || !name.trim() || !displayName.trim()}
               onClick={() => editingId ? updateMutation.mutate() : createMutation.mutate()}
-              className="btn-primary"
             >
               {busy ? t('ciClassifications.saving') : editingId ? t('ciClassifications.update') : t('ciClassifications.create')}
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={resetForm}
-              className="btn-secondary"
             >
               {t('common.cancel')}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -215,63 +217,63 @@ export default function CIClassifications() {
         </div>
       ) : (
         <div className="bg-surface rounded-xl border border-edge overflow-hidden">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-muted border-b border-edge">
-                <th className="text-left px-4 py-3 font-medium">{t('ciClassifications.icon')}</th>
-                <th className="text-left px-4 py-3 font-medium">{t('common.name')}</th>
-                <th className="text-left px-4 py-3 font-medium">{t('cmdb.displayName')}</th>
-                <th className="text-left px-4 py-3 font-medium">{t('common.description')}</th>
-                <th className="text-right px-4 py-3 font-medium">{t('ciClassifications.colCiTypes')}</th>
-                <th className="text-right px-4 py-3 font-medium">{t('ciClassifications.colOrder')}</th>
-                <th className="text-right px-4 py-3 font-medium">{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+            <Table.Header variant="compact">
+              <Table.Row className="text-xs text-muted border-b border-edge">
+                <Table.Head className="text-left px-4 py-3 font-medium">{t('ciClassifications.icon')}</Table.Head>
+                <Table.Head className="text-left px-4 py-3 font-medium">{t('common.name')}</Table.Head>
+                <Table.Head className="text-left px-4 py-3 font-medium">{t('cmdb.displayName')}</Table.Head>
+                <Table.Head className="text-left px-4 py-3 font-medium">{t('common.description')}</Table.Head>
+                <Table.Head className="text-right px-4 py-3 font-medium">{t('ciClassifications.colCiTypes')}</Table.Head>
+                <Table.Head className="text-right px-4 py-3 font-medium">{t('ciClassifications.colOrder')}</Table.Head>
+                <Table.Head className="text-right px-4 py-3 font-medium">{t('common.actions')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {classifications.map(c => (
-                <tr key={c.id} className="border-b border-edge/60 hover:bg-subtle/30">
-                  <td className="px-4 py-3 text-xl">{c.icon ?? '📂'}</td>
-                  <td className="px-4 py-3 text-primary font-mono text-xs">
+                <Table.Row key={c.id} className="border-b border-edge/60 hover:bg-subtle/30">
+                  <Table.Cell className="px-4 py-3 text-xl">{c.icon ?? '📂'}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-primary font-mono text-xs">
                     {c.name}
                     {c.is_builtin && (
                       <span className="ml-2 px-1.5 py-0.5 bg-emphasis text-secondary text-xs rounded">
                         {t('ciClassifications.builtin')}
                       </span>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-primary">{c.display_name}</td>
-                  <td className="px-4 py-3 text-secondary truncate max-w-[200px]">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-primary">{c.display_name}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary truncate max-w-[200px]">
                     {c.description ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-right">
                     <span className="text-accent font-medium">{c.ci_type_count}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right text-muted">{c.sort_order}</td>
-                  <td className="px-4 py-3 text-right">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-right text-muted">{c.sort_order}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-right">
                     {!c.is_builtin && (
                       <div className="flex justify-end gap-2">
-                        <button
+                        <Button
+                          size="sm" variant="ghost"
                           onClick={() => startEdit(c)}
-                          className="text-xs text-info hover:text-info"
                         >
                           {t('common.edit')}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          size="sm" variant="secondary-destructive"
                           onClick={() => {
                             if (confirm(t('ciClassifications.deleteConfirm', { name: c.display_name })))
                               deleteMutation.mutate(c.id)
                           }}
-                          className="text-xs text-danger hover:text-danger"
                         >
                           {t('common.delete')}
-                        </button>
+                        </Button>
                       </div>
                     )}
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
     </div>

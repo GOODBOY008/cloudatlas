@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -197,12 +201,12 @@ export default function CIApplyRules() {
             {t('ciApplyRules.subtitle')}
           </p>
         </div>
-        <button
+        <Button
+          variant="primary"
           onClick={() => { resetForm(); setShowForm(true) }}
-          className="btn-primary"
         >
           {t('ciApplyRules.newRule')}
-        </button>
+        </Button>
       </div>
 
       {/* Form */}
@@ -215,25 +219,24 @@ export default function CIApplyRules() {
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('ciApplyRules.ciTypeFilter')}</label>
-              <select
+              <SelectField
+                label={t('ciApplyRules.ciTypeFilter')}
                 value={ciTypeId}
-                onChange={e => setCiTypeId(e.target.value)}
-                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
-              >
-                <option value="">{t('ciApplyRules.anyCiType')}</option>
-                {ciTypes.map(t => (
-                  <option key={t.id} value={t.id}>{t.display_name}</option>
-                ))}
-              </select>
+                onValueChange={setCiTypeId}
+                className="w-full"
+                items={[
+                  { value: "", label: t('ciApplyRules.anyCiType') },
+                  ...ciTypes.map(t => ({ value: t.id, label: t.display_name })),
+                ]}
+              />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('ciApplyRules.priorityLabel')}</label>
-              <input
+              <Input
+                label={t('ciApplyRules.priorityLabel')}
                 type="number"
                 value={priority}
                 onChange={e => setPriority(Number(e.target.value))}
-                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                className="w-full"
               />
             </div>
             <div className="flex items-end pb-2">
@@ -256,30 +259,30 @@ export default function CIApplyRules() {
             <div className="space-y-2">
               {conditions.map((cond, i) => (
                 <div key={i} className="flex gap-2 items-center">
-                  <input
+                  <Input
+                    aria-label={t('ciApplyRules.fieldPlaceholder')}
                     list={`fields-list-${i}`}
                     value={cond.field}
                     onChange={e => updateCondition(i, 'field', e.target.value)}
                     placeholder={t('ciApplyRules.fieldPlaceholder')}
-                    className="flex-1 bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                    className="flex-1"
                   />
                   <datalist id={`fields-list-${i}`}>
                     {COMMON_FIELDS.map(f => <option key={f} value={f} />)}
                   </datalist>
-                  <select
+                  <SelectField
+                    aria-label={t('common.operator')}
                     value={cond.operator}
-                    onChange={e => updateCondition(i, 'operator', e.target.value)}
-                    className="w-32 bg-surface border border-strong rounded-lg px-2 py-2 text-sm text-primary"
-                  >
-                    {OPERATORS.map(op => (
-                      <option key={op} value={op}>{operatorLabel(op)}</option>
-                    ))}
-                  </select>
-                  <input
+                    onValueChange={value => updateCondition(i, 'operator', value)}
+                    className="w-32"
+                    items={OPERATORS.map(op => ({ value: op, label: operatorLabel(op) }))}
+                  />
+                  <Input
+                    aria-label={t('ciApplyRules.valuePlaceholder')}
                     value={cond.value}
                     onChange={e => updateCondition(i, 'value', e.target.value)}
                     placeholder={t('ciApplyRules.valuePlaceholder')}
-                    className="flex-1 bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                    className="flex-1"
                   />
                   {conditions.length > 1 && (
                     <button onClick={() => removeCondition(i)} className="text-muted hover:text-danger text-sm px-1">✕</button>
@@ -298,18 +301,20 @@ export default function CIApplyRules() {
             <div className="space-y-2">
               {attributes.map((attr, i) => (
                 <div key={i} className="flex gap-2 items-center">
-                  <input
+                  <Input
+                    aria-label={t('ciApplyRules.keyPlaceholder')}
                     value={attr.key}
                     onChange={e => updateAttribute(i, 'key', e.target.value)}
                     placeholder={t('ciApplyRules.keyPlaceholder')}
-                    className="flex-1 bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                    className="flex-1"
                   />
                   <span className="text-muted">:</span>
-                  <input
+                  <Input
+                    aria-label={t('ciApplyRules.valuePlaceholder')}
                     value={attr.value}
                     onChange={e => updateAttribute(i, 'value', e.target.value)}
                     placeholder={t('ciApplyRules.valuePlaceholder')}
-                    className="flex-1 bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                    className="flex-1"
                   />
                   {attributes.length > 1 && (
                     <button onClick={() => removeAttribute(i)} className="text-muted hover:text-danger text-sm px-1">✕</button>
@@ -320,16 +325,16 @@ export default function CIApplyRules() {
           </div>
 
           <div className="flex gap-3">
-            <button
+            <Button
+              variant="primary"
               disabled={busy}
               onClick={() => editId ? updateMutation.mutate() : createMutation.mutate()}
-              className="btn-primary"
             >
               {busy ? t('ciApplyRules.saving') : editId ? t('ciApplyRules.updateRule') : t('ciApplyRules.createRule')}
-            </button>
-            <button onClick={resetForm} className="btn-secondary">
+            </Button>
+            <Button onClick={resetForm}>
               {t('common.cancel')}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -363,25 +368,25 @@ export default function CIApplyRules() {
         </div>
       ) : (
         <div className="bg-surface rounded-xl border border-edge overflow-hidden">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-muted border-b border-edge">
-                <th className="text-left px-4 py-3">{t('cmdb.ciType')}</th>
-                <th className="text-left px-4 py-3">{t('ciApplyRules.colConditions')}</th>
-                <th className="text-left px-4 py-3">{t('ciApplyRules.colAttributes')}</th>
-                <th className="text-center px-4 py-3">{t('ciApplyRules.colPriority')}</th>
-                <th className="text-center px-4 py-3">{t('common.status')}</th>
-                <th className="text-right px-4 py-3">{t('ciApplyRules.colApplied')}</th>
-                <th className="text-right px-4 py-3">{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+            <Table.Header variant="compact">
+              <Table.Row className="text-xs text-muted border-b border-edge">
+                <Table.Head className="text-left px-4 py-3">{t('cmdb.ciType')}</Table.Head>
+                <Table.Head className="text-left px-4 py-3">{t('ciApplyRules.colConditions')}</Table.Head>
+                <Table.Head className="text-left px-4 py-3">{t('ciApplyRules.colAttributes')}</Table.Head>
+                <Table.Head className="text-center px-4 py-3">{t('ciApplyRules.colPriority')}</Table.Head>
+                <Table.Head className="text-center px-4 py-3">{t('common.status')}</Table.Head>
+                <Table.Head className="text-right px-4 py-3">{t('ciApplyRules.colApplied')}</Table.Head>
+                <Table.Head className="text-right px-4 py-3">{t('common.actions')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {rules.map(r => (
-                <tr key={r.id} className="border-b border-edge/60 hover:bg-subtle/30">
-                  <td className="px-4 py-3 text-secondary text-xs">
+                <Table.Row key={r.id} className="border-b border-edge/60 hover:bg-subtle/30">
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">
                     {r.ci_type_display ?? <span className="text-muted">{t('ciApplyRules.anyType')}</span>}
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <div className="space-y-0.5">
                       {r.conditions.slice(0, 2).map((c, i) => (
                         <div key={i} className="text-xs text-secondary">
@@ -394,8 +399,8 @@ export default function CIApplyRules() {
                         <span className="text-xs text-muted">{t('ciApplyRules.more', { count: r.conditions.length - 2 })}</span>
                       )}
                     </div>
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <div className="space-y-0.5">
                       {Object.entries(r.attributes).slice(0, 2).map(([k, v]) => (
                         <div key={k} className="text-xs">
@@ -408,34 +413,34 @@ export default function CIApplyRules() {
                         <span className="text-xs text-muted">{t('ciApplyRules.more', { count: Object.keys(r.attributes).length - 2 })}</span>
                       )}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-center text-secondary">{r.priority}</td>
-                  <td className="px-4 py-3 text-center">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-center text-secondary">{r.priority}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-center">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${r.is_active ? 'bg-success/10 text-success' : 'bg-emphasis text-muted'}`}>
                       {r.is_active ? t('common.active') : t('common.inactive')}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-right text-accent font-medium">{r.applied_count}</td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-right text-accent font-medium">{r.applied_count}</Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <div className="flex justify-end gap-2">
-                      <button
+                      <Button
+                        size="sm"
                         disabled={execLoading === r.id || !r.is_active}
                         onClick={() => executeRule(r.id)}
-                        className="text-xs px-2 py-1 bg-success/10 hover:bg-success/20 text-success rounded disabled:opacity-40"
                       >
                         {execLoading === r.id ? '…' : t('ciApplyRules.run')}
-                      </button>
-                      <button onClick={() => startEdit(r)} className="text-xs text-info hover:text-info">{t('common.edit')}</button>
-                      <button
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => startEdit(r)}>{t('common.edit')}</Button>
+                      <Button
+                        size="sm" variant="secondary-destructive"
                         onClick={() => { if (confirm(t('ciApplyRules.deleteRuleConfirm'))) deleteMutation.mutate(r.id) }}
-                        className="text-xs text-danger hover:text-danger"
-                      >{t('common.delete')}</button>
+                      >{t('common.delete')}</Button>
                     </div>
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
     </div>

@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -44,34 +48,29 @@ function ConditionRow({
   onRemove: (idx: number) => void
 }) {
   const { t } = useTranslation()
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-1.5 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent'
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <select
+      <SelectField
+        aria-label={t('common.type')}
         value={cond.condition_type}
-        onChange={(e) => onChange(idx, { ...cond, condition_type: e.target.value })}
-        className={inputCls}
-      >
-        {CONDITION_TYPES.map((v) => (
-          <option key={v} value={v}>
-            {t(`rules.conditionTypes.${v}`)}
-          </option>
-        ))}
-      </select>
+        onValueChange={value => onChange(idx, { ...cond, condition_type: value })}
+        items={CONDITION_TYPES.map((v) => ({ value: v, label: t(`rules.conditionTypes.${v}`) }))}
+      />
       {cond.condition_type === 'tag_is' && (
-        <input
+        <Input
+          aria-label={t('rules.tagKeyPlaceholder')}
           placeholder={t('rules.tagKeyPlaceholder')}
           value={cond.key ?? ''}
           onChange={(e) => onChange(idx, { ...cond, key: e.target.value })}
-          className={`${inputCls} w-28`}
+          className="w-28"
         />
       )}
-      <input
+      <Input
+        aria-label={t('rules.valuePlaceholder')}
         placeholder={t('rules.valuePlaceholder')}
         value={cond.value}
         onChange={(e) => onChange(idx, { ...cond, value: e.target.value })}
-        className={`${inputCls} w-32`}
+        className="w-32"
       />
       <button
         type="button"
@@ -199,27 +198,23 @@ export default function Rules() {
     }
   }
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
-
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">{t('rules.title')}</h1>
         <div className="flex gap-3">
-          <button
+          <Button
             onClick={() => applyMutation.mutate()}
             disabled={applyMutation.isPending}
-            className="btn-secondary"
           >
             {applyMutation.isPending ? t('rules.applying') : t('rules.applyRules')}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             onClick={openCreate}
-            className="btn-primary"
           >
             {t('rules.newRule')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -236,40 +231,40 @@ export default function Rules() {
       )}
 
       <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-edge text-secondary text-left">
-              <th className="px-4 py-3 font-medium">{t('common.name')}</th>
-              <th className="px-4 py-3 font-medium">{t('rules.colPriority')}</th>
-              <th className="px-4 py-3 font-medium">{t('rules.colConditions')}</th>
-              <th className="px-4 py-3 font-medium">{t('rules.colPool')}</th>
-              <th className="px-4 py-3 font-medium">{t('rules.colLogic')}</th>
-              <th className="px-4 py-3 font-medium">{t('common.status')}</th>
-              <th className="px-4 py-3 font-medium">{t('common.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+          <Table.Header variant="compact">
+            <Table.Row className="border-b border-edge text-secondary text-left">
+              <Table.Head className="px-4 py-3 font-medium">{t('common.name')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('rules.colPriority')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('rules.colConditions')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('rules.colPool')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('rules.colLogic')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('common.status')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('common.actions')}</Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
             {isLoading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted">
+              <Table.Row>
+                <Table.Cell colSpan={7} className="px-4 py-8 text-center text-muted">
                   {t('common.loading')}
-                </td>
-              </tr>
+                </Table.Cell>
+              </Table.Row>
             ) : rules.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted">
+              <Table.Row>
+                <Table.Cell colSpan={7} className="px-4 py-8 text-center text-muted">
                   {t('rules.noRules')}
-                </td>
-              </tr>
+                </Table.Cell>
+              </Table.Row>
             ) : (
               rules.map((rule) => (
-                <tr
+                <Table.Row
                   key={rule.id}
                   className="border-b border-edge hover:bg-subtle/50 transition-colors"
                 >
-                  <td className="px-4 py-3 font-medium text-primary">{rule.name}</td>
-                  <td className="px-4 py-3 text-secondary">{rule.priority}</td>
-                  <td className="px-4 py-3 text-secondary text-xs max-w-xs">
+                  <Table.Cell className="px-4 py-3 font-medium text-primary">{rule.name}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary">{rule.priority}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs max-w-xs">
                     {rule.conditions.map((c, i) => (
                       <span key={i} className="inline-block bg-subtle border border-strong rounded px-1.5 py-0.5 mr-1 mb-1">
                         {c.condition_type === 'tag_is' && c.key
@@ -277,14 +272,14 @@ export default function Rules() {
                           : `${c.condition_type}:${c.value}`}
                       </span>
                     ))}
-                  </td>
-                  <td className="px-4 py-3 text-secondary">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary">
                     {rule.pool_name ?? pools.find((p) => p.id === rule.pool_id)?.name ?? rule.pool_id.slice(0, 8)}
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <span className="text-xs text-secondary uppercase">{rule.logic_operator}</span>
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         rule.is_active ? 'bg-success/10 text-success' : 'bg-emphasis text-secondary'
@@ -292,29 +287,29 @@ export default function Rules() {
                     >
                       {rule.is_active ? t('common.active') : t('common.inactive')}
                     </span>
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <button
+                      <Button
+                        size="sm" variant="ghost"
                         onClick={() => openEdit(rule)}
-                        className="text-accent hover:text-accent text-xs"
                       >
                         {t('common.edit')}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm" variant="secondary-destructive"
                         onClick={() => deleteMutation.mutate(rule.id)}
                         disabled={deleteMutation.isPending}
-                        className="text-danger hover:text-danger text-xs disabled:opacity-50"
                       >
                         {t('common.delete')}
-                      </button>
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))
             )}
-          </tbody>
-        </table></div>
+          </Table.Body>
+        </Table></div>
       </div>
 
       {/* Modal */}
@@ -331,56 +326,52 @@ export default function Rules() {
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('common.name')}</label>
-                <input
+                <Input label={t('common.name')}
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className={inputCls}
+                  className="w-full"
                   placeholder={t('rules.namePlaceholder')}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-secondary mb-1">{t('rules.priorityLabel')}</label>
-                  <input
+                  <Input
+                    label={t('rules.priorityLabel')}
                     type="number"
                     min={1}
                     max={100}
                     value={form.priority}
-                    onChange={(e) => setForm({ ...form, priority: parseInt(e.target.value) || 10 })}
-                    className={inputCls}
+                    onChange={e => setForm({ ...form, priority: parseInt(e.target.value) || 10 })}
+                    className="w-full"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-secondary mb-1">{t('rules.logicOperator')}</label>
-                  <select
+                  <SelectField
+                    label={t('rules.logicOperator')}
                     value={form.logic_operator}
-                    onChange={(e) =>
-                      setForm({ ...form, logic_operator: e.target.value as 'AND' | 'OR' })
-                    }
-                    className={inputCls}
-                  >
-                    <option value="AND">{t('rules.andOption')}</option>
-                    <option value="OR">{t('rules.orOption')}</option>
-                  </select>
+                    onValueChange={value =>
+                      setForm({ ...form, logic_operator: value as 'AND' | 'OR' })}
+                    className="w-full"
+                    items={[
+                      { value: "AND", label: t('rules.andOption') },
+                      { value: "OR", label: t('rules.orOption') },
+                    ]}
+                  />
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('rules.assignToPool')}</label>
-                <select
+                <SelectField
+                  label={t('rules.assignToPool')}
                   required
                   value={form.pool_id}
-                  onChange={(e) => setForm({ ...form, pool_id: e.target.value })}
-                  className={inputCls}
-                >
-                  <option value="">{t('rules.selectPool')}</option>
-                  {pools.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={value => setForm({ ...form, pool_id: value })}
+                  className="w-full"
+                  items={[
+                    { value: "", label: t('rules.selectPool') },
+                    ...pools.map((p) => ({ value: p.id, label: p.name })),
+                  ]}
+                />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -411,31 +402,30 @@ export default function Rules() {
                   id="is-active"
                   checked={form.is_active}
                   onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                  className="w-4 h-4 rounded border-strong accent-indigo-600"
+                  className="w-4 h-4 rounded border-strong"
                 />
                 <label htmlFor="is-active" className="text-sm text-secondary">
                   {t('common.active')}
                 </label>
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
                   type="button"
                   onClick={closeModal}
-                  className="btn-secondary"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="btn-primary"
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? t('rules.saving')
                     : editingId
                     ? t('rules.updateRule')
                     : t('rules.createRule')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

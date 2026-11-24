@@ -10,7 +10,9 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
+    "@cloudflare/kumo": "^2.19.0",
     "@fontsource-variable/inter": "^5.3.0",
+    "@phosphor-icons/react": "^2.1.10",
     "@tanstack/react-query": "^5.56.2",
     "axios": "^1.7.7",
     "d3-geo": "^3.1.2",
@@ -27,6 +29,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -39,10 +42,8 @@
     "@types/topojson-specification": "^1.0.5",
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/ui": "^5.0.1",
-    "autoprefixer": "^10.6.2",
     "jsdom": "^30.1.3",
-    "postcss": "^8.5.32",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.0",
     "vitest": "^5.0.1",

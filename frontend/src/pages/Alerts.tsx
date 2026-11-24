@@ -1,3 +1,6 @@
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useMoneyFormatter, useOrgCurrency } from '../lib/format'
 import { useState, type FormEvent } from 'react'
@@ -155,27 +158,23 @@ export default function Alerts() {
     }
   }
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
-
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">{t('alerts.title')}</h1>
         <div className="flex items-center gap-3">
-          <button
+          <Button
             onClick={() => evaluateMutation.mutate()}
             disabled={evaluateMutation.isPending}
-            className="btn-secondary"
           >
             {evaluateMutation.isPending ? t('alerts.evaluating') : t('alerts.evaluateNow')}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             onClick={() => setShowModal(true)}
-            className="btn-primary"
           >
             {t('alerts.newAlert')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -308,23 +307,17 @@ export default function Alerts() {
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs text-secondary mb-1">
-                  {t('alerts.poolLabel')}{' '}
-                  <span className="text-muted">{t('alerts.poolOptionalHint')}</span>
-                </label>
-                <select
+                <SelectField
+                  label={<>{t('alerts.poolLabel')}{' '}
+                  <span className="text-muted">{t('alerts.poolOptionalHint')}</span></>}
                   value={form.pool_id}
-                  onChange={(e) => setForm({ ...form, pool_id: e.target.value })}
-                  className={inputCls}
-                >
-                  <option value="">{t('alerts.orgLevelOption')}</option>
-                  {pools.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                      {p.monthly_budget ? t('alerts.optionBudget', { amount: fmt(p.monthly_budget) }) : ''}
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={value => setForm({ ...form, pool_id: value })}
+                  className="w-full"
+                  items={[
+                    { value: "", label: t('alerts.orgLevelOption') },
+                    ...pools.map((p) => ({ value: p.id, label: `${p.name}${p.monthly_budget ? t('alerts.optionBudget', { amount: fmt(p.monthly_budget) }) : ''}` })),
+                  ]}
+                />
               </div>
               <div>
                 <label className="block text-xs text-secondary mb-1">{t('alerts.alertType')}</label>
@@ -337,7 +330,6 @@ export default function Alerts() {
                         value={type}
                         checked={form.alert_type === type}
                         onChange={() => setForm({ ...form, alert_type: type })}
-                        className="accent-indigo-600"
                       />
                       <span className="text-sm text-secondary">
                         {type === 'PERCENTAGE' ? t('alerts.typePercentage') : t('alerts.typeAbsolute')}
@@ -347,21 +339,15 @@ export default function Alerts() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">
-                  {t('alerts.threshold')}{' '}
-                  {form.alert_type === 'PERCENTAGE' ? t('alerts.thresholdPct') : t('alerts.thresholdAmount', { currency })}
-                </label>
-                <input
+                <Input label={`${t('alerts.threshold')} ${form.alert_type === 'PERCENTAGE' ? t('alerts.thresholdPct') : t('alerts.thresholdAmount', { currency })}`}
                   required
                   type="number"
                   min={0}
                   step={form.alert_type === 'PERCENTAGE' ? 1 : 0.01}
                   max={form.alert_type === 'PERCENTAGE' ? 100 : undefined}
                   value={form.threshold}
-                  onChange={(e) =>
-                    setForm({ ...form, threshold: parseFloat(e.target.value) || 0 })
-                  }
-                  className={inputCls}
+                  onChange={e => setForm({ ...form, threshold: parseFloat(e.target.value) || 0 })}
+                  className="w-full"
                   placeholder={form.alert_type === 'PERCENTAGE' ? '80' : '5000'}
                 />
                 <p className="text-xs text-muted mt-1">
@@ -371,32 +357,28 @@ export default function Alerts() {
                 </p>
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">
-                  {t('common.description')}{' '}
-                  <span className="text-muted">{t('alerts.optional')}</span>
-                </label>
-                <input
+                <Input label={<>{t('common.description')}{' '}
+                  <span className="text-muted">{t('alerts.optional')}</span></>}
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className={inputCls}
+                  className="w-full"
                   placeholder={t('alerts.descriptionPlaceholder')}
                 />
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
                   type="button"
                   onClick={closeModal}
-                  className="btn-secondary"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="btn-primary"
                 >
                   {createMutation.isPending ? t('alerts.creating') : t('alerts.createAlert')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

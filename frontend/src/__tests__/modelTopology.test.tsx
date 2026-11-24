@@ -1,3 +1,4 @@
+import { chooseOption } from '../test/chooseOption'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -63,7 +64,7 @@ describe('model topology explorer', () => {
     await userEvent.click(screen.getByRole('button', { name: 'All relationships' }))
     const definitions = screen.getByRole('table', { name: 'All model relationships' })
     expect(within(definitions).getAllByRole('row')).toHaveLength(3)
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Asset type' }), isolated.id)
+    await chooseOption(screen.getByRole('combobox', { name: 'Asset type' }), 'Custom asset')
     expect(await screen.findByText('No model relationships are defined for Custom asset.')).toBeInTheDocument()
     expect(await screen.findByText('There are no instances of this type in this environment.')).toBeInTheDocument()
   })

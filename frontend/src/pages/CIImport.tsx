@@ -1,3 +1,5 @@
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -112,40 +114,39 @@ export default function CIImport() {
         <h2 className="text-sm font-semibold text-primary">{t('ciImport.setup')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs text-secondary mb-1">{t('ciImport.defaultType')} *</label>
-            <select
+            <SelectField
+              label={`${t('ciImport.defaultType')} *`}
               value={selectedTypeId}
-              onChange={(e) => setSelectedTypeId(e.target.value)}
+              onValueChange={setSelectedTypeId}
               data-testid="ciimport-type-select"
-              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary"
-            >
-              <option value="">{t('ciImport.selectType')}</option>
-              {ciTypes.map((t) => (
-                <option key={t.id} value={t.id}>{t.display_name}</option>
-              ))}
-            </select>
+              className="w-full"
+              items={[
+                { value: "", label: t('ciImport.selectType') },
+                ...ciTypes.map((t) => ({ value: t.id, label: t.display_name })),
+              ]}
+            />
           </div>
           <div>
-            <label className="block text-xs text-secondary mb-1">{t('ciImport.conflictStrategy')}</label>
-            <select
+            <SelectField
+              label={t('ciImport.conflictStrategy')}
               value={conflictStrategy}
-              onChange={(e) => setConflictStrategy(e.target.value as 'skip' | 'upsert')}
-              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-sm text-primary"
-            >
-              <option value="skip">{t('ciImport.strategySkip')}</option>
-              <option value="upsert">{t('ciImport.strategyUpsert')}</option>
-            </select>
+              onValueChange={value => setConflictStrategy(value as 'skip' | 'upsert')}
+              className="w-full"
+              items={[
+                { value: "skip", label: t('ciImport.strategySkip') },
+                { value: "upsert", label: t('ciImport.strategyUpsert') },
+              ]}
+            />
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button
+          <Button
             onClick={downloadTemplate}
             disabled={!selectedTypeId}
             data-testid="ciimport-download-template"
-            className="btn-secondary"
           >
             {t('ciImport.downloadTemplate')}
-          </button>
+          </Button>
           <p className="text-xs text-muted">
             {selectedType
               ? t('ciImport.templateHint', { name: selectedType.display_name })
@@ -158,14 +159,14 @@ export default function CIImport() {
       <div className="bg-surface rounded-xl border border-edge p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-primary">{t('ciImport.csvData')}</h2>
-          <button
+          <Button
+            variant="primary"
             onClick={() => fileRef.current?.click()}
             disabled={!selectedTypeId || importMutation.isPending}
             data-testid="ciimport-upload-button"
-            className="btn-primary"
           >
             {importMutation.isPending ? t('ciImport.importing') : t('ciImport.uploadAndImport')}
-          </button>
+          </Button>
           <input
             ref={fileRef}
             type="file"

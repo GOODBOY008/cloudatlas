@@ -1,3 +1,8 @@
+import { PageTabs } from '../components/shared/PageTabs'
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { chartColors, chartAxis, chartGrid } from '../lib/chartTheme'
 import { useMoneyFormatter, useOrgCurrency } from '../lib/format'
@@ -90,10 +95,9 @@ export default function QuotasBudgets() {
           <p className="text-sm text-secondary mt-1">{t('quotas.subtitle')}</p>
         </div>
         <div className="flex gap-3">
-          <button onClick={() => evaluateAlerts.mutate()} disabled={evaluateAlerts.isPending}
-            className="btn-secondary">
+          <Button onClick={() => evaluateAlerts.mutate()} disabled={evaluateAlerts.isPending}>
             {t('quotas.evaluateAlerts')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -133,88 +137,86 @@ export default function QuotasBudgets() {
       )}
 
       {/* Tabs */}
-      <div className="page-tabs ">
-        {([
-          { key: 'budgets', label: t('quotas.poolBudgetsCount', { count: matrix.length }) },
-          { key: 'alerts', label: t('quotas.alertRulesCount', { count: (alerts ?? []).length }) },
-          { key: 'quotas', label: t('quotas.quotasCount', { count: (quotas ?? []).length }) },
-        ] as const).map(tab => (
-          <button aria-pressed={activeTab === tab.key} key={tab.key} onClick={() => setActiveTab(tab.key as any)}
-            className="page-tab">
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <PageTabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="mb-5"
+        tabs={[
+          { value: 'budgets', label: t('quotas.poolBudgetsCount', { count: matrix.length }) },
+          { value: 'alerts', label: t('quotas.alertRulesCount', { count: (alerts ?? []).length }) },
+          { value: 'quotas', label: t('quotas.quotasCount', { count: (quotas ?? []).length }) },
+        ]}
+      />
 
       {activeTab === 'budgets' && (
         <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-            <thead><tr className="border-b border-strong">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+            <Table.Header variant="compact"><Table.Row className="border-b border-strong">
               {[t('quotas.colPool'), t('quotas.colBudget'), t('quotas.colActualSpend'), t('quotas.colUtilization'), t('common.status')].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{h}</th>
+                <Table.Head key={h} className="px-4 py-3 text-left">{h}</Table.Head>
               ))}
-            </tr></thead>
-            <tbody className="divide-y divide-edge">
+            </Table.Row></Table.Header>
+            <Table.Body className="divide-y divide-edge">
               {matrix.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">{t('quotas.noPoolsWithBudgets')}</td></tr>
+                <Table.Row><Table.Cell colSpan={5} className="px-4 py-10 text-center text-muted">{t('quotas.noPoolsWithBudgets')}</Table.Cell></Table.Row>
               ) : matrix.map((b, i) => {
                 const pct = (b.budget ?? 0) > 0 ? Math.min((b.actual / (b.budget ?? 1)) * 100, 120) : 0
                 const barColor = b.status === 'over_budget' ? 'bg-danger-solid' : b.status === 'warning' ? 'bg-warning-solid' : 'bg-success-solid'
                 return (
-                  <tr key={i} className="hover:bg-subtle">
-                    <td className="px-4 py-3 font-medium text-primary">{b.pool_name}</td>
-                    <td className="px-4 py-3 text-secondary">{(b.budget ?? 0) > 0 ? fmt(b.budget) : '—'}</td>
-                    <td className="px-4 py-3 font-semibold text-primary">{fmt(b.actual)}</td>
-                    <td className="px-4 py-3 w-48">
+                  <Table.Row key={i} className="hover:bg-subtle">
+                    <Table.Cell className="px-4 py-3 font-medium text-primary">{b.pool_name}</Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary">{(b.budget ?? 0) > 0 ? fmt(b.budget) : '—'}</Table.Cell>
+                    <Table.Cell className="px-4 py-3 font-semibold text-primary">{fmt(b.actual)}</Table.Cell>
+                    <Table.Cell className="px-4 py-3 w-48">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 bg-emphasis rounded-full h-2">
                           <div className={`h-2 rounded-full ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                         </div>
                         <span className="text-xs text-secondary w-12 text-right">{pct.toFixed(0)}%</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
-                  </tr>
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3"><StatusBadge status={b.status} /></Table.Cell>
+                  </Table.Row>
                 )
               })}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
 
       {activeTab === 'alerts' && (
         <>
           <div className="flex justify-end">
-            <button onClick={() => setShowAlertForm(true)} className="btn-primary">{t('quotas.addAlertRule')}</button>
+            <Button variant="primary" onClick={() => setShowAlertForm(true)}>{t('quotas.addAlertRule')}</Button>
           </div>
           <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-              <thead><tr className="border-b border-strong">
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+              <Table.Header variant="compact"><Table.Row className="border-b border-strong">
                 {[t('common.name'), t('common.type'), t('quotas.colThreshold'), t('common.status'), t('quotas.colLastTriggered'), t('common.actions')].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{h}</th>
+                  <Table.Head key={h} className="px-4 py-3 text-left">{h}</Table.Head>
                 ))}
-              </tr></thead>
-              <tbody className="divide-y divide-edge">
+              </Table.Row></Table.Header>
+              <Table.Body className="divide-y divide-edge">
                 {(alerts ?? []).length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-10 text-center text-muted">{t('quotas.noAlertRules')}</td></tr>
+                  <Table.Row><Table.Cell colSpan={6} className="px-4 py-10 text-center text-muted">{t('quotas.noAlertRules')}</Table.Cell></Table.Row>
                 ) : (alerts ?? []).map(a => (
-                  <tr key={a.id} className="hover:bg-subtle">
-                    <td className="px-4 py-3 font-medium text-primary">{a.name}</td>
-                    <td className="px-4 py-3"><span className="px-2 py-0.5 bg-accent-soft text-accent rounded text-xs">{t(`status.${a.alert_type}`, { defaultValue: a.alert_type })}</span></td>
-                    <td className="px-4 py-3 text-secondary">{fmt(a.threshold)}</td>
-                    <td className="px-4 py-3">
+                  <Table.Row key={a.id} className="hover:bg-subtle">
+                    <Table.Cell className="px-4 py-3 font-medium text-primary">{a.name}</Table.Cell>
+                    <Table.Cell className="px-4 py-3"><span className="px-2 py-0.5 bg-accent-soft text-accent rounded text-xs">{t(`status.${a.alert_type}`, { defaultValue: a.alert_type })}</span></Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary">{fmt(a.threshold)}</Table.Cell>
+                    <Table.Cell className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${a.is_active ? 'bg-success/10 text-success' : 'bg-emphasis text-secondary'}`}>
                         {a.is_active ? t('common.active') : t('common.inactive')}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-secondary text-xs">{a.last_triggered_at ? a.last_triggered_at.slice(0, 16) : t('common.never')}</td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => deleteAlert.mutate(a.id)} className="text-danger hover:text-danger text-xs">{t('common.delete')}</button>
-                    </td>
-                  </tr>
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary text-xs">{a.last_triggered_at ? a.last_triggered_at.slice(0, 16) : t('common.never')}</Table.Cell>
+                    <Table.Cell className="px-4 py-3">
+                      <Button size="sm" variant="secondary-destructive" onClick={() => deleteAlert.mutate(a.id)}>{t('common.delete')}</Button>
+                    </Table.Cell>
+                  </Table.Row>
                 ))}
-              </tbody>
-            </table></div>
+              </Table.Body>
+            </Table></div>
           </div>
         </>
       )}
@@ -222,33 +224,33 @@ export default function QuotasBudgets() {
       {activeTab === 'quotas' && (
         <>
           <div className="flex justify-end">
-            <button onClick={() => setShowQuotaForm(true)} className="btn-primary">{t('quotas.addQuota')}</button>
+            <Button variant="primary" onClick={() => setShowQuotaForm(true)}>{t('quotas.addQuota')}</Button>
           </div>
           <div className="bg-surface rounded-xl border border-strong overflow-hidden">
-            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-              <thead><tr className="border-b border-strong">
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+              <Table.Header variant="compact"><Table.Row className="border-b border-strong">
                 {[t('common.name'), t('common.type'), t('quotas.colLimit'), t('common.status'), t('quotas.colLastTriggered')].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{h}</th>
+                  <Table.Head key={h} className="px-4 py-3 text-left">{h}</Table.Head>
                 ))}
-              </tr></thead>
-              <tbody className="divide-y divide-edge">
+              </Table.Row></Table.Header>
+              <Table.Body className="divide-y divide-edge">
                 {(quotas ?? []).length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">{t('quotas.noQuotaConstraints')}</td></tr>
+                  <Table.Row><Table.Cell colSpan={5} className="px-4 py-10 text-center text-muted">{t('quotas.noQuotaConstraints')}</Table.Cell></Table.Row>
                 ) : (quotas ?? []).map(q => (
-                  <tr key={q.id} className="hover:bg-subtle">
-                    <td className="px-4 py-3 font-medium text-primary">{q.name}</td>
-                    <td className="px-4 py-3"><span className="px-2 py-0.5 bg-violet/10 text-violet rounded text-xs">{t(`status.${q.constraint_type}`, { defaultValue: q.constraint_type })}</span></td>
-                    <td className="px-4 py-3 text-secondary">{q.limit_value != null ? fmt(q.limit_value) : '—'}</td>
-                    <td className="px-4 py-3">
+                  <Table.Row key={q.id} className="hover:bg-subtle">
+                    <Table.Cell className="px-4 py-3 font-medium text-primary">{q.name}</Table.Cell>
+                    <Table.Cell className="px-4 py-3"><span className="px-2 py-0.5 bg-violet/10 text-violet rounded text-xs">{t(`status.${q.constraint_type}`, { defaultValue: q.constraint_type })}</span></Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary">{q.limit_value != null ? fmt(q.limit_value) : '—'}</Table.Cell>
+                    <Table.Cell className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${q.is_active ? 'bg-success/10 text-success' : 'bg-emphasis text-secondary'}`}>
                         {q.is_active ? t('common.active') : t('common.inactive')}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-secondary text-xs">{q.last_triggered_at ? q.last_triggered_at.slice(0, 16) : t('common.never')}</td>
-                  </tr>
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary text-xs">{q.last_triggered_at ? q.last_triggered_at.slice(0, 16) : t('common.never')}</Table.Cell>
+                  </Table.Row>
                 ))}
-              </tbody>
-            </table></div>
+              </Table.Body>
+            </Table></div>
           </div>
         </>
       )}
@@ -264,18 +266,17 @@ export default function QuotasBudgets() {
               { label: t('quotas.thresholdAmount', { currency }), field: 'threshold', type: 'number' },
             ].map(({ label, field, type }) => (
               <div key={field}>
-                <label className="text-xs text-secondary mb-1 block">{label}</label>
-                <input type={type} value={(alertForm as any)[field]} onChange={e => setAlertForm(f => ({ ...f, [field]: e.target.value }))}
-                  className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
+                <Input label={label} type={type} value={(alertForm as any)[field]} onChange={e => setAlertForm(f => ({ ...f, [field]: e.target.value }))}
+                  className="w-full" />
               </div>
             ))}
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowAlertForm(false)} className="btn-secondary flex-1">{t('common.cancel')}</button>
-              <button onClick={() => createAlert.mutate({ name: alertForm.name, threshold: parseFloat(alertForm.threshold), alert_type: 'budget' })}
+              <Button onClick={() => setShowAlertForm(false)} className="flex-1">{t('common.cancel')}</Button>
+              <Button variant="primary" onClick={() => createAlert.mutate({ name: alertForm.name, threshold: parseFloat(alertForm.threshold), alert_type: 'budget' })}
                 disabled={!alertForm.name || !alertForm.threshold || createAlert.isPending}
-                className="btn-primary flex-1">
+                className="flex-1">
                 {t('quotas.create')}
-              </button>
+              </Button>
             </div>
           </div>
         </NativeDialog>
@@ -288,30 +289,32 @@ export default function QuotasBudgets() {
           <div className="dialog-panel relative p-6 w-full max-w-md space-y-4">
             <h3 className="text-lg font-semibold text-primary">{t('quotas.newQuota')}</h3>
             <div>
-              <label className="text-xs text-secondary mb-1 block">{t('common.name')}</label>
-              <input value={quotaForm.name} onChange={e => setQuotaForm(f => ({ ...f, name: e.target.value }))}
-                className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
+              <Input label={t('common.name')} value={quotaForm.name} onChange={e => setQuotaForm(f => ({ ...f, name: e.target.value }))}
+                className="w-full" />
             </div>
             <div>
-              <label className="text-xs text-secondary mb-1 block">{t('common.type')}</label>
-              <select value={quotaForm.constraint_type} onChange={e => setQuotaForm(f => ({ ...f, constraint_type: e.target.value }))}
-                className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong">
-                <option value="total_expense">{t('quotas.typeTotalExpense')}</option>
-                <option value="resource_count">{t('quotas.typeResourceCount')}</option>
-              </select>
+              <SelectField
+                label={t('common.type')}
+                value={quotaForm.constraint_type}
+                onValueChange={value => setQuotaForm(f => ({ ...f, constraint_type: value }))}
+                className="w-full"
+                items={[
+                  { value: "total_expense", label: t('quotas.typeTotalExpense') },
+                  { value: "resource_count", label: t('quotas.typeResourceCount') },
+                ]}
+              />
             </div>
             <div>
-              <label className="text-xs text-secondary mb-1 block">{t('quotas.limitValue')}</label>
-              <input type="number" value={quotaForm.limit_value} onChange={e => setQuotaForm(f => ({ ...f, limit_value: e.target.value }))}
-                className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent" />
+              <Input label={t('quotas.limitValue')} type="number" value={quotaForm.limit_value} onChange={e => setQuotaForm(f => ({ ...f, limit_value: e.target.value }))}
+                className="w-full" />
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowQuotaForm(false)} className="btn-secondary flex-1">{t('common.cancel')}</button>
-              <button onClick={() => createQuota.mutate({ name: quotaForm.name, constraint_type: quotaForm.constraint_type, limit_value: parseFloat(quotaForm.limit_value) })}
+              <Button onClick={() => setShowQuotaForm(false)} className="flex-1">{t('common.cancel')}</Button>
+              <Button variant="primary" onClick={() => createQuota.mutate({ name: quotaForm.name, constraint_type: quotaForm.constraint_type, limit_value: parseFloat(quotaForm.limit_value) })}
                 disabled={!quotaForm.name || !quotaForm.limit_value || createQuota.isPending}
-                className="btn-primary flex-1">
+                className="flex-1">
                 {t('quotas.create')}
-              </button>
+              </Button>
             </div>
           </div>
         </NativeDialog>

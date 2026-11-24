@@ -1,3 +1,5 @@
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../lib/api'
@@ -93,11 +95,12 @@ export default function Events() {
             </button>
           ))}
         </div>
-        <input
+        <Input
+          aria-label={t('events.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('events.searchPlaceholder')}
-          className="flex-1 min-w-[200px] bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          className="flex-1 min-w-[200px]"
         />
       </div>
 
@@ -119,13 +122,13 @@ export default function Events() {
         <div className="space-y-4">
           {grouped.map(([day, list]) => (
             <div key={day} className="bg-surface border border-edge rounded-xl overflow-hidden">
-              <button
+              <Button
                 onClick={() => setExpandedDay(expandedDay === day ? null : day)}
-                className="w-full flex items-center justify-between px-5 py-3 hover:bg-subtle/40 transition-colors"
+                className="w-full"
               >
                 <span className="text-sm font-semibold text-primary">{day}</span>
                 <span className="text-xs text-muted">{t('events.count', { count: list.length })}</span>
-              </button>
+              </Button>
               {(expandedDay === day || grouped.length <= 3) && (
                 <div className="border-t border-edge divide-y divide-edge/60">
                   {list.map((e) => (

@@ -1,3 +1,6 @@
+import { PageTabs } from '../components/shared/PageTabs'
+import { Table } from '@cloudflare/kumo/components/table'
+import { SelectField } from '../components/shared/SelectField'
 import { cloudServiceLabel } from '../lib/objectStorage'
 import { chartColors, chartPalette, chartAxis, chartTooltipStyle, providerChartColors } from '../lib/chartTheme'
 import { useState, useCallback, useMemo, useEffect } from 'react'
@@ -437,17 +440,12 @@ export default function CostMap() {
       )}
 
       {/* View tabs */}
-      <div className="page-tabs mt-5">
-        {VIEW_TABS.map((tab) => (
-          <button aria-pressed={activeTab === tab}
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className="page-tab"
-          >
-            {viewTabLabels[tab]}
-          </button>
-        ))}
-      </div>
+      <PageTabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="mt-5"
+        tabs={VIEW_TABS.map(tab => ({ value: tab, label: viewTabLabels[tab] }))}
+      />
 
       <div className="flex-1 py-5 space-y-6">
 
@@ -618,30 +616,30 @@ export default function CostMap() {
                     <p className="text-sm font-semibold text-secondary">{t('costMap.regionBreakdown')}</p>
                   </div>
                   <div className="overflow-x-auto">
-                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-edge text-xs text-muted uppercase tracking-wider">
-                          <th className="px-5 py-3 text-left">{t('cmdb.region')}</th>
-                          <th className="px-5 py-3 text-left">{t('costMap.location')}</th>
-                          <th className="px-5 py-3 text-left">{t('costMap.cloud')}</th>
-                          <th className="px-5 py-3 text-right">{t('costMap.resources')}</th>
-                          <th className="px-5 py-3 text-right">{t('costMap.cost')}</th>
-                          <th className="px-5 py-3 text-right">{t('costMap.share')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                      <Table.Header variant="compact">
+                        <Table.Row className="border-b border-edge text-xs text-muted uppercase tracking-wider">
+                          <Table.Head className="px-5 py-3 text-left">{t('cmdb.region')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-left">{t('costMap.location')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-left">{t('costMap.cloud')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-right">{t('costMap.resources')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-right">{t('costMap.cost')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-right">{t('costMap.share')}</Table.Head>
+                        </Table.Row>
+                      </Table.Header>
+                      <Table.Body>
                         {expenses.length === 0 ? (
-                          <tr>
-                            <td colSpan={6} className="px-5 py-8 text-center text-muted text-sm">
+                          <Table.Row>
+                            <Table.Cell colSpan={6} className="px-5 py-8 text-center text-muted text-sm">
                               {t('costMap.noExpenseData')}
-                            </td>
-                          </tr>
+                            </Table.Cell>
+                          </Table.Row>
                         ) : (
                           expenses.map((e) => (
-                            <tr key={`${e.region}-${e.cloud_type}`} className="border-b border-edge/50 hover:bg-subtle/30 transition-colors">
-                              <td className="px-5 py-3 font-mono text-xs text-secondary">{e.region}</td>
-                              <td className="px-5 py-3 text-secondary">{e.label}</td>
-                              <td className="px-5 py-3">
+                            <Table.Row key={`${e.region}-${e.cloud_type}`} className="border-b border-edge/50 hover:bg-subtle/30 transition-colors">
+                              <Table.Cell className="px-5 py-3 font-mono text-xs text-secondary">{e.region}</Table.Cell>
+                              <Table.Cell className="px-5 py-3 text-secondary">{e.label}</Table.Cell>
+                              <Table.Cell className="px-5 py-3">
                                 <span
                                   className="inline-block rounded px-2 py-0.5 text-xs font-medium"
                                   style={{
@@ -651,12 +649,12 @@ export default function CostMap() {
                                 >
                                   {e.cloud_type.toUpperCase()}
                                 </span>
-                              </td>
-                              <td className="px-5 py-3 text-right text-secondary">{e.resource_count}</td>
-                              <td className="px-5 py-3 text-right font-semibold text-primary">
+                              </Table.Cell>
+                              <Table.Cell className="px-5 py-3 text-right text-secondary">{e.resource_count}</Table.Cell>
+                              <Table.Cell className="px-5 py-3 text-right font-semibold text-primary">
                                 {formatCost(e.total_cost)}
-                              </td>
-                              <td className="px-5 py-3 text-right">
+                              </Table.Cell>
+                              <Table.Cell className="px-5 py-3 text-right">
                                 <div className="flex items-center justify-end gap-2">
                                   <div className="w-16 bg-subtle rounded-full h-1.5">
                                     <div
@@ -666,12 +664,12 @@ export default function CostMap() {
                                   </div>
                                   <span className="text-secondary text-xs w-10 text-right">{e.pct}%</span>
                                 </div>
-                              </td>
-                            </tr>
+                              </Table.Cell>
+                            </Table.Row>
                           ))
                         )}
-                      </tbody>
-                    </table></div>
+                      </Table.Body>
+                    </Table></div>
                   </div>
                 </div>
               </>
@@ -685,29 +683,23 @@ export default function CostMap() {
             {/* Dimension controls */}
             <div className="bg-surface rounded-xl border border-edge p-4 flex flex-wrap gap-4 items-center">
               <div className="flex items-center gap-2">
-                <label className="text-xs text-muted">{t('costMap.groupBy')}</label>
-                <select
+                <SelectField
+                  label={t('costMap.groupBy')}
                   value={primaryDim}
-                  onChange={(e) => { setPrimaryDim(e.target.value); setDrillFilter(null) }}
-                  className="bg-subtle border border-strong rounded px-2 py-1 text-sm text-primary focus:outline-none focus:border-accent"
-                >
-                  {DIM_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{dimLabels[o.value]}</option>
-                  ))}
-                </select>
+                  onValueChange={value => { setPrimaryDim(value); setDrillFilter(null) }}
+                  items={DIM_OPTIONS.map((o) => ({ value: o.value, label: dimLabels[o.value] }))}
+                />
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-xs text-muted">{t('costMap.thenBy')}</label>
-                <select
+                <SelectField
+                  label={t('costMap.thenBy')}
                   value={secondaryDim}
-                  onChange={(e) => setSecondaryDim(e.target.value)}
-                  className="bg-subtle border border-strong rounded px-2 py-1 text-sm text-primary focus:outline-none focus:border-accent"
-                >
-                  <option value="">{t('costMap.none')}</option>
-                  {DIM_OPTIONS.filter((o) => o.value !== primaryDim).map((o) => (
-                    <option key={o.value} value={o.value}>{dimLabels[o.value]}</option>
-                  ))}
-                </select>
+                  onValueChange={setSecondaryDim}
+                  items={[
+                    { value: "", label: t('costMap.none') },
+                    ...DIM_OPTIONS.filter((o) => o.value !== primaryDim).map((o) => ({ value: o.value, label: dimLabels[o.value] })),
+                  ]}
+                />
               </div>
               {/* Drill-down breadcrumb */}
               {drillFilter && (
@@ -754,28 +746,28 @@ export default function CostMap() {
                   <div className="px-5 py-3 border-b border-edge">
                     <p className="text-xs text-muted">{t('costMap.clickToDrill')}</p>
                   </div>
-                  <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-edge text-xs text-muted uppercase tracking-wider">
-                        <th className="px-5 py-3 text-left">{t('common.name')}</th>
-                        <th className="px-5 py-3 text-right">{t('costMap.resources')}</th>
-                        <th className="px-5 py-3 text-right">{t('costMap.cost')}</th>
-                        <th className="px-5 py-3 text-right">{t('costMap.share')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                    <Table.Header variant="compact">
+                      <Table.Row className="border-b border-edge text-xs text-muted uppercase tracking-wider">
+                        <Table.Head className="px-5 py-3 text-left">{t('common.name')}</Table.Head>
+                        <Table.Head className="px-5 py-3 text-right">{t('costMap.resources')}</Table.Head>
+                        <Table.Head className="px-5 py-3 text-right">{t('costMap.cost')}</Table.Head>
+                        <Table.Head className="px-5 py-3 text-right">{t('costMap.share')}</Table.Head>
+                      </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
                       {costMapData.nodes.map((n) => (
-                        <tr
+                        <Table.Row
                           key={n.key}
                           className="border-b border-edge/50 hover:bg-subtle/40 cursor-pointer transition-colors"
                           onClick={() => setDrillFilter({ dim: primaryDim, val: n.key })}
                         >
-                          <td className="px-5 py-3 text-primary">{primaryDim === 'service' ? cloudServiceLabel(n.label) : n.label}</td>
-                          <td className="px-5 py-3 text-right text-secondary">{n.resource_count}</td>
-                          <td className="px-5 py-3 text-right font-semibold text-primary">
+                          <Table.Cell className="px-5 py-3 text-primary">{primaryDim === 'service' ? cloudServiceLabel(n.label) : n.label}</Table.Cell>
+                          <Table.Cell className="px-5 py-3 text-right text-secondary">{n.resource_count}</Table.Cell>
+                          <Table.Cell className="px-5 py-3 text-right font-semibold text-primary">
                             {formatCost(n.cost)}
-                          </td>
-                          <td className="px-5 py-3 text-right">
+                          </Table.Cell>
+                          <Table.Cell className="px-5 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <div className="w-16 bg-subtle rounded-full h-1.5">
                                 <div
@@ -785,11 +777,11 @@ export default function CostMap() {
                               </div>
                               <span className="text-secondary text-xs w-10 text-right">{n.pct}%</span>
                             </div>
-                          </td>
-                        </tr>
+                          </Table.Cell>
+                        </Table.Row>
                       ))}
-                    </tbody>
-                  </table></div>
+                    </Table.Body>
+                  </Table></div>
                 </div>
               </>
             )}</ReportQueryState>
@@ -829,38 +821,38 @@ export default function CostMap() {
                     <p className="text-sm font-semibold text-secondary">{t('costMap.perResourceTypeEconomics')}</p>
                   </div>
                   <div className="overflow-x-auto">
-                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-edge text-xs text-muted uppercase tracking-wider">
-                          <th className="px-5 py-3 text-left">{t('costMap.resourceType')}</th>
-                          <th className="px-5 py-3 text-right">{t('costMap.count')}</th>
-                          <th className="px-5 py-3 text-right">{t('resources.colTotalCost')}</th>
-                          <th className="px-5 py-3 text-right">{t('costMap.avgPerDay')}</th>
-                          <th className="px-5 py-3 text-right">{t('costMap.avgPerResource')}</th>
-                          <th className="px-5 py-3 text-right">{t('costMap.share')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                      <Table.Header variant="compact">
+                        <Table.Row className="border-b border-edge text-xs text-muted uppercase tracking-wider">
+                          <Table.Head className="px-5 py-3 text-left">{t('costMap.resourceType')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-right">{t('costMap.count')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-right">{t('resources.colTotalCost')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-right">{t('costMap.avgPerDay')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-right">{t('costMap.avgPerResource')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-right">{t('costMap.share')}</Table.Head>
+                        </Table.Row>
+                      </Table.Header>
+                      <Table.Body>
                         {unitEcon.data.map((row, i) => (
-                          <tr key={row.resource_type} className="border-b border-edge/50 hover:bg-subtle/30">
-                            <td className="px-5 py-3 flex items-center gap-2">
+                          <Table.Row key={row.resource_type} className="border-b border-edge/50 hover:bg-subtle/30">
+                            <Table.Cell className="px-5 py-3 flex items-center gap-2">
                               <span
                                 className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
                                 style={{ background: TREEMAP_COLORS[i % TREEMAP_COLORS.length] }}
                               />
                               <span className="text-primary">{row.resource_type}</span>
-                            </td>
-                            <td className="px-5 py-3 text-right text-secondary">{row.resource_count}</td>
-                            <td className="px-5 py-3 text-right font-semibold text-primary">
+                            </Table.Cell>
+                            <Table.Cell className="px-5 py-3 text-right text-secondary">{row.resource_count}</Table.Cell>
+                            <Table.Cell className="px-5 py-3 text-right font-semibold text-primary">
                               {formatCost(row.total_cost)}
-                            </td>
-                            <td className="px-5 py-3 text-right text-secondary">
+                            </Table.Cell>
+                            <Table.Cell className="px-5 py-3 text-right text-secondary">
                               {formatCost(row.avg_daily_cost)}
-                            </td>
-                            <td className="px-5 py-3 text-right text-secondary">
+                            </Table.Cell>
+                            <Table.Cell className="px-5 py-3 text-right text-secondary">
                               {formatCost(row.avg_cost_per_resource)}
-                            </td>
-                            <td className="px-5 py-3 text-right">
+                            </Table.Cell>
+                            <Table.Cell className="px-5 py-3 text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <div className="w-16 bg-subtle rounded-full h-1.5">
                                   <div
@@ -873,11 +865,11 @@ export default function CostMap() {
                                 </div>
                                 <span className="text-secondary text-xs w-10 text-right">{row.pct_of_total}%</span>
                               </div>
-                            </td>
-                          </tr>
+                            </Table.Cell>
+                          </Table.Row>
                         ))}
-                      </tbody>
-                    </table></div>
+                      </Table.Body>
+                    </Table></div>
                   </div>
                 </div>
               </>
@@ -929,30 +921,30 @@ export default function CostMap() {
                     <p className="text-sm font-semibold text-secondary">{t('costMap.poolBudgetVsActual')}</p>
                   </div>
                   <div className="overflow-x-auto">
-                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-edge text-xs text-muted uppercase tracking-wider">
-                          <th className="px-5 py-3 text-left">{t('costMap.pool')}</th>
-                          <th className="px-5 py-3 text-left">{t('common.type')}</th>
-                          <th className="px-5 py-3 text-right">{t('costMap.budget')}</th>
-                          <th className="px-5 py-3 text-right">{t('costMap.actualMtd')}</th>
-                          <th className="px-5 py-3 text-right">{t('costMap.variance')}</th>
-                          <th className="px-5 py-3 text-center w-48">{t('costMap.utilisation')}</th>
-                          <th className="px-5 py-3 text-center">{t('common.status')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                      <Table.Header variant="compact">
+                        <Table.Row className="border-b border-edge text-xs text-muted uppercase tracking-wider">
+                          <Table.Head className="px-5 py-3 text-left">{t('costMap.pool')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-left">{t('common.type')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-right">{t('costMap.budget')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-right">{t('costMap.actualMtd')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-right">{t('costMap.variance')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-center w-48">{t('costMap.utilisation')}</Table.Head>
+                          <Table.Head className="px-5 py-3 text-center">{t('common.status')}</Table.Head>
+                        </Table.Row>
+                      </Table.Header>
+                      <Table.Body>
                         {budgetMatrix.data.map((row) => (
-                          <tr key={row.pool_id ?? row.pool_name} className="border-b border-edge/50 hover:bg-subtle/30">
-                            <td className="px-5 py-3 font-medium text-primary">{row.pool_name}</td>
-                            <td className="px-5 py-3 text-muted text-xs capitalize">{row.pool_type}</td>
-                            <td className="px-5 py-3 text-right text-secondary">
+                          <Table.Row key={row.pool_id ?? row.pool_name} className="border-b border-edge/50 hover:bg-subtle/30">
+                            <Table.Cell className="px-5 py-3 font-medium text-primary">{row.pool_name}</Table.Cell>
+                            <Table.Cell className="px-5 py-3 text-muted text-xs capitalize">{row.pool_type}</Table.Cell>
+                            <Table.Cell className="px-5 py-3 text-right text-secondary">
                               {row.budget != null ? formatCost(row.budget) : '—'}
-                            </td>
-                            <td className="px-5 py-3 text-right font-semibold text-primary">
+                            </Table.Cell>
+                            <Table.Cell className="px-5 py-3 text-right font-semibold text-primary">
                               {formatCost(row.actual)}
-                            </td>
-                            <td className={`px-5 py-3 text-right text-sm font-medium ${
+                            </Table.Cell>
+                            <Table.Cell className={`px-5 py-3 text-right text-sm font-medium ${
                               row.variance == null ? 'text-muted'
                               : row.variance >= 0 ? 'text-success'
                               : 'text-danger'
@@ -960,8 +952,8 @@ export default function CostMap() {
                               {row.variance != null
                                 ? `${row.variance >= 0 ? '+' : ''}${formatCost(row.variance)}`
                                 : '—'}
-                            </td>
-                            <td className="px-5 py-3">
+                            </Table.Cell>
+                            <Table.Cell className="px-5 py-3">
                               {row.utilization_pct != null ? (
                                 <div className="flex items-center gap-2">
                                   <div className="flex-1 bg-subtle rounded-full h-2">
@@ -981,14 +973,14 @@ export default function CostMap() {
                               ) : (
                                 <span className="text-secondary text-xs">—</span>
                               )}
-                            </td>
-                            <td className="px-5 py-3 text-center">
+                            </Table.Cell>
+                            <Table.Cell className="px-5 py-3 text-center">
                               <StatusBadge status={row.status} />
-                            </td>
-                          </tr>
+                            </Table.Cell>
+                          </Table.Row>
                         ))}
-                      </tbody>
-                    </table></div>
+                      </Table.Body>
+                    </Table></div>
                   </div>
                 </div>
               </>

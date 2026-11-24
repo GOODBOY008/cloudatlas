@@ -195,13 +195,13 @@ let rows = sqlx::query_as::<_, Foo>(
 
 ### Frontend Design System
 
-CloudAtlas uses a slate-and-teal palette with semantic tokens shared by every page. Light mode is the default for a new browser; saved dark-mode preferences remain in effect. Change tokens centrally instead of adding page-specific light-mode overrides.
+CloudAtlas uses Cloudflare Kumo components and shared semantic theme tokens. Light mode is the default for a new browser; saved dark-mode preferences remain in effect. Change tokens centrally instead of adding page-specific light-mode overrides.
 
 | Layer | Source |
 |---|---|
 | Theme tokens, shared classes, typography, focus styles, reduced motion | `frontend/src/styles.css` |
-| Tailwind token mapping and content scanning | `frontend/tailwind.config.cjs` |
-| Local CSS compilation | `frontend/postcss.config.cjs` |
+| Tailwind token mapping | `frontend/tailwind.config.cjs` |
+| Local CSS compilation and source scanning | `frontend/vite.config.ts` and `frontend/src/styles.css` |
 | Persisted preference | `frontend/src/store/themeStore.ts` (`cloudatlas-theme`) |
 | Theme before React starts | `frontend/index.html` |
 | Workspace navigation, breadcrumbs, theme/language controls | `frontend/src/components/Layout.tsx` |
@@ -214,19 +214,19 @@ Tailwind is compiled during the Vite build, and Inter Variable is bundled locall
 | Page / panel / secondary surface | `bg-canvas`, `bg-surface`, `bg-subtle`, `bg-emphasis` |
 | Main / secondary / muted text | `text-primary`, `text-secondary`, `text-muted` |
 | Borders | `border-edge`, `border-strong` |
-| Primary action | `bg-accent text-on-accent hover:bg-accent-hover` |
+| Primary action | Kumo `Button variant="primary"` |
 | Selected or accented surface | `bg-accent-soft text-accent` |
 | Status message or badge | `bg-danger/10 border-danger/25 text-danger` (also `success`, `warning`, `info`, `violet`) |
-| Solid status button | `bg-danger-solid text-white` (also `success`, `warning`, `info`, `violet`) |
+| Destructive action | Kumo `Button variant="destructive"` or `secondary-destructive` |
 
 Use the shared classes for consistent layout and interaction:
 
 - Page headings: `page-header`, `page-title`, and `page-description`. Keep the root as `space-y-6`; the layout owns outer padding.
 - Panels: `panel`, `panel-heading`, `panel-title`, and `panel-caption`.
-- Actions: `btn-primary`, `btn-secondary`, `icon-button`, and `text-link`. Icon-only buttons need an accessible label.
+- Actions: Kumo `Button` and `LinkButton`. Icon-only buttons need an accessible label.
 - Loading and empty states: `skeleton` and `empty-state`.
-- Tables: wrap wide tables in `<div className="table-scroll" tabIndex={0}>` so touch, trackpad, and keyboard users can scroll within the panel. Avoid hiding overflow on the table container.
-- Forms: use semantic surface, text, and border tokens with visible focus styles. Associate each input with a label.
+- Tables: wrap wide Kumo `Table` components in `<div className="table-scroll" tabIndex={0}>` so touch, trackpad, and keyboard users can scroll within the panel. Avoid hiding overflow on the table container.
+- Forms: use Kumo inputs and the shared `SelectField`. Associate each input with a label.
 - Charts: use CSS variables for neutral strokes and text. SVG/canvas renderers with inline colors should consume `useThemeStore`, following `CostMap.tsx` and `ModelTopology.tsx`.
 - Modal dialogs: reuse `Modal` or `useDialogFocus` for Escape dismissal, focus trapping, and focus restoration. Preserve child autofocus and return focus to the launcher. Non-modal panels such as desktop Copilot allow focus to leave. Mobile navigation becomes a drawer below the `lg` breakpoint (1024 px).
 - Copy: add matching keys in `frontend/src/i18n/locales/en.ts` and `zh.ts`.

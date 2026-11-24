@@ -1,3 +1,9 @@
+import { InputGroup } from '@cloudflare/kumo/components/input-group'
+import { Search } from 'lucide-react'
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input, InputArea } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useId, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -365,30 +371,30 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
             </div>
             {editingParent ? (
               <div className="space-y-2" data-testid="ci-parent-editor">
-                <select
+                <SelectField
                   value={parentDraft}
-                  onChange={(e) => setParentDraft(e.target.value)}
-                  className="w-full bg-subtle border border-strong rounded px-2 py-1.5 text-xs text-primary"
-                >
-                  <option value="">{t('cmdb.noParent')}</option>
-                  {candidates.map((c) => (
-                    <option key={c.id} value={c.id}>{c.display_name || c.name}</option>
-                  ))}
-                </select>
+                  onValueChange={setParentDraft}
+                  className="w-full"
+                  aria-label={t('cmdb.noParent')}
+                  items={[
+                    { value: "", label: t('cmdb.noParent') },
+                    ...candidates.map((c) => ({ value: c.id, label: c.display_name || c.name })),
+                  ]}
+                />
                 <div className="flex gap-2">
-                  <button
+                  <Button
+                    variant="primary"
                     onClick={() => setParentMutation.mutate(parentDraft)}
                     disabled={setParentMutation.isPending}
-                    className="btn-primary flex-1"
+                    className="flex-1"
                   >
                     {t('common.save')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => setEditingParent(false)}
-                    className="btn-secondary"
                   >
                     {t('common.cancel')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -407,18 +413,18 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
             <section>
               <h3 className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2">{t('cmdb.metadata')}</h3>
               <div className="bg-subtle/50 rounded-lg overflow-hidden">
-                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                  <tbody>
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                  <Table.Body>
                     {metaEntries.map(([k, v]) => (
-                      <tr key={k} className="border-b border-strong/50 last:border-0">
-                        <td className="px-3 py-2 text-secondary font-medium w-1/3">{k}</td>
-                        <td className="px-3 py-2 text-primary break-all">
+                      <Table.Row key={k} className="border-b border-strong/50 last:border-0">
+                        <Table.Cell className="px-3 py-2 text-secondary font-medium w-1/3">{k}</Table.Cell>
+                        <Table.Cell className="px-3 py-2 text-primary break-all">
                           {typeof v === 'object' ? JSON.stringify(v) : String(v)}
-                        </td>
-                      </tr>
+                        </Table.Cell>
+                      </Table.Row>
                     ))}
-                  </tbody>
-                </table></div>
+                  </Table.Body>
+                </Table></div>
               </div>
             </section>
           )}
@@ -444,22 +450,22 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                 <div className="space-y-1.5" data-testid="ci-tags-editor">
                   {tagDraft.map((row, idx) => (
                     <div key={idx} className="flex items-center gap-1.5">
-                      <input
+                      <Input
                         type="text"
                         value={row.key}
                         onChange={(e) => updateTagRow(idx, 'key', e.target.value)}
                         placeholder="key"
                         aria-label={t('cmdb.tagKeyAria', { n: idx + 1 })}
-                        className="flex-1 min-w-0 bg-subtle border border-strong rounded px-2 py-1 text-xs text-primary font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+                        className="flex-1 min-w-0 font-mono"
                       />
                       <span className="text-muted text-xs">=</span>
-                      <input
+                      <Input
                         type="text"
                         value={row.value}
                         onChange={(e) => updateTagRow(idx, 'value', e.target.value)}
                         placeholder="value"
                         aria-label={t('cmdb.tagValueAria', { n: idx + 1 })}
-                        className="flex-1 min-w-0 bg-subtle border border-strong rounded px-2 py-1 text-xs text-primary font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+                        className="flex-1 min-w-0 font-mono"
                       />
                       <button
                         type="button"
@@ -485,21 +491,21 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                   <p className="text-xs text-danger" data-testid="ci-tags-error">{tagError}</p>
                 )}
                 <div className="flex gap-2">
-                  <button
+                  <Button
+                    variant="primary"
                     onClick={handleSaveTags}
                     disabled={patchTags.isPending}
                     data-testid="ci-tags-save"
-                    className="btn-primary flex-1"
+                    className="flex-1"
                   >
                     {patchTags.isPending ? t('cmdb.savingTags') : t('common.save')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={cancelTagEdit}
                     disabled={patchTags.isPending}
-                    className="btn-secondary"
                   >
                     {t('common.cancel')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : tagEntries.length === 0 ? (
@@ -538,26 +544,23 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                   if (selectedMapping && assocDstId && !linkMutation.isPending) linkMutation.mutate()
                 }}
               >
-                <label htmlFor={assocTypeControl} className="block text-xs text-secondary">{t('cmdb.associations')}</label>
-                <select
+                <SelectField
+                  label={t('cmdb.associations')}
                   id={assocTypeControl}
                   name="associationType"
                   required
                   value={assocKindId}
-                  onChange={e => {
-                    setAssocKindId(e.target.value)
+                  onValueChange={value => {
+                    setAssocKindId(value)
                     setAssocDstId('')
                     setAssocError('')
                   }}
-                  className="w-full bg-emphasis text-primary text-xs rounded px-2 py-1.5 border border-strong focus:outline-none focus:border-accent"
-                >
-                  <option value="">{t('cmdb.selectAssocType')}</option>
-                  {objAssocs.map(a => (
-                    <option key={a.id} value={a.id}>
-                      {a.kind_name} → {a.dst_type_name}
-                    </option>
-                  ))}
-                </select>
+                  className="w-full"
+                  items={[
+                    { value: "", label: t('cmdb.selectAssocType') },
+                    ...objAssocs.map(a => ({ value: a.id, label: `${a.kind_name} → ${a.dst_type_name}` })),
+                  ]}
+                />
                 {orgId && selectedMapping && (
                   <CiPicker
                     key={selectedMapping.id}
@@ -570,13 +573,14 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
                   />
                 )}
                 {assocError && <p role="alert" className="text-xs text-danger">{assocError}</p>}
-                <button
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={linkMutation.isPending}
-                  className="btn-primary w-full"
+                  className="w-full"
                 >
                   {linkMutation.isPending ? t('cmdb.linking') : t('cmdb.link')}
-                </button>
+                </Button>
               </form>
             )}
 
@@ -584,28 +588,28 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
               <p className="text-muted text-sm">{t('cmdb.noAssociations')}</p>
             ) : (
               <div className="bg-subtle/50 rounded-lg overflow-hidden">
-                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-muted text-xs border-b border-strong">
-                      <th className="px-3 py-2 text-left">{t('cmdb.colCi')}</th>
-                      <th className="px-3 py-2 text-left">{t('cmdb.colType')}</th>
-                      <th className="px-3 py-2 text-left">{t('cmdb.colDir')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                  <Table.Header variant="compact">
+                    <Table.Row className="text-muted text-xs border-b border-strong">
+                      <Table.Head className="px-3 py-2 text-left">{t('cmdb.colCi')}</Table.Head>
+                      <Table.Head className="px-3 py-2 text-left">{t('cmdb.colType')}</Table.Head>
+                      <Table.Head className="px-3 py-2 text-left">{t('cmdb.colDir')}</Table.Head>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
                     {associations.map((a) => (
-                      <tr key={a.id} className="border-b border-strong/50 last:border-0">
-                        <td className="px-3 py-2 text-primary font-medium">{a.name}</td>
-                        <td className="px-3 py-2 text-secondary">{a.ci_type ?? '—'}</td>
-                        <td className="px-3 py-2">
+                      <Table.Row key={a.id} className="border-b border-strong/50 last:border-0">
+                        <Table.Cell className="px-3 py-2 text-primary font-medium">{a.name}</Table.Cell>
+                        <Table.Cell className="px-3 py-2 text-secondary">{a.ci_type ?? '—'}</Table.Cell>
+                        <Table.Cell className="px-3 py-2">
                           <span className={`text-xs ${a.direction === 'outgoing' ? 'text-info' : 'text-violet'}`}>
                             {a.direction}
                           </span>
-                        </td>
-                      </tr>
+                        </Table.Cell>
+                      </Table.Row>
                     ))}
-                  </tbody>
-                </table></div>
+                  </Table.Body>
+                </Table></div>
               </div>
             )}
           </section>
@@ -651,13 +655,14 @@ function CIDrawer({ ci, onClose }: { ci: CI; onClose: () => void }) {
             )}
           </section>
 
-          <button
+          <Button
+            variant="secondary-destructive" size="sm"
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
-            className="w-full py-2 mt-2 bg-danger/10 hover:bg-danger/10 disabled:opacity-40 text-danger text-xs font-medium rounded transition-colors"
+            className="w-full mt-2"
           >
             {deleteMutation.isPending ? t('cmdb.deleting') : t('cmdb.deleteCi')}
-          </button>
+          </Button>
         </div>
       </div>
     </NativeDialog>
@@ -863,27 +868,25 @@ export default function CMDB() {
       <div className="page-header">
         <h1 className="page-title">{t('cmdb.title')}</h1>
         <div className="flex items-center gap-3">
-          <button
+          <Button
             onClick={() => discoveryMutation.mutate()}
             disabled={discoveryMutation.isPending}
             data-testid="cmdb-trigger-discovery"
-            className="px-4 py-2 bg-subtle hover:bg-emphasis disabled:opacity-50 text-primary text-sm font-medium rounded-lg transition-colors"
           >
             {discoveryMutation.isPending ? t('cmdb.discoveryTriggering') : t('cmdb.triggerDiscovery')}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={exportCsv}
             data-testid="cmdb-export-csv"
-            className="px-4 py-2 bg-subtle hover:bg-emphasis text-primary text-sm font-medium rounded-lg transition-colors"
           >
             {t('cmdb.exportCsv')}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={showForm ? 'secondary' : 'primary'}
             onClick={() => setShowForm((v) => !v)}
-            className="btn-primary"
           >
             {showForm ? t('common.cancel') : t('cmdb.newCi')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -902,80 +905,73 @@ export default function CMDB() {
           )}
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('common.name')} *</label>
-              <input
+              <Input label={`${t('common.name')} *`}
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full"
                 placeholder="i-1234567890"
               />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('cmdb.displayName')}</label>
-              <input
+              <Input
+                label={t('cmdb.displayName')}
                 value={form.display_name}
                 onChange={(e) => setForm({ ...form, display_name: e.target.value })}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full"
                 placeholder="Web Server"
               />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('cmdb.ciType')}</label>
-              <select
+              <SelectField
+                label={t('cmdb.ciType')}
                 value={form.ci_type_id}
-                onChange={(e) => setForm({ ...form, ci_type_id: e.target.value, meta: {} })}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-              >
-                <option value="">{t('cmdb.selectType')}</option>
-                {ciTypes.map((t) => (
-                  <option key={t.id} value={t.id}>{t.display_name}</option>
-                ))}
-              </select>
+                onValueChange={value => setForm({ ...form, ci_type_id: value, meta: {} })}
+                className="w-full"
+                items={[
+                  { value: "", label: t('cmdb.selectType') },
+                  ...ciTypes.map((t) => ({ value: t.id, label: t.display_name })),
+                ]}
+              />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('cmdb.provider')}</label>
-              <select
+              <SelectField
+                label={t('cmdb.provider')}
                 value={form.cloud_provider}
-                onChange={(e) => setForm({ ...form, cloud_provider: e.target.value })}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-              >
-                {CLOUD_PROVIDERS.map((p) => (
-                  <option key={p} value={p}>{providerLabel(p)}</option>
-                ))}
-              </select>
+                onValueChange={value => setForm({ ...form, cloud_provider: value })}
+                className="w-full"
+                items={CLOUD_PROVIDERS.map((p) => ({ value: p, label: providerLabel(p) }))}
+              />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('cmdb.region')}</label>
-              <input
+              <Input
+                label={t('cmdb.region')}
                 value={form.cloud_region}
                 onChange={(e) => setForm({ ...form, cloud_region: e.target.value })}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full"
                 placeholder="us-east-1"
               />
             </div>
             {typeAttrs.map((attr) => (
               <div key={attr.id}>
-                <label className="block text-xs text-secondary mb-1">
-                  {attr.display_name || attr.name}
-                  {attr.is_required ? ' *' : ''}
-                </label>
-                <input
+                <Input
+                  label={`${attr.display_name || attr.name}${attr.is_required ? ' *' : ''}`}
                   value={form.meta[attr.name] ?? ''}
                   onChange={(e) => setForm({ ...form, meta: { ...form.meta, [attr.name]: e.target.value } })}
-                  className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full"
                   placeholder={attr.name}
                 />
               </div>
             ))}
             <div className="flex items-end">
-              <button
+              <Button
+                variant="primary"
                 type="submit"
                 disabled={createMutation.isPending}
-                className="btn-primary w-full"
+                className="w-full"
               >
                 {createMutation.isPending ? t('cmdb.creating') : t('cmdb.createCi')}
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -995,33 +991,34 @@ export default function CMDB() {
 
       {/* Filters */}
       <div className="flex gap-3 mb-5 flex-wrap">
-        <input
-          type="text"
-          placeholder={t('cmdb.searchPlaceholderFull')}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-[160px] max-w-xs px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm placeholder-muted focus:outline-none focus:ring-2 focus:ring-accent"
-        />
-        <select
+        <InputGroup className="flex-1 min-w-[160px] max-w-xs">
+          <InputGroup.Addon><Search size={16} aria-hidden="true" /></InputGroup.Addon>
+          <InputGroup.Input
+            aria-label={t('cmdb.searchPlaceholderFull')}
+            type="text"
+            placeholder={t('cmdb.searchPlaceholderFull')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </InputGroup>
+        <SelectField
           value={providerFilter}
-          onChange={(e) => setProviderFilter(e.target.value)}
-          className="px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-        >
-          <option value="">{t('cmdb.allProviders')}</option>
-          {CLOUD_PROVIDERS.map((p) => (
-            <option key={p} value={p}>{providerLabel(p)}</option>
-          ))}
-        </select>
-        <select
+          onValueChange={setProviderFilter}
+          aria-label={t('cmdb.allProviders')}
+          items={[
+            { value: "", label: t('cmdb.allProviders') },
+            ...CLOUD_PROVIDERS.map((p) => ({ value: p, label: providerLabel(p) })),
+          ]}
+        />
+        <SelectField
           value={lifecycleFilter}
-          onChange={(e) => setLifecycleFilter(e.target.value)}
-          className="px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-        >
-          <option value="">{t('cmdb.allStates')}</option>
-          {LIFECYCLE_STATES.map((s) => (
-            <option key={s} value={s}>{t(`lifecycle.${s}`)}</option>
-          ))}
-        </select>
+          onValueChange={setLifecycleFilter}
+          aria-label={t('cmdb.allStates')}
+          items={[
+            { value: "", label: t('cmdb.allStates') },
+            ...LIFECYCLE_STATES.map((s) => ({ value: s, label: t(`lifecycle.${s}`) })),
+          ]}
+        />
       </div>
 
       {/* 变更动态 (T6) */}
@@ -1061,37 +1058,36 @@ export default function CMDB() {
       {selectedIds.size > 0 && (
         <div className="mb-4 p-3 rounded-lg bg-accent-soft/40 border border-accent flex flex-wrap items-center gap-3" data-testid="cmdb-batch-bar">
           <span className="text-sm text-accent">{t('cmdb.selectedCount', { count: selectedIds.size })}</span>
-          <button
+          <Button
+            size="sm"
             onClick={() => setShowBulkModal(true)}
-            className="px-3 py-1.5 bg-subtle hover:bg-emphasis text-primary text-xs rounded-lg transition-colors"
           >
             {t('cmdb.editTags', { count: selectedIds.size })}
-          </button>
-          <select
+          </Button>
+          <SelectField
             value={batchLifecycle}
-            onChange={(e) => {
-              if (e.target.value) {
-                batchUpdateMutation.mutate({ lifecycle_state: e.target.value })
+            onValueChange={value => {
+              if (value) {
+                batchUpdateMutation.mutate({ lifecycle_state: value })
                 setBatchLifecycle('')
               }
             }}
-            className="px-2 py-1.5 bg-subtle border border-strong rounded text-secondary text-xs focus:outline-none"
-          >
-            <option value="">{t('cmdb.batchLifecycle')}</option>
-            {LIFECYCLE_STATES.filter((st) => st !== 'unknown').map((st) => (
-              <option key={st} value={st}>{t(`lifecycle.${st}`, { defaultValue: st })}</option>
-            ))}
-          </select>
-          <button
+            aria-label={t('cmdb.batchLifecycle')}
+            items={[
+              { value: "", label: t('cmdb.batchLifecycle') },
+              ...LIFECYCLE_STATES.filter((st) => st !== 'unknown').map((st) => ({ value: st, label: t(`lifecycle.${st}`, { defaultValue: st }) })),
+            ]}
+          />
+          <Button
+            variant="secondary-destructive" size="sm"
             onClick={() => {
               if (window.confirm(t('cmdb.batchDeleteConfirm', { count: selectedIds.size }))) {
                 batchDeleteMutation.mutate()
               }
             }}
-            className="px-3 py-1.5 bg-danger/10 hover:bg-danger/10 text-danger text-xs rounded-lg transition-colors"
           >
             {t('cmdb.batchDelete')}
-          </button>
+          </Button>
           <button
             onClick={() => setSelectedIds(new Set())}
             className="text-xs text-secondary hover:text-primary ml-auto"
@@ -1108,46 +1104,46 @@ export default function CMDB() {
       )}
 
       <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-edge text-secondary text-left">
-              <th className="px-2 py-3 w-8">
+        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+          <Table.Header variant="compact">
+            <Table.Row className="border-b border-edge text-secondary text-left">
+              <Table.Head className="px-2 py-3 w-8">
                 {selectedIds.size > 0 && (
-                  <button
+                  <Button
+                    variant="primary"
                     onClick={() => setShowBulkModal(true)}
-                    className="btn-primary"
                   >
                     {t('cmdb.editTags', { count: selectedIds.size })}
-                  </button>
+                  </Button>
                 )}
-              </th>
-              <th className="px-4 py-3 font-medium">{t('common.name')}</th>
-              <th className="px-4 py-3 font-medium">{t('cmdb.provider')}</th>
-              <th className="px-4 py-3 font-medium">{t('cmdb.region')}</th>
-              <th className="px-4 py-3 font-medium">{t('cmdb.lifecycle')}</th>
-              <th className="px-4 py-3 font-medium">{t('cmdb.tags')}</th>
-              <th className="px-4 py-3 font-medium">{t('common.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
+              </Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('common.name')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('cmdb.provider')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('cmdb.region')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('cmdb.lifecycle')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('cmdb.tags')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('common.actions')}</Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
             {isLoading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted">{t('common.loading')}</td>
-              </tr>
+              <Table.Row>
+                <Table.Cell colSpan={7} className="px-4 py-8 text-center text-muted">{t('common.loading')}</Table.Cell>
+              </Table.Row>
             ) : filtered.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted">{t('cmdb.noCis')}</td>
-              </tr>
+              <Table.Row>
+                <Table.Cell colSpan={7} className="px-4 py-8 text-center text-muted">{t('cmdb.noCis')}</Table.Cell>
+              </Table.Row>
             ) : (
               filtered.map((ci) => (
-                <tr
+                <Table.Row
                   key={ci.id}
                   className={`border-b border-edge hover:bg-subtle/50 transition-colors cursor-pointer ${
                     selectedIds.has(ci.id) ? 'bg-accent-soft/20' : ''
                   }`}
                   onClick={() => setSelectedCi(ci)}
                 >
-                  <td className="px-2 py-3 w-8" onClick={(e) => e.stopPropagation()}>
+                  <Table.Cell className="px-2 py-3 w-8" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selectedIds.has(ci.id)}
@@ -1161,19 +1157,19 @@ export default function CMDB() {
                       }
                       className="rounded border-strong bg-subtle text-accent"
                     />
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <p className="font-medium text-primary">{ci.display_name || ci.name}</p>
                     <p className="text-xs text-muted">{ci.name}</p>
-                  </td>
-                  <td className="px-4 py-3 text-secondary text-xs font-medium">{providerLabel(ci.cloud_provider)}</td>
-                  <td className="px-4 py-3 text-secondary text-xs">{ci.cloud_region}</td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs font-medium">{providerLabel(ci.cloud_provider)}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">{ci.cloud_region}</Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${LIFECYCLE_COLORS[ci.lifecycle_state] ?? LIFECYCLE_COLORS.unknown}`}>
                       {t(`lifecycle.${ci.lifecycle_state}`, { defaultValue: ci.lifecycle_state })}
                     </span>
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {Object.entries(ci.tags ?? {}).slice(0, 3).map(([k, v]) => (
                         <span key={k} className="px-1.5 py-0.5 bg-emphasis text-secondary text-xs rounded">
@@ -1184,34 +1180,27 @@ export default function CMDB() {
                         <span className="text-xs text-muted">+{Object.keys(ci.tags).length - 3}</span>
                       )}
                     </div>
-                  </td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     {legalSuccessors(ci.lifecycle_state).length > 0 ? (
-                      <select
-                        defaultValue=""
+                      <SelectField
+                        value={null}
                         data-testid={`ci-transition-${ci.id}`}
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            lifecycleMutation.mutate({ ciId: ci.id, state: e.target.value })
-                            e.target.value = ''
-                          }
-                        }}
-                        className="px-2 py-1 bg-subtle border border-strong rounded text-secondary text-xs focus:outline-none"
-                      >
-                        <option value="" disabled>{t('cmdb.transition')}</option>
-                        {legalSuccessors(ci.lifecycle_state).map((s) => (
-                          <option key={s} value={s}>{t(`lifecycle.${s}`, { defaultValue: s })}</option>
-                        ))}
-                      </select>
+                        onValueChange={state => lifecycleMutation.mutate({ ciId: ci.id, state })}
+                        size="sm"
+                        placeholder={t('cmdb.transition')}
+                        aria-label={t('cmdb.transition')}
+                        items={legalSuccessors(ci.lifecycle_state).map((s) => ({ value: s, label: t(`lifecycle.${s}`, { defaultValue: s }) }))}
+                      />
                     ) : (
                       <span className="text-xs text-muted">{t('cmdb.terminalState')}</span>
                     )}
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))
             )}
-          </tbody>
-        </table></div>
+          </Table.Body>
+        </Table></div>
         {total > 0 && (
           <PaginationBar
             page={page}
@@ -1229,17 +1218,18 @@ export default function CMDB() {
         <NativeDialog className="items-center justify-center p-4" label={t('cmdb.editTagsTitle', { count: selectedIds.size })} onClose={() => setShowBulkModal(false)}>
           <div className="dialog-panel p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-primary mb-2">{t('cmdb.editTagsTitle', { count: selectedIds.size })}</h3>
-            <textarea
+            <InputArea
+              aria-label={t('cmdb.editTagsTitle', { count: selectedIds.size })}
               value={bulkTagsText}
               onChange={(e) => setBulkTagsText(e.target.value)}
               rows={6}
               placeholder={'{"env": "prod", "team": "platform"}'}
-              className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full font-mono resize-y"
             />
             {bulkMessage && <p className="text-xs text-warning mt-2">{bulkMessage}</p>}
             <div className="flex justify-end gap-3 mt-4">
-              <button onClick={() => setShowBulkModal(false)} className="px-4 py-2 text-sm text-secondary hover:text-primary">{t('common.cancel')}</button>
-              <button onClick={applyBulkTags} className="btn-primary">{t('cmdb.applyToAll')}</button>
+              <Button variant="ghost" onClick={() => setShowBulkModal(false)}>{t('common.cancel')}</Button>
+              <Button variant="primary" onClick={applyBulkTags}>{t('cmdb.applyToAll')}</Button>
             </div>
           </div>
         </NativeDialog>

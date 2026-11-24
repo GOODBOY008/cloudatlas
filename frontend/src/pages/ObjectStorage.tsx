@@ -1,3 +1,8 @@
+import { InputGroup } from '@cloudflare/kumo/components/input-group'
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
@@ -32,8 +37,11 @@ function StorageWorkspace({ org }: { org: Organization }) {
   const [openedBill, setOpenedBill] = useState<{ account: string; kind: string } | null>(null)
   const service = params.get('service') || ''
   const selected = params.get('bucket')
-  const overview = useQuery({
-    queryKey: ['storage-overview', org.id, period, account, search, ownership, billed, service, page],
+  const scope = ['storage-overview', org.id, period.start_date, period.end_date, account, ownership, billed, service]
+  const overview = useQuery<Envelope<Overview>>({
+    queryKey: [...scope, search, page],
+    // Keep the summary and filter bar in place while refreshing this scope's list.
+    placeholderData: (previous, query) => scope.every((part, i) => query?.queryKey[i] === part) ? previous : undefined,
     queryFn: async ({ signal }) =>
       (
         await api.get<Envelope<Overview>>(`/orgs/${org.id}/object-storage`, {
@@ -81,25 +89,24 @@ function StorageWorkspace({ org }: { org: Organization }) {
       >
         <label>
           {t('storage.account')}
-          <select
+          <SelectField
+            aria-label={t('storage.account')}
             value={account}
-            onChange={(e) => {
-              setAccount(e.target.value)
+            onValueChange={value => {
+              setAccount(value)
               setPage(1)
               setOpenedBill(null)
             }}
-          >
-            <option value="">{t('storage.allAccounts')}</option>
-            {data?.accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+            items={[
+              { value: "", label: t('storage.allAccounts') },
+              ...(data?.accounts.map((a) => ({ value: a.id, label: a.name })) ?? []),
+            ]}
+          />
         </label>
         <label>
           {t('storage.from')}
-          <input
+          <Input
+            aria-label={t('storage.from')}
             type="date"
             required
             max={dates.end_date}
@@ -109,7 +116,8 @@ function StorageWorkspace({ org }: { org: Organization }) {
         </label>
         <label>
           {t('storage.to')}
-          <input
+          <Input
+            aria-label={t('storage.to')}
             type="date"
             required
             min={dates.start_date}
@@ -117,7 +125,7 @@ function StorageWorkspace({ org }: { org: Organization }) {
             onChange={(e) => setDates({ ...dates, end_date: e.target.value })}
           />
         </label>
-        <button className="btn-secondary">{t('storage.applyPeriod')}</button>
+        <Button type="submit">{t('storage.applyPeriod')}</Button>
       </form>
       {overview.isPending ? (
         <p role="status">{t('common.loading')}</p>
@@ -173,12 +181,13 @@ function StorageWorkspace({ org }: { org: Organization }) {
           )}
         </div>
         <div className="storage-filters">
-          <label>
-            {t('storage.find')}
-            <span className="storage-search">
-              <Search size={15} />
-              <input
+          <search className="storage-bucket-search">
+            <InputGroup label={t('storage.find')}>
+              <InputGroup.Addon><Search size={16} aria-hidden="true" /></InputGroup.Addon>
+              <InputGroup.Input
+                aria-label={t('storage.find')}
                 type="search"
+                name="search"
                 value={search}
                 placeholder={t('storage.findPlaceholder')}
                 onChange={(e) => {
@@ -186,25 +195,20 @@ function StorageWorkspace({ org }: { org: Organization }) {
                   setPage(1)
                 }}
               />
-            </span>
-          </label>
-          <label>
-            {t('storage.ownership')}
-            <select
-              value={ownership}
-              onChange={(e) => {
-                setOwnership(e.target.value)
-                setPage(1)
-              }}
-            >
-              <option value="">{t('storage.all')}</option>
-              {['unclaimed', 'owned', 'shared'].map((v) => (
-                <option value={v} key={v}>
-                  {t('storage.alloc.' + v)}
-                </option>
-              ))}
-            </select>
-          </label>
+            </InputGroup>
+          </search>
+          <SelectField
+            label={t('storage.ownership')}
+            value={ownership}
+            onValueChange={value => {
+              setOwnership(value)
+              setPage(1)
+            }}
+            items={[
+              { value: '', label: t('storage.all') },
+              ...['unclaimed', 'owned', 'shared'].map(v => ({ value: v, label: t('storage.alloc.' + v) })),
+            ]}
+          />
           <label className="storage-checkbox">
             <input
               type="checkbox"
@@ -217,57 +221,58 @@ function StorageWorkspace({ org }: { org: Organization }) {
             {t('storage.billedOnly')}
           </label>
         </div>
+        {overview.isPlaceholderData && <p role="status" className="px-5 pt-2 text-sm text-muted">{t('common.loading')}</p>}
         {data && overview.data && (
-          <>
+          <div aria-busy={overview.isPlaceholderData}>
             {data.buckets.length === 0 ? (
               <p className="storage-empty">
                 {t(data.bucket_count ? 'storage.noMatches' : 'storage.noBuckets')}
               </p>
             ) : (
-              <div className="storage-table-wrap" tabIndex={0} aria-label={t('storage.ledger')}>
-                <table>
-                  <thead>
-                    <tr>
+              <div className="storage-table-wrap" role="region" tabIndex={0} aria-label={t('storage.ledger')}>
+                <Table>
+                  <Table.Header variant="compact">
+                    <Table.Row>
                       {['bucket', 'accountRegion', 'serviceSystem', 'team', 'periodCost'].map((k) => (
                         <th scope="col" key={k}>
                           {t('storage.' + k)}
                         </th>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
                     {data.buckets.map((b) => (
-                      <tr key={b.id}>
+                      <Table.Row key={b.id}>
                         <th scope="row">
                           <button className="storage-link" onClick={() => setParam('bucket', b.id)}>
                             {b.name}
                           </button>
                         </th>
-                        <td>
+                        <Table.Cell>
                           {b.account_name}
                           <small>
                             {providerLabel(b.provider)} · {b.region || '—'}
                           </small>
-                        </td>
-                        <td>
+                        </Table.Cell>
+                        <Table.Cell>
                           {[...new Set(b.owners.map((o) => o.service_name))].join(' / ') ||
                             t('storage.alloc.unclaimed')}
                           <small>
                             {[...new Set(b.owners.map((o) => o.system_name).filter(Boolean))].join(' / ')}
                           </small>
-                        </td>
-                        <td>
+                        </Table.Cell>
+                        <Table.Cell>
                           {[...new Set(b.owners.map((o) => o.team_name).filter(Boolean))].join(' / ') || '—'}
-                        </td>
-                        <td>{money(b.cost)}</td>
-                      </tr>
+                        </Table.Cell>
+                        <Table.Cell>{money(b.cost)}</Table.Cell>
+                      </Table.Row>
                     ))}
-                  </tbody>
-                </table>
+                  </Table.Body>
+                </Table>
               </div>
             )}
             <Pager meta={overview.data.meta} change={setPage} />
-          </>
+          </div>
         )}
       </section>
       {data && (

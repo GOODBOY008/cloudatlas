@@ -1,3 +1,5 @@
+import { Input } from '@cloudflare/kumo/components/input'
+import { SelectField } from './SelectField'
 import { useDeferredValue, useId, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -12,8 +14,6 @@ interface CiPickerProps {
   onChange: (id: string) => void
   placeholder: string
 }
-
-const controlClass = 'w-full bg-emphasis text-primary text-xs rounded px-2 py-1.5 border border-strong focus:border-accent'
 
 export function CiPicker({ orgId, ciTypeId, excludeIds, value, onChange, placeholder }: CiPickerProps) {
   const { t } = useTranslation()
@@ -37,8 +37,7 @@ export function CiPicker({ orgId, ciTypeId, excludeIds, value, onChange, placeho
   return (
     <>
       <search className="space-y-1">
-        <label htmlFor={searchId} className="block text-xs text-secondary">{t('cmdb.searchCiPicker')}</label>
-        <input
+        <Input label={t('cmdb.searchCiPicker')}
           id={searchId}
           name="searchCi"
           type="search"
@@ -49,29 +48,26 @@ export function CiPicker({ orgId, ciTypeId, excludeIds, value, onChange, placeho
             setSearch(event.target.value)
             onChange('')
           }}
-          className={controlClass}
+          className="w-full"
         />
       </search>
       <div className="space-y-1">
-        <label htmlFor={selectId} className="block text-xs text-secondary">{t('cmdb.targetCi')}</label>
-        <select
+        <SelectField
+          label={t('cmdb.targetCi')}
           id={selectId}
           name="targetCi"
           required
           value={value}
-          onChange={event => onChange(event.target.value)}
-          className={controlClass}
-        >
-          <option value="">{placeholder}</option>
-          {options.map(ci => {
+          onValueChange={onChange}
+          className="w-full"
+          items={[
+            { value: "", label: placeholder },
+            ...options.map(ci => {
             const name = ci.display_name || ci.name
-            return (
-              <option key={ci.id} value={ci.id}>
-                {name}{ci.cloud_resource_id && ci.cloud_resource_id !== name ? ' · ' + ci.cloud_resource_id : ''}
-              </option>
-            )
-          })}
-        </select>
+            return { value: ci.id, label: `${name}${ci.cloud_resource_id && ci.cloud_resource_id !== name ? ' · ' + ci.cloud_resource_id : ''}` }
+          }),
+          ]}
+        />
         {loading && <p role="status" className="text-xs text-muted">{t('common.loading')}</p>}
         {query.isError && <p role="alert" className="text-xs text-danger">{t('cmdb.ciPickerLoadFailed')}</p>}
         {!loading && !query.isError && options.length === 0 && (

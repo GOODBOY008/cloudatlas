@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input, InputArea } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { Link } from 'react-router-dom'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { fmtMoney } from '../lib/format'
@@ -128,7 +132,7 @@ function ServiceDetailPanel({
             <p className="text-xs text-muted mt-0.5">{service.name}</p>
             <Link to={'/object-storage?service=' + service.id} className="text-sm text-accent">{t('storage.serviceBuckets')}</Link>
           </div>
-          <button onClick={onClose} aria-label={t('common.close')} className="icon-button">✕</button>
+          <Button variant="ghost" shape="square" onClick={onClose} aria-label={t('common.close')}>✕</Button>
         </div>
 
         <div className="p-5 space-y-6">
@@ -186,56 +190,57 @@ function ServiceDetailPanel({
                 onChange={setAddCiId}
                 placeholder={t('services.selectCiPlaceholder')}
               />}
-              <input
+              <Input
                 name="serviceCiRole"
                 aria-label={t('services.roleOptional')}
                 type="text"
                 placeholder={t('services.roleOptional')}
                 value={addRole}
                 onChange={e => setAddRole(e.target.value)}
-                className="w-full bg-emphasis text-primary text-xs rounded px-2 py-1.5 border border-strong focus:outline-none focus:border-accent placeholder-muted"
+                className="w-full"
               />
               {addError && <p role="alert" className="text-xs text-danger">{addError}</p>}
-              <button
+              <Button
+                variant="primary"
                 type="submit"
                 disabled={addCIMutation.isPending}
-                className="btn-primary w-full"
+                className="w-full"
               >
                 {addCIMutation.isPending ? t('services.adding') : t('services.addCi')}
-              </button>
+              </Button>
             </form>}
 
             {cis.length === 0 ? (
               <p className="text-muted text-sm">{t('services.noCisLinked')}</p>
             ) : (
               <div className="bg-subtle/50 rounded-lg overflow-hidden">
-                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-muted text-xs border-b border-strong">
-                      <th className="px-3 py-2 text-left">{t('services.colCi')}</th>
-                      <th className="px-3 py-2 text-left">{t('common.type')}</th>
-                      <th className="px-3 py-2 text-left">{t('services.colRole')}</th>
-                      {writable && <th className="px-3 py-2" />}
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                  <Table.Header variant="compact">
+                    <Table.Row className="text-muted text-xs border-b border-strong">
+                      <Table.Head className="px-3 py-2 text-left">{t('services.colCi')}</Table.Head>
+                      <Table.Head className="px-3 py-2 text-left">{t('common.type')}</Table.Head>
+                      <Table.Head className="px-3 py-2 text-left">{t('services.colRole')}</Table.Head>
+                      {writable && <Table.Head className="px-3 py-2" />}
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
                     {cis.map(c => (
-                      <tr key={c.id} className="border-b border-strong/50 last:border-0">
-                        <td className="px-3 py-2 text-primary font-medium">{c.ci_display_name || c.ci_name}</td>
-                        <td className="px-3 py-2 text-secondary text-xs">{c.ci_type_name ?? '—'}</td>
-                        <td className="px-3 py-2 text-muted text-xs">{c.role ?? '—'}</td>
-                        {writable && <td className="px-3 py-2 text-right">
-                          <button
+                      <Table.Row key={c.id} className="border-b border-strong/50 last:border-0">
+                        <Table.Cell className="px-3 py-2 text-primary font-medium">{c.ci_display_name || c.ci_name}</Table.Cell>
+                        <Table.Cell className="px-3 py-2 text-secondary text-xs">{c.ci_type_name ?? '—'}</Table.Cell>
+                        <Table.Cell className="px-3 py-2 text-muted text-xs">{c.role ?? '—'}</Table.Cell>
+                        {writable && <Table.Cell className="px-3 py-2 text-right">
+                          <Button
+                            size="sm" variant="secondary-destructive"
                             onClick={() => removeCIMutation.mutate(c.ci_id)}
-                            className="text-danger/70 hover:text-danger text-xs"
                           >
                             {t('services.remove')}
-                          </button>
-                        </td>}
-                      </tr>
+                          </Button>
+                        </Table.Cell>}
+                      </Table.Row>
                     ))}
-                  </tbody>
-                </table></div>
+                  </Table.Body>
+                </Table></div>
               </div>
             )}
           </section>
@@ -321,12 +326,12 @@ function LegacyServices() {
           <h1 className="page-title">{t('services.title')}</h1>
           <p className="text-sm text-secondary mt-1">{t('services.subtitle')}</p>
         </div>
-        <button
+        <Button
+          variant={showForm ? 'secondary' : 'primary'}
           onClick={() => setShowForm(v => !v)}
-          className="btn-primary"
         >
           {showForm ? t('common.cancel') : t('services.newService')}
-        </button>
+        </Button>
       </div>
 
       {/* Create form */}
@@ -335,72 +340,71 @@ function LegacyServices() {
           <h2 className="text-sm font-semibold text-primary">{t('services.createService')}</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('services.nameRequired')}</label>
-              <input
+              <Input
+                label={t('services.nameRequired')}
                 type="text"
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                className="w-full bg-emphasis text-primary text-sm rounded px-3 py-2 border border-strong focus:outline-none focus:border-accent"
+                className="w-full"
                 placeholder={t('services.namePlaceholder')}
               />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('services.displayName')}</label>
-              <input
+              <Input
+                label={t('services.displayName')}
                 type="text"
                 value={form.display_name}
                 onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))}
-                className="w-full bg-emphasis text-primary text-sm rounded px-3 py-2 border border-strong focus:outline-none focus:border-accent"
+                className="w-full"
                 placeholder={t('services.displayNamePlaceholder')}
               />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('services.ownerTeam')}</label>
-              <input
+              <Input
+                label={t('services.ownerTeam')}
                 type="text"
                 value={form.owner_team}
                 onChange={e => setForm(f => ({ ...f, owner_team: e.target.value }))}
-                className="w-full bg-emphasis text-primary text-sm rounded px-3 py-2 border border-strong focus:outline-none focus:border-accent"
+                className="w-full"
                 placeholder={t('services.ownerTeamPlaceholder')}
               />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('services.tier')}</label>
-              <select
+              <SelectField
+                label={t('services.tier')}
                 value={form.tier}
-                onChange={e => setForm(f => ({ ...f, tier: e.target.value }))}
-                className="w-full bg-emphasis text-primary text-sm rounded px-3 py-2 border border-strong focus:outline-none focus:border-accent"
-              >
-                {TIERS.map(tier => <option key={tier} value={tier}>{t(`status.${tier}`, { defaultValue: tier.charAt(0).toUpperCase() + tier.slice(1) })}</option>)}
-              </select>
+                onValueChange={value => setForm(f => ({ ...f, tier: value }))}
+                className="w-full"
+                items={TIERS.map(tier => ({ value: tier, label: t(`status.${tier}`, { defaultValue: tier.charAt(0).toUpperCase() + tier.slice(1) }) }))}
+              />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
-            <textarea
+            <InputArea
+              label={t('common.description')}
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               rows={2}
-              className="w-full bg-emphasis text-primary text-sm rounded px-3 py-2 border border-strong focus:outline-none focus:border-accent resize-none"
+              className="w-full resize-y"
               placeholder={t('services.descriptionPlaceholder')}
             />
           </div>
           {formError && <p className="text-sm text-danger">{formError}</p>}
           <div className="flex justify-end gap-3">
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={() => { setShowForm(false); setFormError('') }}
-              className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
             >
               {t('common.cancel')}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
               type="submit"
               disabled={createMutation.isPending}
-              className="btn-primary"
             >
               {createMutation.isPending ? t('services.creating') : t('services.createService')}
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -416,41 +420,42 @@ function LegacyServices() {
         </div>
       ) : (
         <div className="bg-subtle rounded-xl overflow-hidden">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full">
-            <thead>
-              <tr className="text-secondary text-xs font-medium uppercase tracking-wider border-b border-strong">
-                <th className="px-4 py-3 text-left">{t('services.colService')}</th>
-                <th className="px-4 py-3 text-left">{t('services.tier')}</th>
-                <th className="px-4 py-3 text-left">{t('services.colOwner')}</th>
-                <th className="px-4 py-3 text-left">{t('services.colState')}</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+            <Table.Header variant="compact">
+              <Table.Row className="text-secondary text-xs font-medium uppercase tracking-wider border-b border-strong">
+                <Table.Head className="px-4 py-3 text-left">{t('services.colService')}</Table.Head>
+                <Table.Head className="px-4 py-3 text-left">{t('services.tier')}</Table.Head>
+                <Table.Head className="px-4 py-3 text-left">{t('services.colOwner')}</Table.Head>
+                <Table.Head className="px-4 py-3 text-left">{t('services.colState')}</Table.Head>
+                <Table.Head className="px-4 py-3" />
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {services.map(svc => (
-                <tr
+                <Table.Row
                   key={svc.id}
                   className="border-b border-strong/50 last:border-0 hover:bg-emphasis/30 cursor-pointer transition-colors"
                   onClick={() => setSelected(svc)}
                 >
-                  <td className="px-4 py-3">
+                  <Table.Cell className="px-4 py-3">
                     <p className="text-primary font-medium">{svc.display_name || svc.name}</p>
                     <p className="text-muted text-xs">{svc.name}</p>
                     {svc.description && (
                       <p className="text-secondary text-xs mt-0.5 truncate max-w-xs">{svc.description}</p>
                     )}
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     {svc.tier ? (
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TIER_COLORS[svc.tier] ?? 'bg-emphasis text-secondary'}`}>
                         {t(`status.${svc.tier}`, { defaultValue: svc.tier })}
                       </span>
                     ) : <span className="text-muted">—</span>}
-                  </td>
-                  <td className="px-4 py-3 text-secondary text-sm">{svc.owner_team ?? '—'}</td>
-                  <td className="px-4 py-3 text-secondary text-sm">{svc.lifecycle_state ? t(`lifecycle.${svc.lifecycle_state}`, { defaultValue: svc.lifecycle_state }) : '—'}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-sm">{svc.owner_team ?? '—'}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-sm">{svc.lifecycle_state ? t(`lifecycle.${svc.lifecycle_state}`, { defaultValue: svc.lifecycle_state }) : '—'}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-right">
+                    <Button
+                      size="sm" variant="ghost"
                       onClick={e => {
                         e.stopPropagation()
                         setEditSvc(svc)
@@ -461,21 +466,21 @@ function LegacyServices() {
                           tier: svc.tier ?? 'medium',
                         })
                       }}
-                      className="mr-3 text-secondary hover:text-primary text-xs transition-colors"
+                      className="mr-3"
                     >
                       {t('common.edit')}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      size="sm" variant="secondary-destructive"
                       onClick={e => { e.stopPropagation(); deleteMutation.mutate(svc.id) }}
-                      className="text-danger/60 hover:text-danger text-xs transition-colors"
                     >
                       {t('common.delete')}
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
 
@@ -496,58 +501,54 @@ function LegacyServices() {
             className="space-y-4"
           >
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('services.displayName')}</label>
-              <input
+              <Input label={t('services.displayName')}
                 autoFocus
                 value={editForm.display_name}
                 onChange={e => setEditForm(f => ({ ...f, display_name: e.target.value }))}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full"
               />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
-              <textarea
+              <InputArea
+                label={t('common.description')}
                 value={editForm.description}
                 onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
                 rows={3}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+                className="w-full resize-y"
               />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('services.ownerTeam')}</label>
-              <input
+              <Input
+                label={t('services.ownerTeam')}
                 value={editForm.owner_team}
                 onChange={e => setEditForm(f => ({ ...f, owner_team: e.target.value }))}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full"
               />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('services.tier')}</label>
-              <select
+              <SelectField
+                label={t('services.tier')}
                 value={editForm.tier}
-                onChange={e => setEditForm(f => ({ ...f, tier: e.target.value }))}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-              >
-                {TIERS.map(tier => (
-                  <option key={tier} value={tier}>{t(`status.${tier}`, { defaultValue: tier.charAt(0).toUpperCase() + tier.slice(1) })}</option>
-                ))}
-              </select>
+                onValueChange={value => setEditForm(f => ({ ...f, tier: value }))}
+                className="w-full"
+                items={TIERS.map(tier => ({ value: tier, label: t(`status.${tier}`, { defaultValue: tier.charAt(0).toUpperCase() + tier.slice(1) }) }))}
+              />
             </div>
             <div className="flex justify-end gap-2 pt-1">
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={() => setEditSvc(null)}
-                className="px-3 py-1.5 text-sm text-secondary hover:text-primary transition-colors"
               >
                 {t('common.cancel')}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
                 type="submit"
                 disabled={updateMutation.isPending}
-                className="btn-primary"
               >
                 {updateMutation.isPending ? t('services.saving') : t('common.save')}
-              </button>
+              </Button>
             </div>
           </form>
         </Modal>

@@ -1,3 +1,4 @@
+import { Table } from '@cloudflare/kumo/components/table'
 import { chartColors, chartAxis, chartGrid, chartTooltipStyle } from '../lib/chartTheme'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -292,32 +293,32 @@ export default function CMDBStats() {
         {stats.recent_audit.length === 0 ? (
           <p className="text-muted text-sm text-center py-8">{t('cmdbStats.noRecentActivity')}</p>
         ) : (
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-muted border-b border-edge">
-                <th className="text-left px-4 py-2">{t('cmdb.colCi')}</th>
-                <th className="text-left px-4 py-2">{t('cmdb.colType')}</th>
-                <th className="text-left px-4 py-2">{t('cmdbStats.colOperation')}</th>
-                <th className="text-left px-4 py-2">{t('cmdbStats.colUser')}</th>
-                <th className="text-right px-4 py-2">{t('cmdbStats.colTime')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+            <Table.Header variant="compact">
+              <Table.Row className="text-xs text-muted border-b border-edge">
+                <Table.Head className="text-left px-4 py-2">{t('cmdb.colCi')}</Table.Head>
+                <Table.Head className="text-left px-4 py-2">{t('cmdb.colType')}</Table.Head>
+                <Table.Head className="text-left px-4 py-2">{t('cmdbStats.colOperation')}</Table.Head>
+                <Table.Head className="text-left px-4 py-2">{t('cmdbStats.colUser')}</Table.Head>
+                <Table.Head className="text-right px-4 py-2">{t('cmdbStats.colTime')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {stats.recent_audit.map(entry => (
-                <tr key={entry.id} className="border-b border-edge/40 hover:bg-subtle/30">
-                  <td className="px-4 py-2 text-primary">{entry.ci_name}</td>
-                  <td className="px-4 py-2 text-secondary text-xs">{entry.ci_type_name ?? '—'}</td>
-                  <td className="px-4 py-2">
+                <Table.Row key={entry.id} className="border-b border-edge/40 hover:bg-subtle/30">
+                  <Table.Cell className="px-4 py-2 text-primary">{entry.ci_name}</Table.Cell>
+                  <Table.Cell className="px-4 py-2 text-secondary text-xs">{entry.ci_type_name ?? '—'}</Table.Cell>
+                  <Table.Cell className="px-4 py-2">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${OPERATION_COLORS[entry.operation] ?? 'bg-emphasis text-secondary'}`}>
                       {t(`cmdbAuditLog.op.${entry.operation}`, { defaultValue: entry.operation })}
                     </span>
-                  </td>
-                  <td className="px-4 py-2 text-secondary text-xs">{entry.user_email ?? '—'}</td>
-                  <td className="px-4 py-2 text-right text-muted text-xs">{formatDate(entry.created_at)}</td>
-                </tr>
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-2 text-secondary text-xs">{entry.user_email ?? '—'}</Table.Cell>
+                  <Table.Cell className="px-4 py-2 text-right text-muted text-xs">{formatDate(entry.created_at)}</Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         )}
 
       {/* Trends (T14) */}

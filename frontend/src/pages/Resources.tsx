@@ -1,3 +1,10 @@
+import { Badge, type BadgeVariant } from '@cloudflare/kumo/components/badge'
+import { InputGroup } from '@cloudflare/kumo/components/input-group'
+import { Search } from 'lucide-react'
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { cloudServiceLabel, recommendationTitle, storageRecommendationType } from '../lib/objectStorage'
 import { chartColors, chartAxis, chartGrid } from '../lib/chartTheme'
 import { useMoneyFormatter } from '../lib/format'
@@ -49,19 +56,15 @@ interface RawExpense {
 
 const RESOURCE_TYPES = ['instance', 'volume', 'snapshot', 'bucket', 'rds_instance', 'load_balancer', 'ip_address', 'k8s_pod', 'k8s_cluster']
 
-function typeColor(t: string) {
-  const m: Record<string, string> = {
-    instance: 'bg-info/10 text-info',
-    volume: 'bg-violet/10 text-violet',
-    snapshot: 'bg-warning/10 text-warning',
-    bucket: 'bg-success/10 text-success',
-    rds_instance: 'bg-danger/10 text-danger',
-    load_balancer: 'bg-accent-soft text-accent',
-    ip_address: 'bg-emphasis text-secondary',
-    k8s_pod: 'bg-info/10 text-info',
-    k8s_cluster: 'bg-accent/10 text-accent',
-  }
-  return m[t] ?? 'bg-emphasis text-secondary'
+const typeBadges: Record<string, BadgeVariant> = {
+  instance: 'info',
+  volume: 'purple',
+  snapshot: 'warning',
+  bucket: 'success',
+  rds_instance: 'error',
+  load_balancer: 'info',
+  k8s_pod: 'info',
+  k8s_cluster: 'info',
 }
 
 function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource; orgId: string; onClose: () => void }) {
@@ -179,7 +182,7 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
             <h2 id={titleId} className="text-lg font-semibold text-primary truncate">{r.name || r.cloud_resource_id}</h2>
             <p className="text-xs text-secondary">{r.cloud_resource_id}</p>
           </div>
-          <button type="button" aria-label={t('common.close')} onClick={onClose} className="icon-button">✕</button>
+          <Button variant="ghost" shape="square" type="button" aria-label={t('common.close')} onClick={onClose}>✕</Button>
         </div>
 
         <div className="p-6 space-y-6">
@@ -293,22 +296,22 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
                 <div className="space-y-1.5" data-testid="resource-tags-editor">
                   {tagDraft.map((row, idx) => (
                     <div key={idx} className="flex items-center gap-1.5">
-                      <input
+                      <Input
                         type="text"
                         value={row.key}
                         onChange={(e) => updateTagRow(idx, 'key', e.target.value)}
                         placeholder="key"
                         aria-label={t('cmdb.tagKeyAria', { n: idx + 1 })}
-                        className="flex-1 min-w-0 bg-subtle border border-strong rounded px-2 py-1 text-xs text-primary font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+                        className="flex-1 min-w-0 font-mono"
                       />
                       <span className="text-muted text-xs">=</span>
-                      <input
+                      <Input
                         type="text"
                         value={row.value}
                         onChange={(e) => updateTagRow(idx, 'value', e.target.value)}
                         placeholder="value"
                         aria-label={t('cmdb.tagValueAria', { n: idx + 1 })}
-                        className="flex-1 min-w-0 bg-subtle border border-strong rounded px-2 py-1 text-xs text-primary font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+                        className="flex-1 min-w-0 font-mono"
                       />
                       <button
                         type="button"
@@ -334,21 +337,21 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
                   <p className="text-xs text-danger" data-testid="resource-tags-error">{tagError}</p>
                 )}
                 <div className="flex gap-2">
-                  <button
+                  <Button
+                    variant="primary"
                     onClick={handleSaveTags}
                     disabled={patchTags.isPending}
                     data-testid="resource-tags-save"
-                    className="btn-primary flex-1"
+                    className="flex-1"
                   >
                     {patchTags.isPending ? t('cmdb.savingTags') : t('common.save')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={cancelTagEdit}
                     disabled={patchTags.isPending}
-                    className="btn-secondary"
                   >
                     {t('common.cancel')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -393,59 +396,64 @@ export default function Resources() {
 
   return (
     <div className="space-y-6">
-      <div className="page-header">
-        <div>
+      <div className="page-header flex-col sm:flex-row sm:flex-nowrap">
+        <div className="min-w-0 flex-1">
           <h1 className="page-title">{t('resources.title')}</h1>
           <p className="text-sm text-secondary mt-1">{t('resources.subtitle')}</p>
         </div>
-        <div className="text-sm text-secondary">{t('resources.totalCount', { count: total.toLocaleString() })}</div>
+        <div className="shrink-0 whitespace-nowrap text-sm tabular-nums text-secondary sm:min-w-24 sm:text-right">{t('resources.totalCount', { count: total.toLocaleString() })}</div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder={t('resources.searchPlaceholder')}
-          className="flex-1 min-w-[200px] bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent"
-        />
-        <select
+        <InputGroup className="flex-1 min-w-[200px]">
+          <InputGroup.Addon><Search size={16} aria-hidden="true" /></InputGroup.Addon>
+          <InputGroup.Input
+            aria-label={t('resources.searchPlaceholder')}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('resources.searchPlaceholder')}
+          />
+        </InputGroup>
+        <SelectField
           value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value)}
-          className="bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong"
-        >
-          <option value="">{t('resources.allTypes')}</option>
-          {RESOURCE_TYPES.map((rt) => <option key={rt} value={rt}>{t(`resType.${rt}`, { defaultValue: rt })}</option>)}
-        </select>
-        <select
+          onValueChange={setTypeFilter}
+          aria-label={t('resources.allTypes')}
+          items={[
+            { value: "", label: t('resources.allTypes') },
+            ...RESOURCE_TYPES.map((rt) => ({ value: rt, label: t(`resType.${rt}`, { defaultValue: rt }) })),
+          ]}
+        />
+        <SelectField
           value={activeFilter === null ? '' : String(activeFilter)}
-          onChange={e => setActiveFilter(e.target.value === '' ? null : e.target.value === 'true')}
-          className="bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong"
-        >
-          <option value="">{t('resources.allStatus')}</option>
-          <option value="true">{t('common.active')}</option>
-          <option value="false">{t('common.inactive')}</option>
-        </select>
+          onValueChange={value => setActiveFilter(value === '' ? null : value === 'true')}
+          aria-label={t('resources.allStatus')}
+          items={[
+            { value: "", label: t('resources.allStatus') },
+            { value: "true", label: t('common.active') },
+            { value: "false", label: t('common.inactive') },
+          ]}
+        />
       </div>
 
       {/* Table */}
       <div className="bg-surface rounded-xl border border-strong overflow-hidden">
         <div className="overflow-x-auto">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-strong">
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+            <Table.Header variant="compact">
+              <Table.Row className="border-b border-strong">
                 {[t('resources.colNameId'), t('common.type'), t('cmdb.provider'), t('cmdb.region'), t('resources.colService'), t('resources.colPool'), t('resources.colTotalCost'), t('resources.colLastMonth'), t('common.status')].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">{h}</th>
+                  <Table.Head key={h} className="px-4 py-3 text-left">{h}</Table.Head>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-edge">
+              </Table.Row>
+            </Table.Header>
+            <Table.Body className="divide-y divide-edge">
               {isLoading ? (
-                <tr><td colSpan={9} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
+                <Table.Row><Table.Cell colSpan={9} className="px-4 py-10 text-center text-muted">{t('common.loading')}</Table.Cell></Table.Row>
               ) : resources.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-10 text-center text-muted">{t('resources.noResources')}</td></tr>
+                <Table.Row><Table.Cell colSpan={9} className="px-4 py-10 text-center text-muted">{t('resources.noResources')}</Table.Cell></Table.Row>
               ) : resources.map(r => (
-                <tr
+                <Table.Row
                   key={r.id}
                   className="hover:bg-subtle cursor-pointer transition-colors"
                   onClick={(event) => {
@@ -453,30 +461,30 @@ export default function Resources() {
                     setSelected(r)
                   }}
                 >
-                  <td className="px-4 py-3">
+                  <Table.Cell className="px-4 py-3">
                     <button type="button" className="text-link text-left font-medium" aria-haspopup="dialog">
                       {r.name || r.cloud_resource_id.slice(0, 24)}
                     </button>
                     <div className="text-xs text-muted font-mono">{r.cloud_resource_id.slice(0, 32)}</div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${typeColor(r.resource_type)}`}>{t(`resType.${r.resource_type}`, { defaultValue: r.resource_type })}</span>
-                  </td>
-                  <td className="px-4 py-3"><ProviderBadge provider={r.provider} /></td>
-                  <td className="px-4 py-3 text-secondary">{r.cloud_region}</td>
-                  <td className="px-4 py-3 text-secondary">{cloudServiceLabel(r.service_name)}</td>
-                  <td className="px-4 py-3 text-secondary text-xs">{r.pool_id ? r.pool_id.slice(0, 8) + '…' : t('resources.unassigned')}</td>
-                  <td className="px-4 py-3 font-semibold text-accent">{fmt(r.total_cost ?? 0)}</td>
-                  <td className="px-4 py-3 text-secondary">{fmt(r.last_month_cost ?? 0)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${r.active ? 'bg-success/10 text-success' : 'bg-emphasis text-secondary'}`}>
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
+                    <Badge variant={typeBadges[r.resource_type] ?? 'secondary'}>{t(`resType.${r.resource_type}`, { defaultValue: r.resource_type })}</Badge>
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3"><ProviderBadge provider={r.provider} /></Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary">{r.cloud_region}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary">{cloudServiceLabel(r.service_name)}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary text-xs">{r.pool_id ? r.pool_id.slice(0, 8) + '…' : t('resources.unassigned')}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 font-semibold text-accent">{fmt(r.total_cost ?? 0)}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-secondary">{fmt(r.last_month_cost ?? 0)}</Table.Cell>
+                  <Table.Cell className="px-4 py-3">
+                    <Badge variant={r.active ? 'success' : 'secondary'}>
                       {r.active ? t('common.active') : t('common.inactive')}
-                    </span>
-                  </td>
-                </tr>
+                    </Badge>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
 
         {/* Pagination */}

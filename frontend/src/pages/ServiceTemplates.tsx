@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -184,12 +188,12 @@ export default function ServiceTemplates() {
             {t('serviceTemplates.subtitle')}
           </p>
         </div>
-        <button
+        <Button
+          variant="primary"
           onClick={() => { resetTemplateForm(); setShowTemplateForm(true) }}
-          className="btn-primary"
         >
           {t('serviceTemplates.newTemplate')}
-        </button>
+        </Button>
       </div>
 
       {/* Template Form */}
@@ -201,55 +205,54 @@ export default function ServiceTemplates() {
           {tError && <p className="text-danger text-sm">{tError}</p>}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.nameKeyLabel')}</label>
-              <input
+              <Input
+                label={t('serviceTemplates.nameKeyLabel')}
                 value={tName}
                 onChange={e => setTName(e.target.value)}
                 disabled={!!editTemplateId}
                 placeholder={t('serviceTemplates.nameKeyPlaceholder')}
-                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary disabled:opacity-50"
+                className="w-full"
               />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.displayName')}</label>
-              <input
+              <Input
+                label={t('serviceTemplates.displayName')}
                 value={tDisplay}
                 onChange={e => setTDisplay(e.target.value)}
                 placeholder={t('serviceTemplates.displayNamePlaceholder')}
-                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                className="w-full"
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.serviceType')}</label>
-              <select
+              <SelectField
+                label={t('serviceTemplates.serviceType')}
                 value={tType}
-                onChange={e => setTType(e.target.value)}
-                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
-              >
-                <option value="">{t('serviceTemplates.none')}</option>
-                {SERVICE_TYPES.map(st => (
-                  <option key={st} value={st}>{t(`serviceTemplates.types.${st}`)}</option>
-                ))}
-              </select>
+                onValueChange={setTType}
+                className="w-full"
+                items={[
+                  { value: "", label: t('serviceTemplates.none') },
+                  ...SERVICE_TYPES.map(st => ({ value: st, label: t(`serviceTemplates.types.${st}`) })),
+                ]}
+              />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.tagsLabel')}</label>
-              <input
+              <Input
+                label={t('serviceTemplates.tagsLabel')}
                 value={tTags}
                 onChange={e => setTTags(e.target.value)}
                 placeholder={t('serviceTemplates.tagsPlaceholder')}
-                className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                className="w-full"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
-            <input
+            <Input
+              label={t('common.description')}
               value={tDesc}
               onChange={e => setTDesc(e.target.value)}
-              className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+              className="w-full"
             />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
@@ -257,16 +260,16 @@ export default function ServiceTemplates() {
             <span className="text-sm text-secondary">{t('common.active')}</span>
           </label>
           <div className="flex gap-3">
-            <button
+            <Button
+              variant="primary"
               disabled={tBusy || !tName.trim() || !tDisplay.trim()}
               onClick={() => editTemplateId ? updateTemplate.mutate() : createTemplate.mutate()}
-              className="btn-primary"
             >
               {tBusy ? t('serviceTemplates.saving') : editTemplateId ? t('serviceTemplates.update') : t('serviceTemplates.create')}
-            </button>
-            <button onClick={resetTemplateForm} className="btn-secondary">
+            </Button>
+            <Button onClick={resetTemplateForm}>
               {t('common.cancel')}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -334,12 +337,12 @@ export default function ServiceTemplates() {
           <div className="flex-1 bg-surface rounded-xl border border-edge p-4 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-primary">{selectedTemplate.display_name}</h2>
-              <button
+              <Button
+                variant="primary"
                 onClick={() => setShowItemForm(true)}
-                className="btn-primary"
               >
                 {t('serviceTemplates.addCiType')}
-              </button>
+              </Button>
             </div>
             {selectedTemplate.description && (
               <p className="text-sm text-secondary">{selectedTemplate.description}</p>
@@ -359,46 +362,45 @@ export default function ServiceTemplates() {
                 {iError && <p className="text-danger text-xs">{iError}</p>}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.ciType')}</label>
-                    <select
+                    <SelectField
+                      label={t('serviceTemplates.ciType')}
                       value={iCITypeId}
-                      onChange={e => setICITypeId(e.target.value)}
-                      className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
-                    >
-                      <option value="">{t('serviceTemplates.select')}</option>
-                      {ciTypes.map(ct => (
-                        <option key={ct.id} value={ct.id}>{ct.display_name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.role')}</label>
-                    <input
-                      value={iRole}
-                      onChange={e => setIRole(e.target.value)}
-                      placeholder={t('serviceTemplates.rolePlaceholder')}
-                      className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                      onValueChange={setICITypeId}
+                      className="w-full"
+                      items={[
+                        { value: "", label: t('serviceTemplates.select') },
+                        ...ciTypes.map(ct => ({ value: ct.id, label: ct.display_name })),
+                      ]}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.minCount')}</label>
-                    <input
+                    <Input
+                      label={t('serviceTemplates.role')}
+                      value={iRole}
+                      onChange={e => setIRole(e.target.value)}
+                      placeholder={t('serviceTemplates.rolePlaceholder')}
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      label={t('serviceTemplates.minCount')}
                       type="number"
                       value={iMin}
                       min={0}
                       onChange={e => setIMin(Number(e.target.value))}
-                      className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                      className="w-full"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-secondary mb-1">{t('serviceTemplates.maxCountLabel')}</label>
-                    <input
+                    <Input
+                      label={t('serviceTemplates.maxCountLabel')}
                       type="number"
                       value={iMax}
                       min={1}
                       onChange={e => setIMax(e.target.value)}
                       placeholder={t('serviceTemplates.unlimited')}
-                      className="w-full bg-surface border border-strong rounded-lg px-3 py-2 text-sm text-primary"
+                      className="w-full"
                     />
                   </div>
                 </div>
@@ -407,56 +409,55 @@ export default function ServiceTemplates() {
                   <span className="text-sm text-secondary">{t('serviceTemplates.required')}</span>
                 </label>
                 <div className="flex gap-2">
-                  <button
+                  <Button
+                    variant="primary"
                     disabled={addItem.isPending || !iCITypeId}
                     onClick={() => addItem.mutate()}
-                    className="btn-primary"
                   >
                     {addItem.isPending ? t('serviceTemplates.adding') : t('serviceTemplates.add')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => { setShowItemForm(false); setIError('') }}
-                    className="btn-secondary"
-                  >{t('common.cancel')}</button>
+                  >{t('common.cancel')}</Button>
                 </div>
               </div>
             )}
 
             {/* Items Table */}
             {templateDetail?.items && templateDetail.items.length > 0 ? (
-              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-muted border-b border-edge">
-                    <th className="text-left py-2">{t('serviceTemplates.ciType')}</th>
-                    <th className="text-left py-2">{t('serviceTemplates.role')}</th>
-                    <th className="text-center py-2">{t('serviceTemplates.required')}</th>
-                    <th className="text-center py-2">{t('serviceTemplates.count')}</th>
-                    <th className="text-right py-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                <Table.Header variant="compact">
+                  <Table.Row className="text-xs text-muted border-b border-edge">
+                    <Table.Head className="text-left py-2">{t('serviceTemplates.ciType')}</Table.Head>
+                    <Table.Head className="text-left py-2">{t('serviceTemplates.role')}</Table.Head>
+                    <Table.Head className="text-center py-2">{t('serviceTemplates.required')}</Table.Head>
+                    <Table.Head className="text-center py-2">{t('serviceTemplates.count')}</Table.Head>
+                    <Table.Head className="text-right py-2"></Table.Head>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
                   {templateDetail.items.map(item => (
-                    <tr key={item.id} className="border-b border-edge/40">
-                      <td className="py-2 text-primary">{item.ci_type_display}</td>
-                      <td className="py-2 text-secondary text-xs">{item.role ?? '—'}</td>
-                      <td className="py-2 text-center">
+                    <Table.Row key={item.id} className="border-b border-edge/40">
+                      <Table.Cell className="py-2 text-primary">{item.ci_type_display}</Table.Cell>
+                      <Table.Cell className="py-2 text-secondary text-xs">{item.role ?? '—'}</Table.Cell>
+                      <Table.Cell className="py-2 text-center">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${item.is_required ? 'bg-danger/10 text-danger' : 'bg-emphasis text-secondary'}`}>
                           {item.is_required ? t('serviceTemplates.requiredBadge') : t('serviceTemplates.optionalBadge')}
                         </span>
-                      </td>
-                      <td className="py-2 text-center text-secondary text-xs">
+                      </Table.Cell>
+                      <Table.Cell className="py-2 text-center text-secondary text-xs">
                         {item.min_count}–{item.max_count ?? '∞'}
-                      </td>
-                      <td className="py-2 text-right">
-                        <button
+                      </Table.Cell>
+                      <Table.Cell className="py-2 text-right">
+                        <Button
+                          size="sm" variant="secondary-destructive"
                           onClick={() => { if (confirm(t('serviceTemplates.confirmRemoveItem'))) removeItem.mutate(item.id) }}
-                          className="text-xs text-danger hover:text-danger"
-                        >{t('serviceTemplates.remove')}</button>
-                      </td>
-                    </tr>
+                        >{t('serviceTemplates.remove')}</Button>
+                      </Table.Cell>
+                    </Table.Row>
                   ))}
-                </tbody>
-              </table></div>
+                </Table.Body>
+              </Table></div>
             ) : (
               <div className="text-center py-10 text-muted text-sm">
                 {t('serviceTemplates.noItems')}

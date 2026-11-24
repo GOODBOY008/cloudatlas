@@ -1,3 +1,4 @@
+import { chooseOption } from '../test/chooseOption'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import React from 'react'
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
@@ -59,7 +60,7 @@ describe('Resources page pagination (StrictMode)', () => {
     )
 
     // 45 rows at 20/page → 3 pages; navigate to page 2.
-    fireEvent.change(await screen.findByTestId('per-page-select'), { target: { value: '20' } })
+    await chooseOption(await screen.findByTestId('per-page-select'), '20')
     await waitFor(() => expect(screen.getByText(/Showing 1–20 of 45/)).toBeInTheDocument())
     fireEvent.click(screen.getByTestId('page-2'))
     await waitFor(() => expect(screen.getByText(/Showing 21–40 of 45/)).toBeInTheDocument())

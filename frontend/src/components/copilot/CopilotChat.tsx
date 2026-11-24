@@ -1,3 +1,5 @@
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -296,24 +298,22 @@ export default function CopilotChat({ presentation = 'floating', titleSlot, righ
         </h2>
         <div className="flex items-center gap-0.5">
           {view === 'chat' && (
-            <button
+            <Button variant="ghost" shape="square"
               onClick={() => setView('history')}
               title={t('copilot.history')}
               aria-label={t('copilot.history')}
-              className="icon-button"
             >
               <MessageSquare size={15} />
-            </button>
+            </Button>
           )}
           {view === 'chat' && (
-            <button
+            <Button variant="ghost" shape="square"
               onClick={startNewChat}
               title={t('copilot.newChat')}
               aria-label={t('copilot.newChat')}
-              className="icon-button"
             >
               <Plus size={15} />
-            </button>
+            </Button>
           )}
           {rightSlot}
         </div>
@@ -349,14 +349,14 @@ export default function CopilotChat({ presentation = 'floating', titleSlot, righ
                     {c.message_count} · {new Date(c.updated_at).toLocaleDateString()}
                   </span>
                 </button>
-                <button
+                <Button variant="ghost" shape="square"
                   type="button"
                   onClick={() => deleteConversation(c.id)}
+                  aria-label={t('copilot.deleteConversation')}
                   title={t('copilot.deleteConversation')}
-                  className="icon-button hover:text-danger"
                 >
                   <Trash2 size={14} />
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -455,13 +455,13 @@ export default function CopilotChat({ presentation = 'floating', titleSlot, righ
 
           {/* Input */}
           <form onSubmit={handleSubmit} className="copilot-composer">
-            <input
+            <Input
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={t('copilot.placeholder')}
               aria-label={t('copilot.placeholder')}
-              className="min-w-0 flex-1 bg-surface border border-strong rounded-md px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent placeholder:text-muted"
+              className="min-w-0 flex-1"
             />
             {busy ? (
               <button

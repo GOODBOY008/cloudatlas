@@ -1,7 +1,8 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { SelectField } from '../components/shared/SelectField'
 import { chartPalette, chartAxis, chartTooltipStyle } from '../lib/chartTheme'
 import { fmtMoney } from '../lib/format'
-import { useState, type ReactNode } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
@@ -53,23 +54,6 @@ async function loadClusters(orgId: string, signal: AbortSignal) {
     clusters.push(...data.data)
   }
   return clusters.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
-}
-
-function ScopeSelect({ name, label, value, onChange, disabled, children }: {
-  name: string; label: string; value: string; onChange: (value: string) => void; disabled: boolean; children: ReactNode
-}) {
-  return (
-    <div className="grid min-w-0 gap-1">
-      <label htmlFor={name} className="text-xs font-medium text-secondary">{label}</label>
-      <div className="relative">
-        <select id={name} name={name} className="rightsizing-select" value={value}
-          disabled={disabled} onChange={event => onChange(event.target.value)}>
-          {children}
-        </select>
-        <ChevronDown aria-hidden="true" size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-secondary" />
-      </div>
-    </div>
-  )
 }
 
 function formatEstimate(amount: number) {
@@ -146,20 +130,34 @@ function WorkspaceRightsizing({ orgId }: { orgId: string }) {
 
       <div className="filter-bar">
         <div className="grid w-full min-w-0 max-w-full gap-3 sm:w-[28rem] sm:grid-cols-2">
-          <ScopeSelect name="rightsizing-cluster" label={t('k8sRightsizing.colCluster')}
-            value={cluster?.id ?? ''} disabled={!clusterList.length} onChange={id => {
+          <SelectField
+            id="rightsizing-cluster"
+            name="rightsizing-cluster"
+            label={t('k8sRightsizing.colCluster')}
+            value={cluster?.id ?? ''}
+            disabled={!clusterList.length}
+            onValueChange={id => {
               setClusterChoice(id)
               const next = clusterList.find(c => c.id === id)
               if (next && !next.namespaces.includes(namespace)) setNamespaceChoice('')
-            }}>
-            <option value="">{t('k8sRightsizing.allClusters')}</option>
-            {clusterList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </ScopeSelect>
-          <ScopeSelect name="rightsizing-namespace" label={t('k8sRightsizing.colNamespace')}
-            value={namespace} onChange={setNamespaceChoice} disabled={!namespaces.length}>
-            <option value="">{t('k8sRightsizing.allNamespaces')}</option>
-            {namespaces.map(ns => <option key={ns} value={ns}>{ns}</option>)}
-          </ScopeSelect>
+            }}
+            items={[
+              { value: "", label: t('k8sRightsizing.allClusters') },
+              ...clusterList.map(c => ({ value: c.id, label: c.name })),
+            ]}
+          />
+          <SelectField
+            id="rightsizing-namespace"
+            name="rightsizing-namespace"
+            label={t('k8sRightsizing.colNamespace')}
+            value={namespace}
+            onValueChange={setNamespaceChoice}
+            disabled={!namespaces.length}
+            items={[
+              { value: "", label: t('k8sRightsizing.allNamespaces') },
+              ...namespaces.map(ns => ({ value: ns, label: ns })),
+            ]}
+          />
         </div>
         {(cluster || namespace) && (
           <button type="button" className="text-link min-h-9 self-end" onClick={() => {
@@ -252,26 +250,26 @@ function WorkspaceRightsizing({ orgId }: { orgId: string }) {
       {view === 'table' && (
         <ReportQueryState query={workloads.query}>
           <div className="bg-surface rounded-xl border border-strong overflow-x-auto">
-            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-              <thead><tr className="border-b border-strong">
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+              <Table.Header variant="compact"><Table.Row className="border-b border-strong">
                 {['Workload', 'Namespace', 'Cluster', 'CPU Req→Rec', 'Mem Req→Rec', 'Savings/mo', 'P95 CPU', 'P95 Mem'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">{t(K8S_COLUMN_KEYS[h])}</th>
+                  <Table.Head key={h} className="px-4 py-3 text-left whitespace-nowrap">{t(K8S_COLUMN_KEYS[h])}</Table.Head>
                 ))}
-              </tr></thead>
-              <tbody className="divide-y divide-edge">
+              </Table.Row></Table.Header>
+              <Table.Body className="divide-y divide-edge">
                 {workloads.query.isPlaceholderData ? (
-                  <tr><td colSpan={8} className="px-4 py-10 text-center text-muted">{t('common.loading')}</td></tr>
+                  <Table.Row><Table.Cell colSpan={8} className="px-4 py-10 text-center text-muted">{t('common.loading')}</Table.Cell></Table.Row>
                 ) : workloads.rows.length === 0 ? (
-                  <tr><td colSpan={8} className="px-4 py-10 text-center text-muted">{t('k8sRightsizing.noWorkloads')}</td></tr>
+                  <Table.Row><Table.Cell colSpan={8} className="px-4 py-10 text-center text-muted">{t('k8sRightsizing.noWorkloads')}</Table.Cell></Table.Row>
                 ) : workloads.rows.map(w => (
-                  <tr key={w.id} className="hover:bg-subtle">
-                    <td className="px-4 py-3">
+                  <Table.Row key={w.id} className="hover:bg-subtle">
+                    <Table.Cell className="px-4 py-3">
                       <p className="font-medium text-primary">{w.workload_name}</p>
                       <p className="text-xs text-muted">{w.workload_type}</p>
-                    </td>
-                    <td className="px-4 py-3 text-secondary font-mono text-xs">{w.namespace}</td>
-                    <td className="px-4 py-3 text-secondary text-xs">{w.cluster_name}</td>
-                    <td className="px-4 py-3">
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary font-mono text-xs">{w.namespace}</Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary text-xs">{w.cluster_name}</Table.Cell>
+                    <Table.Cell className="px-4 py-3">
                       {w.cpu_request_m != null && w.cpu_rec_m != null ? (
                         <span className="text-xs">
                           <span className="text-secondary">{w.cpu_request_m}m</span>
@@ -280,8 +278,8 @@ function WorkspaceRightsizing({ orgId }: { orgId: string }) {
                           <span className="text-xs text-success ml-1">{pct(w.cpu_rec_m, w.cpu_request_m)}</span>
                         </span>
                       ) : '—'}
-                    </td>
-                    <td className="px-4 py-3">
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3">
                       {w.mem_request_mi != null && w.mem_rec_mi != null ? (
                         <span className="text-xs">
                           <span className="text-secondary">{w.mem_request_mi}Mi</span>
@@ -290,18 +288,18 @@ function WorkspaceRightsizing({ orgId }: { orgId: string }) {
                           <span className="text-xs text-success ml-1">{pct(w.mem_rec_mi, w.mem_request_mi)}</span>
                         </span>
                       ) : '—'}
-                    </td>
-                    <td className="px-4 py-3">
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3">
                       {w.potential_savings != null && w.potential_savings > 0
                         ? <span className="text-success font-semibold">{formatEstimate(w.potential_savings)}</span>
                         : <span className="text-muted">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-secondary text-xs">{w.cpu_p95_m != null ? `${Math.round(w.cpu_p95_m)}m` : '—'}</td>
-                    <td className="px-4 py-3 text-secondary text-xs">{w.mem_p95_mi != null ? `${Math.round(w.mem_p95_mi)}Mi` : '—'}</td>
-                  </tr>
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary text-xs">{w.cpu_p95_m != null ? `${Math.round(w.cpu_p95_m)}m` : '—'}</Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary text-xs">{w.mem_p95_mi != null ? `${Math.round(w.mem_p95_mi)}Mi` : '—'}</Table.Cell>
+                  </Table.Row>
                 ))}
-              </tbody>
-            </table></div>
+              </Table.Body>
+            </Table></div>
             {!workloads.query.isPlaceholderData && workloads.total > 0 && (
               <PaginationBar page={workloads.page} perPage={workloads.perPage} total={workloads.total}
                 totalPages={workloads.totalPages} onPageChange={workloads.setPage} onPerPageChange={workloads.setPerPage} />

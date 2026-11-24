@@ -1,3 +1,4 @@
+import { chooseOption } from '../helpers/chooseOption';
 /**
  * Async jobs e2e (spec 2026-09-09-async-jobs-design §7):
  * - billing import: 202 → live progress card → completed result box
@@ -25,7 +26,7 @@ test.describe('async jobs', () => {
     const accountId = created.data.id;
 
     await page.goto('/billing-import');
-    await page.getByRole('combobox').selectOption(accountId);
+    await chooseOption(page.locator('form').getByRole('combobox'), new RegExp(`e2e-billing-${RUN}`));
     await page.getByRole('button', { name: 'Run Import' }).click();
 
     // The progress card (or, on a fast machine, the terminal box) must appear.
@@ -178,7 +179,7 @@ test.describe('async jobs', () => {
     // The bell shows the 账单导入完成 notification (stored title is zh by
     // the write-time convention).
     await page.goto('/dashboard');
-    await page.getByTitle('Notifications').click();
+    await page.getByRole('button', { name: 'Notifications', exact: true }).click();
     await expect(page.getByText('账单导入完成').first()).toBeVisible({ timeout: 15_000 });
 
     // teardown

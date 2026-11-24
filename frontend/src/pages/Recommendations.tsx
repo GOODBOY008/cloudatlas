@@ -1,3 +1,5 @@
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
 import { recommendationTitle, recommendationDescription } from '../lib/objectStorage'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { fmtMoney, useMoneyFormatter, useOrgCurrency } from '../lib/format'
@@ -122,7 +124,7 @@ function RecModal({
             </div>
             <h3 className="text-lg font-semibold text-primary">{recommendationTitle(rec)}</h3>
           </div>
-          <button onClick={onClose} aria-label={t('common.close')} className="icon-button ml-4">✕</button>
+          <Button variant="ghost" shape="square" onClick={onClose} aria-label={t('common.close')} className="ml-4">✕</Button>
         </div>
 
         <div className="p-5 space-y-4">
@@ -175,46 +177,46 @@ function RecModal({
         <div className="flex gap-3 p-5 border-t border-edge">
           {rec.status === 'active' && (
             <>
-              <button
+              <Button
+                variant="primary"
                 onClick={onApply}
                 disabled={isBusy}
-                className="btn-primary"
               >
                 {t('recommendations.apply')}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={onDismiss}
                 disabled={isBusy}
-                className="btn-secondary"
               >
                 {t('recommendations.dismiss')}
-              </button>
+              </Button>
             </>
           )}
           {rec.status === 'applied' && (
-            <button
+            <Button
+              variant="primary"
               onClick={onVerify}
               disabled={isBusy}
-              className="px-4 py-2 text-sm bg-success-solid hover:bg-success-solid/90 disabled:opacity-60 text-white rounded-lg transition-colors"
             >
               {t('recommendations.verifySavings')}
-            </button>
+            </Button>
           )}
           {rec.status === 'dismissed' && (
-            <button
+            <Button
+              variant="primary"
               onClick={onReactivate}
               disabled={isBusy}
-              className="px-4 py-2 text-sm bg-success-solid hover:bg-success-solid/90 disabled:opacity-60 text-white rounded-lg transition-colors"
             >
               {t('recommendations.restore')}
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            variant="primary"
             onClick={onClose}
-            className="btn-primary ml-auto"
+            className="ml-auto"
           >
             {t('recommendations.close')}
-          </button>
+          </Button>
         </div>
       </div>
     </NativeDialog>
@@ -341,39 +343,40 @@ export default function Recommendations() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex rounded-lg border border-edge bg-surface p-1">
+          <div className="segmented-control">
             <button
               onClick={() => navigate('/recommendations')}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${!isArchiveView ? 'bg-accent text-on-accent' : 'text-secondary hover:text-primary'}`}
+              className="segment" aria-pressed={!isArchiveView}
             >
               {t('common.active')}
             </button>
             <button
               onClick={() => navigate('/recommendations/archived')}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${isArchiveView ? 'bg-accent text-on-accent' : 'text-secondary hover:text-primary'}`}
+              className="segment" aria-pressed={isArchiveView}
             >
               {t('recommendations.tabArchived')}
             </button>
           </div>
           {!isArchiveView && (
-            <button
+            <Button
+              variant="primary"
               onClick={() => runMutation.mutate()}
               disabled={runMutation.isPending}
-              className="btn-primary"
             >
               {runMutation.isPending ? t('recommendations.running') : t('recommendations.runEngine')}
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative max-w-md w-full">
-          <input
+          <Input
+            aria-label={isArchiveView ? t('recommendations.searchArchived') : t('recommendations.searchActive')}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             placeholder={isArchiveView ? t('recommendations.searchArchived') : t('recommendations.searchActive')}
-            className="w-full rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent"
+            className="w-full"
           />
         </div>
         {isArchiveView && (
@@ -528,22 +531,21 @@ export default function Recommendations() {
                     </p>
                   </div>
                   {rec.status === 'active' && (
-                    <button
+                    <Button
                       onClick={(e) => { e.stopPropagation(); dismissMutation.mutate(rec.id) }}
                       disabled={mutationBusy}
-                      className="btn-secondary"
                     >
                       {t('recommendations.dismiss')}
-                    </button>
+                    </Button>
                   )}
                   {rec.status === 'dismissed' && (
-                    <button
+                    <Button
+                      variant="primary" size="sm"
                       onClick={(e) => { e.stopPropagation(); reactivateMutation.mutate(rec.id) }}
                       disabled={mutationBusy}
-                      className="px-3 py-1 text-xs bg-success-solid hover:bg-success-solid/90 text-white rounded-lg transition-colors disabled:opacity-50"
                     >
                       {t('recommendations.restore')}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>

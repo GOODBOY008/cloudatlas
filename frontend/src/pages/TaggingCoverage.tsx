@@ -1,3 +1,4 @@
+import { Button } from '@cloudflare/kumo/components/button'
 import { MetricCard } from '../components/shared/MetricCard'
 import { useMoneyFormatter } from '../lib/format'
 import { useMemo } from 'react'
@@ -99,13 +100,12 @@ export default function TaggingCoverage() {
             {t('taggingCoverage.subtitle')}
           </p>
         </div>
-        <button
+        <Button
           onClick={() => refetch()}
           disabled={isFetching}
-          className="btn-secondary"
         >
           {isFetching ? t('taggingCoverage.refreshing') : t('taggingCoverage.refresh')}
-        </button>
+        </Button>
       </div>
 
       {isError && (

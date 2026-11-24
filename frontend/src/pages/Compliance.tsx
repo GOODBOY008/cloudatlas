@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -308,9 +312,6 @@ export default function Compliance() {
     return val ? `${field} ${opLabel} ${val}` : `${field} ${opLabel}`
   }
 
-  const inputCls =
-    'w-full bg-emphasis text-primary text-sm rounded px-3 py-2 border border-strong focus:outline-none focus:border-accent'
-
   // T12: latest compliance run (manual or scheduled).
   const { data: lastRun } = useQuery<{ status?: string; started_at?: string; result?: { trigger?: string } } | null>({
     queryKey: ['compliance-last-run', orgId],
@@ -343,19 +344,19 @@ export default function Compliance() {
           )}
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="primary"
             onClick={() => runCheckMutation.mutate()}
             disabled={runCheckMutation.isPending}
-            className="px-4 py-2 bg-success-solid hover:bg-success-solid/90 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
           >
             {runCheckMutation.isPending ? t('compliance.checking') : t('compliance.runCheck')}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={showForm ? 'secondary' : 'primary'}
             onClick={showForm ? closeForm : openCreate}
-            className="btn-primary"
           >
             {showForm ? t('common.cancel') : t('compliance.newPolicy')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -389,33 +390,32 @@ export default function Compliance() {
           </h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('compliance.nameField')}</label>
-              <input
+              <Input
+                label={t('compliance.nameField')}
                 type="text"
                 value={policyName}
                 onChange={e => setPolicyName(e.target.value)}
-                className={inputCls}
+                className="w-full"
                 placeholder="required-tags"
               />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('compliance.severity')}</label>
-              <select
+              <SelectField
+                label={t('compliance.severity')}
                 value={severity}
-                onChange={e => setSeverity(e.target.value)}
-                className={inputCls}
-              >
-                {SEVERITIES.map(s => <option key={s} value={s}>{t(`status.${s}`, { defaultValue: s.charAt(0).toUpperCase() + s.slice(1) })}</option>)}
-              </select>
+                onValueChange={setSeverity}
+                className="w-full"
+                items={SEVERITIES.map(s => ({ value: s, label: t(`status.${s}`, { defaultValue: s.charAt(0).toUpperCase() + s.slice(1) }) }))}
+              />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
-            <input
+            <Input
+              label={t('common.description')}
               type="text"
               value={policyDesc}
               onChange={e => setPolicyDesc(e.target.value)}
-              className={inputCls}
+              className="w-full"
               placeholder={t('compliance.policyDescPlaceholder')}
             />
           </div>
@@ -423,38 +423,45 @@ export default function Compliance() {
           {/* Target scope (T16) */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('compliance.targetScope')}</label>
-              <select
+              <SelectField
+                label={t('compliance.targetScope')}
                 value={targetType}
-                onChange={(e) => setTargetType(e.target.value as 'all' | 'ci_type' | 'dynamic_group')}
-                className={inputCls}
+                onValueChange={value => setTargetType(value as 'all' | 'ci_type' | 'dynamic_group')}
+                className="w-full"
                 data-testid="compliance-target-type"
-              >
-                <option value="all">{t('compliance.targetAll')}</option>
-                <option value="ci_type">{t('compliance.targetTypeOption')}</option>
-                <option value="dynamic_group">{t('compliance.targetGroup')}</option>
-              </select>
+                items={[
+                  { value: "all", label: t('compliance.targetAll') },
+                  { value: "ci_type", label: t('compliance.targetTypeOption') },
+                  { value: "dynamic_group", label: t('compliance.targetGroup') },
+                ]}
+              />
             </div>
             {targetType === 'ci_type' && (
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('compliance.targetTypeOption')}</label>
-                <select value={targetTypeId} onChange={(e) => setTargetTypeId(e.target.value)} className={inputCls}>
-                  <option value="">{t('compliance.selectType')}</option>
-                  {ciTypes.map((ct) => (
-                    <option key={ct.id} value={ct.id}>{ct.display_name}</option>
-                  ))}
-                </select>
+                <SelectField
+                  label={t('compliance.targetTypeOption')}
+                  value={targetTypeId}
+                  onValueChange={setTargetTypeId}
+                  className="w-full"
+                  items={[
+                    { value: "", label: t('compliance.selectType') },
+                    ...ciTypes.map((ct) => ({ value: ct.id, label: ct.display_name })),
+                  ]}
+                />
               </div>
             )}
             {targetType === 'dynamic_group' && (
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('compliance.targetGroup')}</label>
-                <select value={targetGroupId} onChange={(e) => setTargetGroupId(e.target.value)} className={inputCls}>
-                  <option value="">{t('compliance.selectGroup')}</option>
-                  {dynGroups.map((g) => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
+                <SelectField
+                  label={t('compliance.targetGroup')}
+                  value={targetGroupId}
+                  onValueChange={setTargetGroupId}
+                  className="w-full"
+                  items={[
+                    { value: "", label: t('compliance.selectGroup') },
+                    ...dynGroups.map((g) => ({ value: g.id, label: g.name })),
+                  ]}
+                />
               </div>
             )}
           </div>
@@ -468,33 +475,28 @@ export default function Compliance() {
             <div className="space-y-2">
               {rules.map((r, i) => (
                 <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                  <input
+                  <Input
                     type="text"
                     aria-label={t('compliance.ruleFieldAria', { index: i + 1 })}
                     value={r.field}
                     onChange={e => updateRule(i, { field: e.target.value })}
-                    className={`${inputCls} col-span-4`}
+                    className="w-full col-span-4"
                     placeholder={t('compliance.ruleFieldPlaceholder')}
                   />
-                  <select
+                  <SelectField
                     aria-label={t('compliance.ruleOpAria', { index: i + 1 })}
                     value={r.op}
-                    onChange={e => updateRule(i, { op: e.target.value })}
-                    className={`${inputCls} col-span-3`}
-                  >
-                    {RULE_OPS.map(o => (
-                      <option key={o.value} value={o.value}>
-                        {t(`compliance.op.${o.value}`, { defaultValue: o.value })}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={value => updateRule(i, { op: value })}
+                    className="w-full col-span-3"
+                    items={RULE_OPS.map(o => ({ value: o.value, label: t(`compliance.op.${o.value}`, { defaultValue: o.value }) }))}
+                  />
                   {opNeedsValue(r.op) ? (
-                    <input
+                    <Input
                       type="text"
                       aria-label={t('compliance.ruleValueAria', { index: i + 1 })}
                       value={r.value}
                       onChange={e => updateRule(i, { value: e.target.value })}
-                      className={`${inputCls} col-span-4`}
+                      className="w-full col-span-4"
                       placeholder={r.op === 'in' ? t('compliance.ruleValueInHint') : t('compliance.ruleValue')}
                     />
                   ) : (
@@ -523,16 +525,16 @@ export default function Compliance() {
 
           {formError && <p className="text-sm text-danger">{formError}</p>}
           <div className="flex justify-end gap-3">
-            <button type="button" onClick={closeForm} className="px-4 py-2 text-sm text-secondary hover:text-primary">{t('common.cancel')}</button>
-            <button
+            <Button variant="ghost" type="button" onClick={closeForm}>{t('common.cancel')}</Button>
+            <Button
+              variant="primary"
               type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}
-              className="btn-primary"
             >
               {editingId
                 ? (updateMutation.isPending ? t('compliance.saving') : t('compliance.save'))
                 : (createMutation.isPending ? t('compliance.creating') : t('compliance.createPolicy'))}
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -562,24 +564,24 @@ export default function Compliance() {
           </div>
         ) : (
           <div className="bg-subtle rounded-xl overflow-hidden">
-            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full">
-              <thead>
-                <tr className="text-secondary text-xs font-medium uppercase tracking-wider border-b border-strong">
-                  <th className="px-4 py-3 text-left">{t('compliance.policy')}</th>
-                  <th className="px-4 py-3 text-left">{t('compliance.rules')}</th>
-                  <th className="px-4 py-3 text-left">{t('compliance.severity')}</th>
-                  <th className="px-4 py-3 text-left">{t('common.status')}</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+              <Table.Header variant="compact">
+                <Table.Row className="text-secondary text-xs font-medium uppercase tracking-wider border-b border-strong">
+                  <Table.Head className="px-4 py-3 text-left">{t('compliance.policy')}</Table.Head>
+                  <Table.Head className="px-4 py-3 text-left">{t('compliance.rules')}</Table.Head>
+                  <Table.Head className="px-4 py-3 text-left">{t('compliance.severity')}</Table.Head>
+                  <Table.Head className="px-4 py-3 text-left">{t('common.status')}</Table.Head>
+                  <Table.Head className="px-4 py-3" />
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
                 {policies.map(p => (
-                  <tr key={p.id} className="border-b border-strong/50 last:border-0">
-                    <td className="px-4 py-3">
+                  <Table.Row key={p.id} className="border-b border-strong/50 last:border-0">
+                    <Table.Cell className="px-4 py-3">
                       <p className="text-primary font-medium">{p.name}</p>
                       {p.description && <p className="text-muted text-xs mt-0.5">{p.description}</p>}
-                    </td>
-                    <td className="px-4 py-3">
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3">
                       {Array.isArray(p.rules) && p.rules.length > 0 ? (
                         <span className="text-secondary text-sm">
                           {t('compliance.rulesCount', { count: p.rules.length })}
@@ -587,43 +589,45 @@ export default function Compliance() {
                       ) : (
                         <span className="text-muted text-sm">{t('compliance.noRules')}</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3">
                       {p.severity ? (
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${SEVERITY_COLORS[p.severity] ?? 'bg-emphasis text-secondary'}`}>
                           {t(`status.${p.severity}`, { defaultValue: p.severity })}
                         </span>
                       ) : <span className="text-muted">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3">
                       <span className={`text-sm ${p.is_active ? 'text-success' : 'text-muted'}`}>
                         {p.is_active ? t('common.active') : t('common.inactive')}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <button
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-right whitespace-nowrap">
+                      <Button
+                        size="sm" variant="ghost"
                         onClick={() => openEdit(p)}
-                        className="text-accent/80 hover:text-accent text-xs mr-3 transition-colors"
+                        className="mr-3"
                       >
                         {t('common.edit')}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm" variant="ghost"
                         onClick={() => toggleMutation.mutate(p)}
-                        className="text-secondary hover:text-primary text-xs mr-3 transition-colors"
+                        className="mr-3"
                       >
                         {p.is_active ? t('compliance.deactivate') : t('compliance.activate')}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm" variant="secondary-destructive"
                         onClick={() => deleteMutation.mutate(p.id)}
-                        className="text-danger/60 hover:text-danger text-xs transition-colors"
                       >
                         {t('common.delete')}
-                      </button>
-                    </td>
-                  </tr>
+                      </Button>
+                    </Table.Cell>
+                  </Table.Row>
                 ))}
-              </tbody>
-            </table></div>
+              </Table.Body>
+            </Table></div>
           </div>
         )
       )}
@@ -640,27 +644,27 @@ export default function Compliance() {
           </div>
         ) : (
           <div className="bg-subtle rounded-xl overflow-hidden">
-            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full">
-              <thead>
-                <tr className="text-secondary text-xs font-medium uppercase tracking-wider border-b border-strong">
-                  <th className="px-4 py-3 text-left">{t('compliance.ci')}</th>
-                  <th className="px-4 py-3 text-left">{t('compliance.policy')}</th>
-                  <th className="px-4 py-3 text-left">{t('common.status')}</th>
-                  <th className="px-4 py-3 text-left">{t('compliance.violations')}</th>
-                  <th className="px-4 py-3 text-left">{t('compliance.checked')}</th>
-                </tr>
-              </thead>
-              <tbody>
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+              <Table.Header variant="compact">
+                <Table.Row className="text-secondary text-xs font-medium uppercase tracking-wider border-b border-strong">
+                  <Table.Head className="px-4 py-3 text-left">{t('compliance.ci')}</Table.Head>
+                  <Table.Head className="px-4 py-3 text-left">{t('compliance.policy')}</Table.Head>
+                  <Table.Head className="px-4 py-3 text-left">{t('common.status')}</Table.Head>
+                  <Table.Head className="px-4 py-3 text-left">{t('compliance.violations')}</Table.Head>
+                  <Table.Head className="px-4 py-3 text-left">{t('compliance.checked')}</Table.Head>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
                 {results.map(r => (
-                  <tr key={r.id} className="border-b border-strong/50 last:border-0 align-top">
-                    <td className="px-4 py-3 text-primary font-medium">{r.ci_name}</td>
-                    <td className="px-4 py-3 text-secondary text-sm">{r.policy_name}</td>
-                    <td className="px-4 py-3">
+                  <Table.Row key={r.id} className="border-b border-strong/50 last:border-0 align-top">
+                    <Table.Cell className="px-4 py-3 text-primary font-medium">{r.ci_name}</Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-secondary text-sm">{r.policy_name}</Table.Cell>
+                    <Table.Cell className="px-4 py-3">
                       <span className={`text-sm font-medium ${STATUS_COLORS[r.status ?? 'unknown'] ?? 'text-secondary'}`}>
                         {t(`status.${r.status ?? 'unknown'}`, { defaultValue: r.status ?? 'unknown' })}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3">
                       {r.status === 'non_compliant' && Array.isArray(r.details) && r.details.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {r.details.map((v, i) => (
@@ -675,14 +679,14 @@ export default function Compliance() {
                       ) : (
                         <span className="text-muted text-xs">—</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-muted text-xs">
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-muted text-xs">
                       {new Date(r.checked_at).toLocaleString()}
-                    </td>
-                  </tr>
+                    </Table.Cell>
+                  </Table.Row>
                 ))}
-              </tbody>
-            </table></div>
+              </Table.Body>
+            </Table></div>
           </div>
         )
       )}

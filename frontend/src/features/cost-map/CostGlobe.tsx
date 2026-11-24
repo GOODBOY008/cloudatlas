@@ -1,3 +1,5 @@
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../../components/shared/SelectField'
 import { useEffect, useId, useRef, useState } from 'react'
 import { LocateFixed, Minus, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -71,12 +73,12 @@ export function CostGlobe({ geography, regions, currency, onUnavailable }: {
         </div>
         {!globe && <div className="absolute inset-0 skeleton" role="status" aria-label={t('common.loading')} />}
         <div className="absolute bottom-3 right-3 flex rounded border border-edge bg-surface shadow-sm">
-          <button type="button" className="icon-button" disabled={!globe} onClick={() => globe?.zoom(false)}
-            aria-label={t('costMap.zoomOut')} title={t('costMap.zoomOut')}><Minus size={16} /></button>
-          <button type="button" className="icon-button" disabled={!globe} onClick={() => globe?.zoom(true)}
-            aria-label={t('costMap.zoomIn')} title={t('costMap.zoomIn')}><Plus size={16} /></button>
-          <button type="button" className="icon-button" disabled={!globe} onClick={() => globe?.focus(selected?.coordinates, true)}
-            aria-label={t('costMap.resetFit')} title={t('costMap.resetFit')}><LocateFixed size={16} /></button>
+          <Button variant="ghost" shape="square" type="button" disabled={!globe} onClick={() => globe?.zoom(false)}
+            aria-label={t('costMap.zoomOut')} title={t('costMap.zoomOut')}><Minus size={16} /></Button>
+          <Button variant="ghost" shape="square" type="button" disabled={!globe} onClick={() => globe?.zoom(true)}
+            aria-label={t('costMap.zoomIn')} title={t('costMap.zoomIn')}><Plus size={16} /></Button>
+          <Button variant="ghost" shape="square" type="button" disabled={!globe} onClick={() => globe?.focus(selected?.coordinates, true)}
+            aria-label={t('costMap.resetFit')} title={t('costMap.resetFit')}><LocateFixed size={16} /></Button>
         </div>
       </div>
       <div className="cost-globe-details">
@@ -84,13 +86,13 @@ export function CostGlobe({ geography, regions, currency, onUnavailable }: {
           <>
             <label className="flex flex-col gap-1.5 text-xs font-medium text-secondary">
               {t('cmdb.region')}
-              <select className="w-full min-w-0" value={regionKey(selected)} onChange={e => setSelectedKey(e.target.value)}>
-                {regions.map(entry => (
-                  <option key={regionKey(entry)} value={regionKey(entry)}>
-                    {entry.label || entry.region} · {entry.cloud_type.toUpperCase()} · {entry.region}
-                  </option>
-                ))}
-              </select>
+              <SelectField
+                aria-label={t('cmdb.region')}
+                className="w-full min-w-0"
+                value={regionKey(selected)}
+                onValueChange={setSelectedKey}
+                items={regions.map(entry => ({ value: regionKey(entry), label: `${entry.label || entry.region} · ${entry.cloud_type.toUpperCase()} · ${entry.region}` }))}
+              />
             </label>
             <dl className="mt-5 space-y-2 text-xs">
               <div className="mb-4">

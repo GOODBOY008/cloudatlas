@@ -1,3 +1,4 @@
+import { Table } from '@cloudflare/kumo/components/table'
 import { storageRecommendationType } from '../lib/objectStorage'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -163,22 +164,22 @@ export default function Checklist() {
         <div className="px-5 py-4 border-b border-edge">
           <h3 className="text-sm font-semibold text-primary">{t('checklist.detectionModules')}</h3>
         </div>
-        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-          <thead className="border-b border-edge text-xs uppercase text-muted">
-            <tr>
-              <th className="px-4 py-3 font-medium">{t('checklist.colModule')}</th>
-              <th className="px-4 py-3 font-medium">{t('checklist.colEnabled')}</th>
-              <th className="px-4 py-3 font-medium">{t('checklist.colThreshold')}</th>
-              <th className="px-4 py-3 font-medium">{t('common.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+          <Table.Header variant="compact" className="border-b border-edge">
+            <Table.Row>
+              <Table.Head className="px-4 py-3 font-medium">{t('checklist.colModule')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('checklist.colEnabled')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('checklist.colThreshold')}</Table.Head>
+              <Table.Head className="px-4 py-3 font-medium">{t('common.actions')}</Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
             {modules.map((m) => (
-              <tr key={m.name} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
-                <td className="px-4 py-3">
+              <Table.Row key={m.name} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                <Table.Cell className="px-4 py-3">
                   <span className="text-sm text-primary font-mono">{storageRecommendationType(m.name)}</span>
-                </td>
-                <td className="px-4 py-3">
+                </Table.Cell>
+                <Table.Cell className="px-4 py-3">
                   <button
                     onClick={() => toggleModule(m.name, !m.enabled)}
                     disabled={patchMutation.isPending}
@@ -193,17 +194,17 @@ export default function Checklist() {
                       }`}
                     />
                   </button>
-                </td>
-                <td className="px-4 py-3 text-sm text-secondary">
+                </Table.Cell>
+                <Table.Cell className="px-4 py-3 text-sm text-secondary">
                   {m.thresholdDays ?? <span className="text-muted">{t('checklist.thresholdDefault')}</span>}
-                </td>
-                <td className="px-4 py-3 text-xs text-muted">
+                </Table.Cell>
+                <Table.Cell className="px-4 py-3 text-xs text-muted">
                   {m.enabled ? t('checklist.activeInEngine') : t('checklist.skippedByEngine')}
-                </td>
-              </tr>
+                </Table.Cell>
+              </Table.Row>
             ))}
-          </tbody>
-        </table></div>
+          </Table.Body>
+        </Table></div>
       </div>
     </div>
   )

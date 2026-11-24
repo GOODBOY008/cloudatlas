@@ -1,3 +1,7 @@
+import { PageTabs } from '../components/shared/PageTabs'
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input, InputArea } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Sparkles } from 'lucide-react'
@@ -160,17 +164,12 @@ export default function AICenter() {
         <h1 className="page-title">{t('aiCenter.title')}</h1>
       </div>
 
-      <div className="page-tabs mb-4">
-        {(['assistant', 'forecast', 'anomalies', 'notes', 'settings'] as const).map((tabKey) => (
-          <button aria-pressed={tab === tabKey}
-            key={tabKey}
-            onClick={() => setTab(tabKey)}
-            className="page-tab"
-          >
-            {tabLabels[tabKey]}
-          </button>
-        ))}
-      </div>
+      <PageTabs
+        value={tab}
+        onValueChange={setTab}
+        className="mb-4"
+        tabs={(['assistant', 'forecast', 'anomalies', 'notes', 'settings'] as const).map(tabKey => ({ value: tabKey, label: tabLabels[tabKey] }))}
+      />
 
       {tab === 'assistant' && (
         <div className="max-w-xl">
@@ -180,16 +179,16 @@ export default function AICenter() {
               {t('copilot.redirectTitle')}
             </h3>
             <p className="text-sm text-secondary mb-5">{t('copilot.redirectBody')}</p>
-            <button
+            <Button
+              variant="primary"
               onClick={(event) => {
                 event.currentTarget.focus()
                 useCopilotStore.getState().setOpen(true)
               }}
-              className="btn-primary"
             >
               <Sparkles size={15} />
               {t('copilot.openCopilot')}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -200,12 +199,12 @@ export default function AICenter() {
             <p className="text-sm text-secondary mb-3">
               {t('aiCenter.forecastDesc')}
             </p>
-            <button
+            <Button
+              variant="primary"
               onClick={runForecast}
-              className="btn-primary"
             >
               {t('aiCenter.generateForecast')}
-            </button>
+            </Button>
             {forecast?.summary && (
               <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                 <div className="bg-subtle rounded-lg p-3">
@@ -225,24 +224,24 @@ export default function AICenter() {
           </div>
           {forecast && (
             <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-                <thead className="border-b border-edge text-xs uppercase text-muted">
-                  <tr>
-                    <th className="px-4 py-2 font-medium">{t('aiCenter.colDate')}</th>
-                    <th className="px-4 py-2 font-medium">{t('aiCenter.colForecast')}</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+                <Table.Header variant="compact" className="border-b border-edge">
+                  <Table.Row>
+                    <Table.Head className="px-4 py-2 font-medium">{t('aiCenter.colDate')}</Table.Head>
+                    <Table.Head className="px-4 py-2 font-medium">{t('aiCenter.colForecast')}</Table.Head>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
                   {forecast.points.map((p) => (
-                    <tr key={p.date} className="border-b border-strong last:border-0">
-                      <td className="px-4 py-2 text-sm text-secondary">{p.date}</td>
-                      <td className="px-4 py-2 text-sm text-primary">
+                    <Table.Row key={p.date} className="border-b border-strong last:border-0">
+                      <Table.Cell className="px-4 py-2 text-sm text-secondary">{p.date}</Table.Cell>
+                      <Table.Cell className="px-4 py-2 text-sm text-primary">
                         ${p.forecast.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      </td>
-                    </tr>
+                      </Table.Cell>
+                    </Table.Row>
                   ))}
-                </tbody>
-              </table></div>
+                </Table.Body>
+              </Table></div>
             </div>
           )}
         </div>
@@ -254,12 +253,12 @@ export default function AICenter() {
             <p className="text-sm text-secondary mb-3">
               {t('aiCenter.anomaliesDesc')}
             </p>
-            <button
+            <Button
+              variant="primary"
               onClick={runAnomalies}
-              className="btn-primary"
             >
               {t('aiCenter.scanForAnomalies')}
-            </button>
+            </Button>
           </div>
           {anomalies && (
             anomalies.length === 0 ? (
@@ -268,20 +267,20 @@ export default function AICenter() {
               </div>
             ) : (
               <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-                  <thead className="border-b border-edge text-xs uppercase text-muted">
-                    <tr>
-                      <th className="px-4 py-2 font-medium">{t('aiCenter.colDate')}</th>
-                      <th className="px-4 py-2 font-medium">{t('aiCenter.colDirection')}</th>
-                      <th className="px-4 py-2 font-medium">{t('aiCenter.colValue')}</th>
-                      <th className="px-4 py-2 font-medium">{t('aiCenter.colZScore')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+                  <Table.Header variant="compact" className="border-b border-edge">
+                    <Table.Row>
+                      <Table.Head className="px-4 py-2 font-medium">{t('aiCenter.colDate')}</Table.Head>
+                      <Table.Head className="px-4 py-2 font-medium">{t('aiCenter.colDirection')}</Table.Head>
+                      <Table.Head className="px-4 py-2 font-medium">{t('aiCenter.colValue')}</Table.Head>
+                      <Table.Head className="px-4 py-2 font-medium">{t('aiCenter.colZScore')}</Table.Head>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
                     {anomalies.map((a) => (
-                      <tr key={a.date} className="border-b border-strong last:border-0">
-                        <td className="px-4 py-2 text-sm text-secondary">{a.date}</td>
-                        <td className="px-4 py-2">
+                      <Table.Row key={a.date} className="border-b border-strong last:border-0">
+                        <Table.Cell className="px-4 py-2 text-sm text-secondary">{a.date}</Table.Cell>
+                        <Table.Cell className="px-4 py-2">
                           <span
                             className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                               a.direction === 'spike'
@@ -291,15 +290,15 @@ export default function AICenter() {
                           >
                             {t(`aiCenter.direction.${a.direction}`, { defaultValue: a.direction })}
                           </span>
-                        </td>
-                        <td className="px-4 py-2 text-sm text-primary">
+                        </Table.Cell>
+                        <Table.Cell className="px-4 py-2 text-sm text-primary">
                           ${a.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="px-4 py-2 text-sm font-mono text-secondary">{a.z_score}</td>
-                      </tr>
+                        </Table.Cell>
+                        <Table.Cell className="px-4 py-2 text-sm font-mono text-secondary">{a.z_score}</Table.Cell>
+                      </Table.Row>
                     ))}
-                  </tbody>
-                </table></div>
+                  </Table.Body>
+                </Table></div>
               </div>
             )
           )}
@@ -322,48 +321,51 @@ export default function AICenter() {
                 }}
                 className="space-y-3"
               >
-                <input
+                <Input
+                  aria-label={t('aiCenter.titlePlaceholder')}
                   value={noteTitle}
                   onChange={(e) => setNoteTitle(e.target.value)}
                   placeholder={t('aiCenter.titlePlaceholder')}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full"
                 />
-                <textarea
+                <InputArea
+                  aria-label={t('aiCenter.bodyPlaceholder')}
                   value={noteBody}
                   onChange={(e) => setNoteBody(e.target.value)}
                   rows={4}
                   placeholder={t('aiCenter.bodyPlaceholder')}
-                  className="w-full bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full resize-y"
                 />
                 {noteError && (
                   <div className="p-2 rounded-lg bg-danger/10 border border-danger/25 text-danger text-xs">
                     {noteError}
                   </div>
                 )}
-                <button
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createNoteMutation.isPending}
-                  className="btn-primary"
                 >
                   {t('aiCenter.saveNote')}
-                </button>
+                </Button>
               </form>
             </div>
             <div className="bg-surface border border-edge rounded-xl p-5">
               <h3 className="text-sm font-semibold text-primary mb-3">{t('aiCenter.semanticSearch')}</h3>
               <form onSubmit={searchNotes} className="flex gap-2">
-                <input
+                <Input
+                  aria-label={t('aiCenter.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t('aiCenter.searchPlaceholder')}
-                  className="flex-1 bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="flex-1"
                 />
-                <button
+                <Button
+                  variant="primary"
                   type="submit"
-                  className="btn-primary"
                 >
                   {t('common.search')}
-                </button>
+                </Button>
               </form>
               {searchResults && (
                 <div className="mt-3 space-y-2">

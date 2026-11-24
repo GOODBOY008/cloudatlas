@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -62,9 +66,9 @@ function TriggerRow({
 }) {
   const { t } = useTranslation()
   return (
-    <tr className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
-      <td className="px-4 py-2 font-mono text-sm text-secondary">{trigger.cron_expression}</td>
-      <td className="px-4 py-2">
+    <Table.Row className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+      <Table.Cell className="px-4 py-2 font-mono text-sm text-secondary">{trigger.cron_expression}</Table.Cell>
+      <Table.Cell className="px-4 py-2">
         <span
           className={`px-2 py-0.5 rounded-full text-xs font-medium ${
             trigger.action === 'stop'
@@ -74,21 +78,21 @@ function TriggerRow({
         >
           {t(`status.${trigger.action}`, { defaultValue: trigger.action })}
         </span>
-      </td>
-      <td className="px-4 py-2 text-xs text-muted">
+      </Table.Cell>
+      <Table.Cell className="px-4 py-2 text-xs text-muted">
         {trigger.last_run_at ? new Date(trigger.last_run_at).toLocaleString() : t('common.never')}
-      </td>
-      <td className="px-4 py-2 text-xs text-muted">{trigger.next_run_at ? new Date(trigger.next_run_at).toLocaleString() : '—'}</td>
-      <td className="px-4 py-2">
-        <button
+      </Table.Cell>
+      <Table.Cell className="px-4 py-2 text-xs text-muted">{trigger.next_run_at ? new Date(trigger.next_run_at).toLocaleString() : '—'}</Table.Cell>
+      <Table.Cell className="px-4 py-2">
+        <Button
+          size="sm" variant="secondary-destructive"
           onClick={onDelete}
           disabled={isDeleting}
-          className="text-danger hover:text-danger text-xs disabled:opacity-50"
         >
           {t('common.delete')}
-        </button>
-      </td>
-    </tr>
+        </Button>
+      </Table.Cell>
+    </Table.Row>
   )
 }
 
@@ -225,19 +229,16 @@ export default function PowerSchedules() {
     setTriggerFormError('')
   }
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
-
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">{t('powerSchedules.title')}</h1>
-        <button
+        <Button
+          variant="primary"
           onClick={openCreate}
-          className="btn-primary"
         >
           {t('powerSchedules.newSchedule')}
-        </button>
+        </Button>
       </div>
 
       {isError && (
@@ -311,17 +312,17 @@ export default function PowerSchedules() {
                   <h4 className="text-xs font-semibold text-secondary uppercase mb-3">{t('powerSchedules.triggers')}</h4>
 
                   {triggers.length > 0 ? (
-                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm mb-4">
-                      <thead>
-                        <tr className="text-muted text-xs text-left">
-                          <th className="pb-2 font-medium">{t('powerSchedules.cronExpression')}</th>
-                          <th className="pb-2 font-medium">{t('powerSchedules.action')}</th>
-                          <th className="pb-2 font-medium">{t('powerSchedules.lastRun')}</th>
-                          <th className="pb-2 font-medium">{t('powerSchedules.nextRun')}</th>
-                          <th className="pb-2 font-medium"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="mb-4">
+                      <Table.Header variant="compact">
+                        <Table.Row className="text-muted text-xs text-left">
+                          <Table.Head className="pb-2 font-medium">{t('powerSchedules.cronExpression')}</Table.Head>
+                          <Table.Head className="pb-2 font-medium">{t('powerSchedules.action')}</Table.Head>
+                          <Table.Head className="pb-2 font-medium">{t('powerSchedules.lastRun')}</Table.Head>
+                          <Table.Head className="pb-2 font-medium">{t('powerSchedules.nextRun')}</Table.Head>
+                          <Table.Head className="pb-2 font-medium"></Table.Head>
+                        </Table.Row>
+                      </Table.Header>
+                      <Table.Body>
                         {triggers.map((t) => (
                           <TriggerRow
                             key={t.id}
@@ -335,8 +336,8 @@ export default function PowerSchedules() {
                             isDeleting={deleteTriggerMutation.isPending}
                           />
                         ))}
-                      </tbody>
-                    </table></div>
+                      </Table.Body>
+                    </Table></div>
                   ) : (
                     <p className="text-xs text-muted mb-4">{t('powerSchedules.noTriggers')}</p>
                   )}
@@ -344,14 +345,13 @@ export default function PowerSchedules() {
                   {/* Add trigger form */}
                   <form onSubmit={handleTriggerSubmit} className="flex items-end gap-3 flex-wrap">
                     <div>
-                      <label className="block text-xs text-muted mb-1">{t('powerSchedules.cronExpression')}</label>
-                      <input
+                      <Input label={t('powerSchedules.cronExpression')}
                         required
                         value={triggerForm.cron_expression}
                         onChange={(e) =>
                           setTriggerForm({ ...triggerForm, cron_expression: e.target.value })
                         }
-                        className="bg-subtle border border-strong rounded-lg px-3 py-1.5 text-primary text-sm font-mono w-44 focus:outline-none focus:ring-2 focus:ring-accent"
+                        className="font-mono w-44"
                         placeholder="0 22 * * 1-5"
                       />
                       <div className="mt-1">
@@ -359,28 +359,27 @@ export default function PowerSchedules() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-muted mb-1">{t('powerSchedules.action')}</label>
-                      <select
+                      <SelectField
+                        label={t('powerSchedules.action')}
                         value={triggerForm.action}
-                        onChange={(e) =>
+                        onValueChange={value =>
                           setTriggerForm({
                             ...triggerForm,
-                            action: e.target.value as 'start' | 'stop',
-                          })
-                        }
-                        className="bg-subtle border border-strong rounded-lg px-3 py-1.5 text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                      >
-                        <option value="stop">{t('powerSchedules.actionStop')}</option>
-                        <option value="start">{t('powerSchedules.actionStart')}</option>
-                      </select>
+                            action: value as 'start' | 'stop',
+                          })}
+                        items={[
+                          { value: "stop", label: t('powerSchedules.actionStop') },
+                          { value: "start", label: t('powerSchedules.actionStart') },
+                        ]}
+                      />
                     </div>
-                    <button
+                    <Button
+                      variant="primary"
                       type="submit"
                       disabled={createTriggerMutation.isPending}
-                      className="btn-primary"
                     >
                       {createTriggerMutation.isPending ? t('powerSchedules.adding') : t('powerSchedules.addTrigger')}
-                    </button>
+                    </Button>
                     {triggerFormError && (
                       <span className="text-danger text-xs">{triggerFormError}</span>
                     )}
@@ -406,42 +405,32 @@ export default function PowerSchedules() {
             )}
             <form onSubmit={handleScheduleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('common.name')}</label>
-                <input
+                <Input label={t('common.name')}
                   required
                   value={scheduleForm.name}
                   onChange={(e) => setScheduleForm({ ...scheduleForm, name: e.target.value })}
-                  className={inputCls}
+                  className="w-full"
                   placeholder={t('powerSchedules.namePlaceholder')}
                 />
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">{t('powerSchedules.timezone')}</label>
-                <select
+                <SelectField
+                  label={t('powerSchedules.timezone')}
                   value={scheduleForm.timezone}
-                  onChange={(e) =>
-                    setScheduleForm({ ...scheduleForm, timezone: e.target.value })
-                  }
-                  className={inputCls}
-                >
-                  {COMMON_TIMEZONES.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz}
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={value =>
+                    setScheduleForm({ ...scheduleForm, timezone: value })}
+                  className="w-full"
+                  items={COMMON_TIMEZONES.map((tz) => ({ value: tz, label: tz }))}
+                />
               </div>
               <div>
-                <label className="block text-xs text-secondary mb-1">
-                  {t('powerSchedules.resourceFilter')}{' '}
-                  <span className="text-muted">{t('powerSchedules.resourceFilterOptional')}</span>
-                </label>
-                <input
+                <Input label={<>{t('powerSchedules.resourceFilter')}{' '}
+                  <span className="text-muted">{t('powerSchedules.resourceFilterOptional')}</span></>}
                   value={scheduleForm.resource_filter}
                   onChange={(e) =>
                     setScheduleForm({ ...scheduleForm, resource_filter: e.target.value })
                   }
-                  className={inputCls}
+                  className="w-full"
                   placeholder="tag:env=dev"
                 />
               </div>
@@ -453,31 +442,30 @@ export default function PowerSchedules() {
                   onChange={(e) =>
                     setScheduleForm({ ...scheduleForm, is_active: e.target.checked })
                   }
-                  className="w-4 h-4 rounded border-strong accent-indigo-600"
+                  className="w-4 h-4 rounded border-strong"
                 />
                 <label htmlFor="sched-is-active" className="text-sm text-secondary">
                   {t('common.active')}
                 </label>
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
                   type="button"
                   onClick={closeScheduleModal}
-                  className="btn-secondary"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createScheduleMutation.isPending || updateScheduleMutation.isPending}
-                  className="btn-primary"
                 >
                   {createScheduleMutation.isPending || updateScheduleMutation.isPending
                     ? t('powerSchedules.saving')
                     : editingScheduleId
                     ? t('powerSchedules.updateSchedule')
                     : t('powerSchedules.createSchedule')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

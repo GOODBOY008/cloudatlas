@@ -1,3 +1,6 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -120,19 +123,16 @@ export default function TaggingPolicies() {
     }
   }
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
-
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">{t('taggingPolicies.title')}</h1>
-        <button
+        <Button
+          variant="primary"
           onClick={openCreate}
-          className="btn-primary"
         >
           {t('taggingPolicies.newPolicy')}
-        </button>
+        </Button>
       </div>
 
       {isError && (
@@ -149,26 +149,26 @@ export default function TaggingPolicies() {
         </div>
       ) : (
         <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-            <thead className="border-b border-edge text-xs uppercase text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">{t('common.name')}</th>
-                <th className="px-4 py-3 font-medium">{t('taggingPolicies.colRequiredTags')}</th>
-                <th className="px-4 py-3 font-medium">{t('taggingPolicies.colAppliesTo')}</th>
-                <th className="px-4 py-3 font-medium">{t('common.active')}</th>
-                <th className="px-4 py-3 font-medium">{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+            <Table.Header variant="compact" className="border-b border-edge">
+              <Table.Row>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.name')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('taggingPolicies.colRequiredTags')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('taggingPolicies.colAppliesTo')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.active')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.actions')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {policies.map((p) => (
-                <tr key={p.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
-                  <td className="px-4 py-3">
+                <Table.Row key={p.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                  <Table.Cell className="px-4 py-3">
                     <span className="text-sm text-primary">{p.name}</span>
                     {p.description && (
                       <span className="block text-xs text-muted">{p.description}</span>
                     )}
-                  </td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {p.required_tags.map((tag) => {
                         const label = typeof tag === 'string' ? tag : (tag as { key: string }).key
@@ -179,34 +179,34 @@ export default function TaggingPolicies() {
                         )
                       })}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-secondary">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-xs text-secondary">
                     {Array.isArray(p.apply_to) && p.apply_to.length > 0
                       ? p.apply_to.join(', ')
                       : t('taggingPolicies.allResources')}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-secondary">{p.is_active ? '✓' : '✗'}</td>
-                  <td className="px-4 py-3">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm text-secondary">{p.is_active ? '✓' : '✗'}</Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     <div className="flex items-center gap-3 text-xs">
-                      <button onClick={() => openEdit(p)} className="text-accent hover:text-accent">
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(p)}>
                         {t('common.edit')}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm" variant="secondary-destructive"
                         onClick={() => {
                           if (confirm(t('taggingPolicies.deleteConfirm', { name: p.name }))) {
                             deleteMutation.mutate(p.id)
                           }
                         }}
-                        className="text-danger hover:text-danger"
                       >
                         {t('common.delete')}
-                      </button>
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
 
@@ -221,42 +221,38 @@ export default function TaggingPolicies() {
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
-                <input
+                <Input
+                  label={t('common.name')}
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className={inputCls}
+                  className="w-full"
                   placeholder="prod-required-tags"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('common.description')}</label>
-                <input
+                <Input
+                  label={t('common.description')}
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className={inputCls}
+                  className="w-full"
                   placeholder={t('taggingPolicies.optional')}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">
-                  {t('taggingPolicies.requiredTagsLabel')}
-                </label>
-                <input
+                <Input
+                  label={t('taggingPolicies.requiredTagsLabel')}
                   value={form.required_tags}
                   onChange={(e) => setForm({ ...form, required_tags: e.target.value })}
-                  className={inputCls}
+                  className="w-full"
                   placeholder="owner, env, cost-center"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">
-                  {t('taggingPolicies.applyToLabel')}
-                </label>
-                <input
+                <Input
+                  label={t('taggingPolicies.applyToLabel')}
                   value={form.apply_to}
                   onChange={(e) => setForm({ ...form, apply_to: e.target.value })}
-                  className={inputCls}
+                  className="w-full"
                   placeholder="instance, volume, bucket"
                 />
               </div>
@@ -266,20 +262,20 @@ export default function TaggingPolicies() {
                 </div>
               )}
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="btn-primary"
                 >
                   {editingId ? t('taggingPolicies.saveChanges') : t('taggingPolicies.createPolicy')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

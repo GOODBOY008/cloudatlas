@@ -111,7 +111,7 @@ export interface Opportunity {
   gid: string
   kind: string
   val: string
-  bytes: number
+  bytes: number | null
   copies: number
   potential_bytes: number | null
   potential_monthly: number | null
@@ -119,7 +119,14 @@ export interface Opportunity {
 }
 export interface Findings {
   groups: Opportunity[]
-  names: { id: string; name: string; region: string | null; account_name: string; similarity: number }[]
+  names: {
+    id: string
+    name: string
+    region: string | null
+    account_name: string
+    similarity: number
+    services: string[]
+  }[]
   currency: string
 }
 export interface Envelope<T> {

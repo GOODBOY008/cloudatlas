@@ -1,3 +1,4 @@
+import { chooseOption } from '../helpers/chooseOption';
 import { expect, test } from '@playwright/test';
 
 test.describe('Cost Map reporting', () => {
@@ -124,21 +125,24 @@ test('Kubernetes filters keep the namespace choices and scope both views', async
   await page.goto('/k8s-rightsizing');
   const cluster = page.getByRole('combobox', { name: 'Cluster', exact: true });
   const namespace = page.getByRole('combobox', { name: 'Namespace', exact: true });
-  await namespace.selectOption('east-only');
-  await cluster.selectOption('west');
-  await expect(namespace).toHaveValue('');
-  await expect(namespace.locator('option')).toHaveText(['All namespaces', 'shared', 'west-only']);
-  await namespace.selectOption('shared');
+  await chooseOption(namespace, 'east-only');
+  await chooseOption(cluster, 'West cluster');
+  await expect(namespace).toHaveText('All namespaces');
+  await namespace.click();
+  await expect(page.getByRole('option')).toHaveText(['All namespaces', 'shared', 'west-only']);
+  await page.getByRole('option', { name: 'shared', exact: true }).click();
   const workloadMetric = page.getByText('Workloads', { exact: true }).locator('..');
   await expect(workloadMetric.getByText('1', { exact: true })).toBeVisible();
-  await expect(namespace.locator('option')).toHaveCount(3);
+  await namespace.click();
+  await expect(page.getByRole('option')).toHaveCount(3);
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Table', exact: true }).click();
   const row = page.getByRole('row').filter({ has: page.getByRole('cell', { name: /dns/ }) });
   await expect(row.getByRole('cell', { name: 'shared', exact: true })).toBeVisible();
   await expect(row.getByRole('cell', { name: 'west', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Reset filters' }).click();
-  await expect(cluster).toHaveValue('');
-  await expect(namespace).toHaveValue('');
+  await expect(cluster).toHaveText('All Clusters');
+  await expect(namespace).toHaveText('All namespaces');
 });
 
 test('desktop Copilot floats, remembers drag and resize, and stays beneath search', async ({ page }) => {
@@ -289,4 +293,55 @@ test('Chinese IME confirmation stays in Search until a normal Enter', async ({ p
   await expect(input).toBeFocused();
   await input.press('Enter');
   await expect(page).toHaveURL(/\/cmdb-audit$/);
+});
+
+test('model instance search preserves fast typing, clears pagination and follows Back', async ({ page }) => {
+  const model = { id: 'servers', name: 'servers', display_name: 'Servers', classification: null, is_builtin: false, ci_count: 0 };
+  await page.route('**/cmdb/model-topology', route => route.fulfill({ json: { data: { nodes: [model], edges: [] } } }));
+  await page.route('**/cis?*', route => route.fulfill({ json: {
+    data: [], meta: { page: 1, total_pages: 1, per_page: 5, total: 0 },
+  } }));
+  await page.goto('/model-topology?type=servers&q=node-&page=2');
+  const search = page.getByRole('searchbox', { name: 'Find an instance' });
+  await expect(search).toHaveValue('node-');
+  await page.getByText('Find an instance', { exact: true }).click();
+  await expect(search).toBeFocused();
+  await search.fill('');
+  await search.pressSequentially('node-abcdefghijklmnop');
+  await expect(search).toHaveValue('node-abcdefghijklmnop');
+  await expect(page).toHaveURL(/\?type=servers&q=node-abcdefghijklmnop$/);
+  await page.getByRole('button', { name: /^Servers / }).click();
+  await expect(search).toHaveValue('');
+  await page.goBack();
+  await expect(search).toHaveValue('node-abcdefghijklmnop');
+});
+
+test('bucket search aligns its icon and keeps focus and position while filtering', async ({ page }) => {
+  let finish!: () => void;
+  const pending = new Promise<void>(resolve => { finish = resolve; });
+  await page.route('**/object-storage?*', async route => {
+    if (new URL(route.request().url()).searchParams.get('search') === 'atlas-search-test') await pending;
+    await route.continue();
+  });
+  await page.goto('/object-storage');
+  await expect(page.locator('.storage-cards')).toBeVisible();
+  const search = page.getByRole('searchbox', { name: 'Search' });
+  await page.getByRole('search').getByText('Search', { exact: true }).click();
+  await expect(search).toBeFocused();
+  const icon = page.getByRole('search').locator('svg');
+  const fieldBox = (await search.boundingBox())!;
+  const iconBox = (await icon.boundingBox())!;
+  expect(iconBox.x + iconBox.width).toBeLessThanOrEqual(fieldBox.x + 1);
+  expect(Math.abs(iconBox.y + iconBox.height / 2 - fieldBox.y - fieldBox.height / 2)).toBeLessThanOrEqual(1);
+
+  try {
+    await search.fill('atlas-search-test');
+    await expect(page.locator('.storage-panel [aria-busy="true"]')).toBeVisible();
+    expect(Math.abs((await search.boundingBox())!.y - fieldBox.y)).toBeLessThanOrEqual(1);
+    await expect(search).toBeFocused();
+  } finally {
+    finish();
+  }
+  await expect(page.locator('.storage-panel [aria-busy="true"]')).toHaveCount(0);
+  await expect(search).toHaveValue('atlas-search-test');
 });

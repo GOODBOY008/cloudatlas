@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { chartColors, chartAxis, chartGrid, chartTooltipStyle } from '../lib/chartTheme'
 import { useMoneyFormatter, useOrgCurrency } from '../lib/format'
@@ -131,7 +135,7 @@ function PoolDetailPanel({
               {pool.parent_id && <span className="text-xs text-muted">{t('pools.childPool')}</span>}
             </div>
           </div>
-          <button onClick={onClose} aria-label={t('common.close')} className="icon-button">×</button>
+          <Button variant="ghost" shape="square" onClick={onClose} aria-label={t('common.close')}>×</Button>
         </div>
 
         <div className="flex-1 p-5 space-y-5">
@@ -233,24 +237,24 @@ function PoolDetailPanel({
                     <Bar isAnimationActive={false} maxBarSize={32} dataKey="cost" fill={chartColors.orange} radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
-                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-xs mt-2">
-                  <thead>
-                    <tr className="text-muted text-left border-b border-edge">
-                      <th className="pb-1">{t('pools.colResource')}</th>
-                      <th className="pb-1">{t('common.type')}</th>
-                      <th className="pb-1 text-right">{t('pools.cost')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="mt-2">
+                  <Table.Header variant="compact">
+                    <Table.Row className="text-muted text-left border-b border-edge">
+                      <Table.Head className="pb-1">{t('pools.colResource')}</Table.Head>
+                      <Table.Head className="pb-1">{t('common.type')}</Table.Head>
+                      <Table.Head className="pb-1 text-right">{t('pools.cost')}</Table.Head>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
                     {topRes.resources.slice(0, 5).map((r) => (
-                      <tr key={r.cloud_resource_id} className="border-b border-edge/30">
-                        <td className="py-1.5 text-secondary truncate max-w-[160px]">{r.resource_name ?? r.cloud_resource_id.slice(-16)}</td>
-                        <td className="py-1.5 text-muted">{r.resource_type}</td>
-                        <td className="py-1.5 text-right text-warning font-mono">{fmt(r.total_cost)}</td>
-                      </tr>
+                      <Table.Row key={r.cloud_resource_id} className="border-b border-edge/30">
+                        <Table.Cell className="py-1.5 text-secondary truncate max-w-[160px]">{r.resource_name ?? r.cloud_resource_id.slice(-16)}</Table.Cell>
+                        <Table.Cell className="py-1.5 text-muted">{r.resource_type}</Table.Cell>
+                        <Table.Cell className="py-1.5 text-right text-warning font-mono">{fmt(r.total_cost)}</Table.Cell>
+                      </Table.Row>
                     ))}
-                  </tbody>
-                </table></div>
+                  </Table.Body>
+                </Table></div>
               </>
             )}
           </div>
@@ -265,23 +269,23 @@ function PoolDetailPanel({
             </button>
             {showMove && (
               <div className="mt-3 flex items-center gap-2">
-                <select
+                <SelectField
                   value={moveTarget}
-                  onChange={(e) => setMoveTarget(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-xs"
-                >
-                  <option value="">{t('pools.rootOption')}</option>
-                  {validParents.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-                <button
+                  onValueChange={setMoveTarget}
+                  className="flex-1"
+                  aria-label={t('pools.rootOption')}
+                  items={[
+                    { value: "", label: t('pools.rootOption') },
+                    ...validParents.map((p) => ({ value: p.id, label: p.name })),
+                  ]}
+                />
+                <Button
+                  variant="primary"
                   disabled={moveMutation.isPending}
                   onClick={() => moveMutation.mutate(moveTarget || null)}
-                  className="btn-primary"
                 >
                   {moveMutation.isPending ? t('pools.moving') : t('pools.apply')}
-                </button>
+                </Button>
               </div>
             )}
             {moveMutation.isError && (
@@ -519,12 +523,12 @@ export default function Pools() {
               {t('pools.viewTree')}
             </button>
           </div>
-          <button
+          <Button
+            variant={showForm ? 'secondary' : 'primary'}
             onClick={() => setShowForm((v) => !v)}
-            className="btn-primary"
           >
             {showForm ? t('common.cancel') : t('pools.newPool')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -537,48 +541,55 @@ export default function Pools() {
           )}
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('common.name')} *</label>
-              <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              <Input label={`${t('common.name')} *`} required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="w-full"
                 placeholder={t('pools.namePlaceholder')} />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('common.type')}</label>
-              <select value={form.pool_type} onChange={(e) => setForm({ ...form, pool_type: e.target.value })}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-                <option value="default">{t('pools.poolTypeDefault')}</option>
-                <option value="team">{t('pools.poolTypeTeam')}</option>
-                <option value="project">{t('pools.poolTypeProject')}</option>
-                <option value="environment">{t('pools.poolTypeEnvironment')}</option>
-                <option value="cost_center">{t('pools.poolTypeCostCenter')}</option>
-              </select>
+              <SelectField
+                label={t('common.type')}
+                value={form.pool_type}
+                onValueChange={value => setForm({ ...form, pool_type: value })}
+                className="w-full"
+                items={[
+                  { value: "default", label: t('pools.poolTypeDefault') },
+                  { value: "team", label: t('pools.poolTypeTeam') },
+                  { value: "project", label: t('pools.poolTypeProject') },
+                  { value: "environment", label: t('pools.poolTypeEnvironment') },
+                  { value: "cost_center", label: t('pools.poolTypeCostCenter') },
+                ]}
+              />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('pools.parentPool')}</label>
-              <select value={form.parent_id} onChange={(e) => setForm({ ...form, parent_id: e.target.value })}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-                <option value="">{t('pools.noneRoot')}</option>
-                {pools.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              <SelectField
+                label={t('pools.parentPool')}
+                value={form.parent_id}
+                onValueChange={value => setForm({ ...form, parent_id: value })}
+                className="w-full"
+                items={[
+                  { value: "", label: t('pools.noneRoot') },
+                  ...pools.map((p) => ({ value: p.id, label: p.name })),
+                ]}
+              />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
-              <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              <Input label={t('common.description')} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="w-full"
                 placeholder={t('pools.descPlaceholder')} />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('pools.monthlyBudget', { currency })}</label>
-              <input type="number" min="0" step="0.01" value={form.monthly_budget}
+              <Input
+                label={t('pools.monthlyBudget', { currency })} type="number" min="0" step="0.01" value={form.monthly_budget}
                 onChange={(e) => setForm({ ...form, monthly_budget: e.target.value })}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full"
                 placeholder="10000" />
             </div>
             <div className="flex items-end">
-              <button type="submit" disabled={createMutation.isPending}
-                className="btn-primary w-full">
+              <Button
+                variant="primary" type="submit" disabled={createMutation.isPending}
+                className="w-full">
                 {createMutation.isPending ? t('pools.creating') : t('pools.createPool')}
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -642,7 +653,8 @@ export default function Pools() {
                         <span className="text-sm text-muted">{t('pools.noBudget')}</span>
                       )}
                       <div className="flex items-center gap-2">
-                        <button
+                        <Button
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation()
                             setEditForm({
@@ -652,19 +664,18 @@ export default function Pools() {
                             })
                             setEditingPool(pool)
                           }}
-                          className="px-2.5 py-1 text-xs rounded bg-emphasis hover:bg-emphasis text-primary"
                         >
                           {t('common.edit')}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="secondary-destructive" size="sm"
                           onClick={(e) => {
                             e.stopPropagation()
                             setConfirmDeletePool(pool)
                           }}
-                          className="px-2.5 py-1 text-xs rounded bg-danger/10 hover:bg-danger/10 text-danger"
                         >
                           {t('common.delete')}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -682,35 +693,36 @@ export default function Pools() {
           <div className="dialog-panel relative p-6 w-full max-w-md space-y-4">
             <h3 className="text-lg font-semibold text-primary">{t('pools.editTitle')}</h3>
             <div>
-              <label className="text-xs text-secondary mb-1 block">{t('common.name')}</label>
-              <input
+              <Input
+                label={t('common.name')}
                 value={editForm.name}
                 onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent"
+                className="w-full"
               />
             </div>
             <div>
-              <label className="text-xs text-secondary mb-1 block">{t('common.description')}</label>
-              <input
+              <Input
+                label={t('common.description')}
                 value={editForm.description}
                 onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
-                className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent"
+                className="w-full"
               />
             </div>
             <div>
-              <label className="text-xs text-secondary mb-1 block">{t('pools.monthlyBudgetClear', { currency })}</label>
-              <input
+              <Input
+                label={t('pools.monthlyBudgetClear', { currency })}
                 type="number"
                 min="0"
                 step="0.01"
                 value={editForm.monthly_budget}
                 onChange={(e) => setEditForm((f) => ({ ...f, monthly_budget: e.target.value }))}
-                className="w-full bg-subtle text-primary px-3 py-2 rounded-lg text-sm border border-strong focus:outline-none focus:border-accent"
+                className="w-full"
               />
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setEditingPool(null)} className="btn-secondary flex-1">{t('common.cancel')}</button>
-              <button
+              <Button onClick={() => setEditingPool(null)} className="flex-1">{t('common.cancel')}</Button>
+              <Button
+                variant="primary"
                 disabled={!editForm.name.trim() || updateMutation.isPending}
                 onClick={() => updateMutation.mutate({
                   id: editingPool.id,
@@ -718,10 +730,10 @@ export default function Pools() {
                   description: editForm.description.trim() || undefined,
                   monthly_budget: editForm.monthly_budget.trim() ? parseFloat(editForm.monthly_budget) : null,
                 })}
-                className="btn-primary flex-1"
+                className="flex-1"
               >
                 {updateMutation.isPending ? t('pools.saving') : t('common.save')}
-              </button>
+              </Button>
             </div>
           </div>
         </NativeDialog>
@@ -737,14 +749,15 @@ export default function Pools() {
               {t('pools.confirmDeleteBody', { name: confirmDeletePool.name })}
             </p>
             <div className="flex gap-3 pt-1">
-              <button onClick={() => setConfirmDeletePool(null)} className="btn-secondary flex-1">{t('common.cancel')}</button>
-              <button
+              <Button onClick={() => setConfirmDeletePool(null)} className="flex-1">{t('common.cancel')}</Button>
+              <Button
+                variant="destructive"
                 disabled={deleteMutation.isPending}
                 onClick={() => { deleteMutation.mutate(confirmDeletePool.id); setConfirmDeletePool(null) }}
-                className="flex-1 px-4 py-2 bg-danger-solid hover:bg-danger-solid/90 text-white text-sm rounded-lg disabled:opacity-50"
+                className="flex-1"
               >
                 {t('common.delete')}
-              </button>
+              </Button>
             </div>
           </div>
         </NativeDialog>

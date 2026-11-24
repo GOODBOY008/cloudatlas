@@ -1,3 +1,4 @@
+import { chooseOption } from '../helpers/chooseOption';
 import { Page, Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
@@ -25,11 +26,10 @@ export class CmdbPage extends BasePage {
     this.searchInput = page.getByPlaceholder(/search/i).first();
     this.ciTable = page.locator('main table').first();
     this.formHeading = page.getByRole('heading', { name: /new configuration item/i });
-    // Form fields have no labels — use positional selectors (form appears before table in DOM)
     this.nameInput = page.getByRole('textbox').first();
     this.displayNameInput = page.getByRole('textbox').nth(1);
-    this.ciTypeSelect = page.locator('select').first();
-    this.providerSelect = page.locator('select').nth(1);
+    this.ciTypeSelect = page.locator('form').getByRole('combobox').first();
+    this.providerSelect = page.locator('form').getByRole('combobox').nth(1);
     this.regionInput = page.getByPlaceholder(/us-east|region/i);
     this.createCiBtn = page.getByRole('button', { name: /create ci/i });
     this.firstCiRow = this.ciTable.getByRole('row').filter({ has: page.getByRole('checkbox') }).first();
@@ -52,7 +52,7 @@ export class CmdbPage extends BasePage {
   async createCi(name: string, ciType: string): Promise<void> {
     await this.openCreateModal();
     await this.nameInput.fill(name);
-    await this.ciTypeSelect.selectOption(ciType);
+    await chooseOption(this.ciTypeSelect, ciType);
     await this.createCiBtn.click();
     await this.formHeading.waitFor({ state: 'hidden', timeout: 10_000 });
   }

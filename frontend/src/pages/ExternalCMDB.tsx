@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input, InputArea } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -171,9 +175,6 @@ export default function ExternalCMDB() {
     createMutation.mutate({ name: form.name.trim(), provider: form.provider, config })
   }
 
-  const inputCls =
-    'bg-subtle border border-strong rounded-lg px-3 py-2 text-primary text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent'
-
   const selected = configs.find((c) => c.id === selectedId) ?? null
 
   function selectedCiTypeId(): string {
@@ -198,16 +199,16 @@ export default function ExternalCMDB() {
     <div>
       <div className="page-header">
         <h1 className="page-title">{t('externalCmdb.title')}</h1>
-        <button
+        <Button
+          variant="primary"
           onClick={() => {
             setForm({ name: '', provider: 'rest', config: configTemplate('rest') })
             setFormError('')
             setShowModal(true)
           }}
-          className="btn-primary"
         >
           {t('externalCmdb.newConnection')}
-        </button>
+        </Button>
       </div>
 
       {message && (
@@ -230,20 +231,20 @@ export default function ExternalCMDB() {
         </div>
       ) : (
         <div className="bg-surface border border-edge rounded-xl overflow-hidden mb-6">
-          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-            <thead className="border-b border-edge text-xs uppercase text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">{t('common.name')}</th>
-                <th className="px-4 py-3 font-medium">{t('cmdb.provider')}</th>
-                <th className="px-4 py-3 font-medium">{t('externalCmdb.direction')}</th>
-                <th className="px-4 py-3 font-medium">{t('common.status')}</th>
-                <th className="px-4 py-3 font-medium">{t('cloudAccounts.lastSync')}</th>
-                <th className="px-4 py-3 font-medium">{t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+            <Table.Header variant="compact" className="border-b border-edge">
+              <Table.Row>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.name')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('cmdb.provider')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('externalCmdb.direction')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.status')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('cloudAccounts.lastSync')}</Table.Head>
+                <Table.Head className="px-4 py-3 font-medium">{t('common.actions')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {configs.map((c) => (
-                <tr
+                <Table.Row
                   key={c.id}
                   className={`border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors cursor-pointer ${
                     selectedId === c.id ? 'bg-accent-soft/20' : ''
@@ -254,10 +255,10 @@ export default function ExternalCMDB() {
                     setMessage('')
                   }}
                 >
-                  <td className="px-4 py-3 text-sm text-primary">{c.name}</td>
-                  <td className="px-4 py-3 text-sm text-secondary">{c.provider}</td>
-                  <td className="px-4 py-3 text-xs text-secondary">{c.sync_direction ?? 'pull'}</td>
-                  <td className="px-4 py-3">
+                  <Table.Cell className="px-4 py-3 text-sm text-primary">{c.name}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-sm text-secondary">{c.provider}</Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-xs text-secondary">{c.sync_direction ?? 'pull'}</Table.Cell>
+                  <Table.Cell className="px-4 py-3">
                     {c.is_active ? (
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">
                         {t('common.active')}
@@ -267,31 +268,32 @@ export default function ExternalCMDB() {
                         {t('common.inactive')}
                       </span>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted">
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 text-xs text-muted">
                     {c.last_sync_at ? new Date(c.last_sync_at).toLocaleString() : t('common.never')}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    <button
+                  </Table.Cell>
+                  <Table.Cell className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      size="sm" variant="ghost"
                       onClick={() => dryRunMutation.mutate(c.id)}
                       disabled={dryRunMutation.isPending}
-                      className="text-xs text-accent hover:text-accent disabled:opacity-50 mr-3"
+                      className="mr-3"
                       data-testid={`extcmdb-dryrun-${c.name}`}
                     >
                       {t('externalCmdb.dryRun')}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      size="sm" variant="ghost"
                       onClick={() => syncMutation.mutate(c.id)}
                       disabled={syncMutation.isPending}
-                      className="text-xs text-success hover:text-success disabled:opacity-50"
                     >
                       {t('externalCmdb.syncNow')}
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table></div>
+            </Table.Body>
+          </Table></div>
         </div>
       )}
 
@@ -331,25 +333,25 @@ export default function ExternalCMDB() {
           ) : logs.length === 0 ? (
             <div className="p-5 text-center text-muted text-sm">{t('externalCmdb.noSyncs')}</div>
           ) : (
-            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-left">
-              <thead className="border-b border-edge text-xs uppercase text-muted">
-                <tr>
-                  <th className="px-4 py-3 font-medium">{t('externalCmdb.startedAt')}</th>
-                  <th className="px-4 py-3 font-medium">{t('common.status')}</th>
-                  <th className="px-4 py-3 font-medium">{t('externalCmdb.createdCol')}</th>
-                  <th className="px-4 py-3 font-medium">{t('externalCmdb.updatedCol')}</th>
-                  <th className="px-4 py-3 font-medium">{t('externalCmdb.pushedCol')}</th>
-                  <th className="px-4 py-3 font-medium">{t('externalCmdb.failedCol')}</th>
-                </tr>
-              </thead>
-              <tbody>
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="text-left">
+              <Table.Header variant="compact" className="border-b border-edge">
+                <Table.Row>
+                  <Table.Head className="px-4 py-3 font-medium">{t('externalCmdb.startedAt')}</Table.Head>
+                  <Table.Head className="px-4 py-3 font-medium">{t('common.status')}</Table.Head>
+                  <Table.Head className="px-4 py-3 font-medium">{t('externalCmdb.createdCol')}</Table.Head>
+                  <Table.Head className="px-4 py-3 font-medium">{t('externalCmdb.updatedCol')}</Table.Head>
+                  <Table.Head className="px-4 py-3 font-medium">{t('externalCmdb.pushedCol')}</Table.Head>
+                  <Table.Head className="px-4 py-3 font-medium">{t('externalCmdb.failedCol')}</Table.Head>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
                 {logs.map((l) => (
-                  <tr key={l.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
-                    <td className="px-4 py-3 text-xs text-secondary">
+                  <Table.Row key={l.id} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
+                    <Table.Cell className="px-4 py-3 text-xs text-secondary">
                       {new Date(l.started_at).toLocaleString()}
                       {l.error && <span className="block text-danger text-xs mt-0.5">{l.error}</span>}
-                    </td>
-                    <td className="px-4 py-3">
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3">
                       <span
                         className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           l.status === 'success'
@@ -361,15 +363,15 @@ export default function ExternalCMDB() {
                       >
                         {l.status}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-success">+{l.records_created}</td>
-                    <td className="px-4 py-3 text-sm text-warning">~{l.records_updated}</td>
-                    <td className="px-4 py-3 text-sm text-info">↑{l.records_pushed}</td>
-                    <td className="px-4 py-3 text-sm text-danger">{l.records_failed}</td>
-                  </tr>
+                    </Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-sm text-success">+{l.records_created}</Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-sm text-warning">~{l.records_updated}</Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-sm text-info">↑{l.records_pushed}</Table.Cell>
+                    <Table.Cell className="px-4 py-3 text-sm text-danger">{l.records_failed}</Table.Cell>
+                  </Table.Row>
                 ))}
-              </tbody>
-            </table></div>
+              </Table.Body>
+            </Table></div>
           )}
           {total > 0 && (
             <PaginationBar
@@ -394,53 +396,44 @@ export default function ExternalCMDB() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">{t('common.name')}</label>
-                  <input
+                  <Input
+                    label={t('common.name')}
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className={inputCls}
+                    className="w-full"
                     placeholder="prod-cmdb"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-secondary mb-1">{t('cmdb.provider')}</label>
-                  <select
+                  <SelectField
+                    label={t('cmdb.provider')}
                     value={form.provider}
-                    onChange={(e) =>
-                      setForm({ ...form, provider: e.target.value, config: configTemplate(e.target.value) })
-                    }
-                    className={inputCls}
-                  >
-                    {PROVIDERS.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={value =>
+                      setForm({ ...form, provider: value, config: configTemplate(value) })}
+                    className="w-full"
+                    items={PROVIDERS.map((p) => ({ value: p, label: p }))}
+                  />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">{t('externalCmdb.ciTypeHint')}</label>
-                <select
+                <SelectField
+                  label={t('externalCmdb.ciTypeHint')}
                   value={selectedCiTypeId()}
-                  onChange={(e) => setConfigCiTypeId(e.target.value)}
-                  className={inputCls}
-                >
-                  <option value="">{t('externalCmdb.selectCiType')}</option>
-                  {ciTypes.map((ct) => (
-                    <option key={ct.id} value={ct.id}>{ct.display_name}</option>
-                  ))}
-                </select>
+                  onValueChange={setConfigCiTypeId}
+                  className="w-full"
+                  items={[
+                    { value: "", label: t('externalCmdb.selectCiType') },
+                    ...ciTypes.map((ct) => ({ value: ct.id, label: ct.display_name })),
+                  ]}
+                />
               </div>
               <div>
-                <label className="block text-xs font-medium text-secondary mb-1">
-                  {t('externalCmdb.configLabel')}
-                </label>
-                <textarea
+                <InputArea
+                  label={t('externalCmdb.configLabel')}
                   value={form.config}
                   onChange={(e) => setForm({ ...form, config: e.target.value })}
                   rows={10}
-                  className={`${inputCls} font-mono text-xs`}
+                  className="w-full font-mono resize-y"
                 />
               </div>
               {formError && (
@@ -449,20 +442,20 @@ export default function ExternalCMDB() {
                 </div>
               )}
               <div className="flex justify-end gap-3 pt-2">
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="btn-primary"
                 >
                   {t('externalCmdb.createConnection')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

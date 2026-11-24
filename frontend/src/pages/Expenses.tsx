@@ -1,3 +1,7 @@
+import { PageTabs } from '../components/shared/PageTabs'
+import { Table } from '@cloudflare/kumo/components/table'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { cloudServiceLabel } from '../lib/objectStorage'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { chartColors, chartPalette, chartAxis, chartGrid, chartTooltipStyle } from '../lib/chartTheme'
@@ -185,7 +189,7 @@ function ResourceHistoryPanel({
             </p>
             <p className="text-xs text-muted mt-0.5 truncate max-w-[360px]">{resourceId}</p>
           </div>
-          <button onClick={onClose} aria-label={t('common.close')} className="icon-button">×</button>
+          <Button variant="ghost" shape="square" onClick={onClose} aria-label={t('common.close')}>×</Button>
         </div>
 
         {isLoading ? (
@@ -500,12 +504,11 @@ export default function Expenses() {
       {/* Header */}
       <div className="page-header">
         <h1 className="page-title">{t('expenses.title')}</h1>
-        <button
+        <Button
           onClick={handleExport}
-          className="btn-secondary"
         >
           {t('expenses.exportCsv')}
-        </button>
+        </Button>
       </div>
 
       {isError && (
@@ -543,23 +546,35 @@ export default function Expenses() {
 
       {/* Filter bar */}
       <div className="filter-bar">
-        <select aria-label={t('expenses.allCloudAccounts')} value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)}
-          className="px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-          <option value="">{t('expenses.allCloudAccounts')}</option>
-          {cloudAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
-        <select aria-label={t('expenses.allResourceTypes')} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
-          className="px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-          <option value="">{t('expenses.allResourceTypes')}</option>
-          {RESOURCE_TYPES.map((rt) => <option key={rt} value={rt}>{t(`resType.${rt}`, { defaultValue: rt })}</option>)}
-        </select>
-        <select aria-label={t('expenses.allRegions')} value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)}
-          className="px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-          <option value="">{t('expenses.allRegions')}</option>
-          {regions.map((r) => <option key={r} value={r}>{r}</option>)}
-        </select>
+        <SelectField
+          aria-label={t('expenses.allCloudAccounts')}
+          value={accountFilter}
+          onValueChange={setAccountFilter}
+          items={[
+            { value: "", label: t('expenses.allCloudAccounts') },
+            ...cloudAccounts.map((a) => ({ value: a.id, label: a.name })),
+          ]}
+        />
+        <SelectField
+          aria-label={t('expenses.allResourceTypes')}
+          value={typeFilter}
+          onValueChange={setTypeFilter}
+          items={[
+            { value: "", label: t('expenses.allResourceTypes') },
+            ...RESOURCE_TYPES.map((rt) => ({ value: rt, label: t(`resType.${rt}`, { defaultValue: rt }) })),
+          ]}
+        />
+        <SelectField
+          aria-label={t('expenses.allRegions')}
+          value={regionFilter}
+          onValueChange={setRegionFilter}
+          items={[
+            { value: "", label: t('expenses.allRegions') },
+            ...regions.map((r) => ({ value: r, label: r })),
+          ]}
+        />
         {hasFilters && (
-          <button onClick={clearFilters} className="px-3 py-2 text-sm text-secondary hover:text-primary transition-colors">{t('expenses.clearFilters')}</button>
+          <Button variant="ghost" onClick={clearFilters}>{t('expenses.clearFilters')}</Button>
         )}
         <div className="ml-auto text-sm text-secondary">
           {t('expenses.total')} <span className="text-primary font-semibold">{fmtMoney(totalCost)}</span>
@@ -567,14 +582,12 @@ export default function Expenses() {
       </div>
 
       {/* Analysis tabs */}
-      <div className="page-tabs mb-5">
-        {ANALYSIS_TABS.map((tab) => (
-          <button aria-pressed={activeTab === tab} key={tab} onClick={() => setActiveTab(tab)}
-            className="page-tab">
-            {t(ANALYSIS_TAB_KEYS[tab])}
-          </button>
-        ))}
-      </div>
+      <PageTabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="mb-5"
+        tabs={ANALYSIS_TABS.map(tab => ({ value: tab, label: t(ANALYSIS_TAB_KEYS[tab]) }))}
+      />
 
       {/* ── Overview ─────────────────────────────────────────────────────── */}
       {activeTab === 'Overview' && (
@@ -582,12 +595,16 @@ export default function Expenses() {
           <div className="bg-surface border border-edge rounded-xl p-5 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-secondary">{t('expenses.costTrend')}</h3>
-              <select value={granularity} onChange={(e) => setGranularity(e.target.value as 'daily' | 'weekly' | 'monthly')}
-                className="px-2 py-1 bg-subtle border border-strong rounded text-xs text-primary">
-                <option value="daily">{t('expenses.granularityDaily')}</option>
-                <option value="weekly">{t('expenses.granularityWeekly')}</option>
-                <option value="monthly">{t('expenses.granularityMonthly')}</option>
-              </select>
+              <SelectField
+                value={granularity}
+                onValueChange={value => setGranularity(value as 'daily' | 'weekly' | 'monthly')}
+                aria-label={t('expenses.granularityDaily')}
+                items={[
+                  { value: "daily", label: t('expenses.granularityDaily') },
+                  { value: "weekly", label: t('expenses.granularityWeekly') },
+                  { value: "monthly", label: t('expenses.granularityMonthly') },
+                ]}
+              />
             </div>
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
@@ -612,35 +629,35 @@ export default function Expenses() {
             )}
           </div>
           <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-edge text-secondary text-left">
-                  <th className="px-4 py-3 font-medium">{t('expenses.colDate')}</th>
-                  <th className="px-4 py-3 font-medium">{t('expenses.colResource')}</th>
-                  <th className="px-4 py-3 font-medium">{t('resources.metaService')}</th>
-                  <th className="px-4 py-3 font-medium">{t('cmdb.region')}</th>
-                  <th className="px-4 py-3 font-medium text-right">{t('expenses.colCost')}</th>
-                </tr>
-              </thead>
-              <tbody>
+            <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+              <Table.Header variant="compact">
+                <Table.Row className="border-b border-edge text-secondary text-left">
+                  <Table.Head className="px-4 py-3 font-medium">{t('expenses.colDate')}</Table.Head>
+                  <Table.Head className="px-4 py-3 font-medium">{t('expenses.colResource')}</Table.Head>
+                  <Table.Head className="px-4 py-3 font-medium">{t('resources.metaService')}</Table.Head>
+                  <Table.Head className="px-4 py-3 font-medium">{t('cmdb.region')}</Table.Head>
+                  <Table.Head className="px-4 py-3 font-medium text-right">{t('expenses.colCost')}</Table.Head>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
                 {isLoading ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted">{t('common.loading')}</td></tr>
+                  <Table.Row><Table.Cell colSpan={5} className="px-4 py-8 text-center text-muted">{t('common.loading')}</Table.Cell></Table.Row>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted">{t('expenses.noExpenses')}</td></tr>
+                  <Table.Row><Table.Cell colSpan={5} className="px-4 py-8 text-center text-muted">{t('expenses.noExpenses')}</Table.Cell></Table.Row>
                 ) : (
                   rows.map((e) => (
-                    <tr key={e.id} className="border-b border-edge hover:bg-subtle/50 transition-colors cursor-pointer"
+                    <Table.Row key={e.id} className="border-b border-edge hover:bg-subtle/50 transition-colors cursor-pointer"
                       onClick={() => setSelectedResource(e.cloud_resource_id)}>
-                      <td className="px-4 py-3 text-secondary">{e.date}</td>
-                      <td className="px-4 py-3 text-primary hover:text-accent">{e.resource_name ?? e.cloud_resource_id}</td>
-                      <td className="px-4 py-3 text-secondary">{cloudServiceLabel(e.service_name)}</td>
-                      <td className="px-4 py-3 text-secondary">{e.cloud_region}</td>
-                      <td className="px-4 py-3 text-right font-mono text-success">{fmtMoney(e.cost, e.currency)}</td>
-                    </tr>
+                      <Table.Cell className="px-4 py-3 text-secondary">{e.date}</Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-primary hover:text-accent">{e.resource_name ?? e.cloud_resource_id}</Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-secondary">{cloudServiceLabel(e.service_name)}</Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-secondary">{e.cloud_region}</Table.Cell>
+                      <Table.Cell className="px-4 py-3 text-right font-mono text-success">{fmtMoney(e.cost, e.currency)}</Table.Cell>
+                    </Table.Row>
                   ))
                 )}
-              </tbody>
-            </table></div>
+              </Table.Body>
+            </Table></div>
             <PaginationBar
               page={page}
               totalPages={totalPages}
@@ -673,22 +690,22 @@ export default function Expenses() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex-1 overflow-auto">
-                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                  <thead><tr className="text-secondary text-left border-b border-edge"><th className="pb-2">{t('resources.metaService')}</th><th className="pb-2 text-right">{t('expenses.colCost')}</th></tr></thead>
-                  <tbody>
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                  <Table.Header variant="compact"><Table.Row className="text-secondary text-left border-b border-edge"><Table.Head className="pb-2">{t('resources.metaService')}</Table.Head><Table.Head className="pb-2 text-right">{t('expenses.colCost')}</Table.Head></Table.Row></Table.Header>
+                  <Table.Body>
                     {byService.map((s, i) => (
-                      <tr key={s.name} className="border-b border-edge/50">
-                        <td className="py-2">
+                      <Table.Row key={s.name} className="border-b border-edge/50">
+                        <Table.Cell className="py-2">
                           <span className="inline-flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                             <span className="text-secondary">{s.name || t('status.unknown')}</span>
                           </span>
-                        </td>
-                        <td className="py-2 text-right text-success font-mono">{fmtMoney(s.total_cost)}</td>
-                      </tr>
+                        </Table.Cell>
+                        <Table.Cell className="py-2 text-right text-success font-mono">{fmtMoney(s.total_cost)}</Table.Cell>
+                      </Table.Row>
                     ))}
-                  </tbody>
-                </table></div>
+                  </Table.Body>
+                </Table></div>
               </div>
             </div>
           )}
@@ -766,12 +783,16 @@ export default function Expenses() {
         <div className="bg-surface border border-edge rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-secondary">Cost Trend</h3>
-            <select value={granularity} onChange={(e) => setGranularity(e.target.value as 'daily' | 'weekly' | 'monthly')}
-              className="px-2 py-1 bg-subtle border border-strong rounded text-xs text-primary">
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
+            <SelectField
+              value={granularity}
+              onValueChange={value => setGranularity(value as 'daily' | 'weekly' | 'monthly')}
+              aria-label={"Daily"}
+              items={[
+                { value: "daily", label: "Daily" },
+                { value: "weekly", label: "Weekly" },
+                { value: "monthly", label: "Monthly" },
+              ]}
+            />
           </div>
           {trendLoading ? (
             <div className="h-[300px] animate-pulse bg-subtle rounded-lg" />
@@ -821,31 +842,31 @@ export default function Expenses() {
                   </BarChart>
                 </ResponsiveContainer>
 
-                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm mt-4">
-                  <thead>
-                    <tr className="border-b border-edge text-secondary text-left">
-                      <th className="px-3 py-2">{t('expenses.colResource')}</th>
-                      <th className="px-3 py-2">{t('common.type')}</th>
-                      <th className="px-3 py-2">{t('expenses.colPool')}</th>
-                      <th className="px-3 py-2 text-right">{t('resources.colTotalCost')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table className="mt-4">
+                  <Table.Header variant="compact">
+                    <Table.Row className="border-b border-edge text-secondary text-left">
+                      <Table.Head className="px-3 py-2">{t('expenses.colResource')}</Table.Head>
+                      <Table.Head className="px-3 py-2">{t('common.type')}</Table.Head>
+                      <Table.Head className="px-3 py-2">{t('expenses.colPool')}</Table.Head>
+                      <Table.Head className="px-3 py-2 text-right">{t('resources.colTotalCost')}</Table.Head>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
                     {topResources.map((r) => (
-                      <tr key={r.cloud_resource_id}
+                      <Table.Row key={r.cloud_resource_id}
                         className="border-b border-edge/50 hover:bg-subtle/40 cursor-pointer transition-colors"
                         onClick={() => setSelectedResource(r.cloud_resource_id)}>
-                        <td className="px-3 py-2.5 text-primary">
+                        <Table.Cell className="px-3 py-2.5 text-primary">
                           <div>{r.resource_name ?? '—'}</div>
                           <div className="text-xs text-muted font-mono truncate max-w-[200px]">{r.cloud_resource_id}</div>
-                        </td>
-                        <td className="px-3 py-2.5 text-secondary">{r.resource_type}</td>
-                        <td className="px-3 py-2.5 text-secondary">{r.pool_name ?? <span className="text-muted italic">{t('resources.unassigned')}</span>}</td>
-                        <td className="px-3 py-2.5 text-right font-mono text-warning">{fmtMoney(r.total_cost)}</td>
-                      </tr>
+                        </Table.Cell>
+                        <Table.Cell className="px-3 py-2.5 text-secondary">{r.resource_type}</Table.Cell>
+                        <Table.Cell className="px-3 py-2.5 text-secondary">{r.pool_name ?? <span className="text-muted italic">{t('resources.unassigned')}</span>}</Table.Cell>
+                        <Table.Cell className="px-3 py-2.5 text-right font-mono text-warning">{fmtMoney(r.total_cost)}</Table.Cell>
+                      </Table.Row>
                     ))}
-                  </tbody>
-                </table></div>
+                  </Table.Body>
+                </Table></div>
               </>
             )}
           </div>
@@ -909,26 +930,26 @@ export default function Expenses() {
 
               {/* Forecast table */}
               <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-edge text-secondary text-left">
-                      <th className="px-4 py-3">{t('expenses.colDate')}</th>
-                      <th className="px-4 py-3 text-right">{t('expenses.colPredictedCost')}</th>
-                      <th className="px-4 py-3 text-right">{t('expenses.colLower')}</th>
-                      <th className="px-4 py-3 text-right">{t('expenses.colUpper')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                  <Table.Header variant="compact">
+                    <Table.Row className="border-b border-edge text-secondary text-left">
+                      <Table.Head className="px-4 py-3">{t('expenses.colDate')}</Table.Head>
+                      <Table.Head className="px-4 py-3 text-right">{t('expenses.colPredictedCost')}</Table.Head>
+                      <Table.Head className="px-4 py-3 text-right">{t('expenses.colLower')}</Table.Head>
+                      <Table.Head className="px-4 py-3 text-right">{t('expenses.colUpper')}</Table.Head>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
                     {forecastData.forecast.slice(0, 14).map((f) => (
-                      <tr key={f.date} className="border-b border-edge/50">
-                        <td className="px-4 py-2.5 text-secondary">{f.date}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-warning">{fmtMoney(f.predicted_cost)}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-muted">{fmtMoney(f.lower)}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-muted">{fmtMoney(f.upper)}</td>
-                      </tr>
+                      <Table.Row key={f.date} className="border-b border-edge/50">
+                        <Table.Cell className="px-4 py-2.5 text-secondary">{f.date}</Table.Cell>
+                        <Table.Cell className="px-4 py-2.5 text-right font-mono text-warning">{fmtMoney(f.predicted_cost)}</Table.Cell>
+                        <Table.Cell className="px-4 py-2.5 text-right font-mono text-muted">{fmtMoney(f.lower)}</Table.Cell>
+                        <Table.Cell className="px-4 py-2.5 text-right font-mono text-muted">{fmtMoney(f.upper)}</Table.Cell>
+                      </Table.Row>
                     ))}
-                  </tbody>
-                </table></div>
+                  </Table.Body>
+                </Table></div>
               </div>
             </>
           )}
@@ -972,43 +993,43 @@ export default function Expenses() {
               </div>
 
               <div className="bg-surface border border-edge rounded-xl overflow-hidden">
-                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-edge text-secondary text-left">
-                      <th className="px-4 py-3">{t('expenses.colDate')}</th>
-                      <th className="px-4 py-3">{t('expenses.colResource')}</th>
-                      <th className="px-4 py-3">{t('common.type')}</th>
-                      <th className="px-4 py-3 text-right">{t('expenses.colActual')}</th>
-                      <th className="px-4 py-3 text-right">{t('expenses.colBaseline')}</th>
-                      <th className="px-4 py-3 text-right">{t('expenses.colDeviation')}</th>
-                      <th className="px-4 py-3 text-right">{t('expenses.zScore')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                  <Table.Header variant="compact">
+                    <Table.Row className="border-b border-edge text-secondary text-left">
+                      <Table.Head className="px-4 py-3">{t('expenses.colDate')}</Table.Head>
+                      <Table.Head className="px-4 py-3">{t('expenses.colResource')}</Table.Head>
+                      <Table.Head className="px-4 py-3">{t('common.type')}</Table.Head>
+                      <Table.Head className="px-4 py-3 text-right">{t('expenses.colActual')}</Table.Head>
+                      <Table.Head className="px-4 py-3 text-right">{t('expenses.colBaseline')}</Table.Head>
+                      <Table.Head className="px-4 py-3 text-right">{t('expenses.colDeviation')}</Table.Head>
+                      <Table.Head className="px-4 py-3 text-right">{t('expenses.zScore')}</Table.Head>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
                     {anomaliesData.anomalies.map((a, i) => (
-                      <tr key={`${a.cloud_resource_id}-${a.date}-${i}`}
+                      <Table.Row key={`${a.cloud_resource_id}-${a.date}-${i}`}
                         className="border-b border-edge/50 hover:bg-subtle/40 cursor-pointer transition-colors"
                         onClick={() => setSelectedResource(a.cloud_resource_id)}>
-                        <td className="px-4 py-2.5 text-secondary">{a.date}</td>
-                        <td className="px-4 py-2.5 text-primary">
+                        <Table.Cell className="px-4 py-2.5 text-secondary">{a.date}</Table.Cell>
+                        <Table.Cell className="px-4 py-2.5 text-primary">
                           <div>{a.resource_name ?? '—'}</div>
                           <div className="text-xs text-muted font-mono truncate max-w-[140px]">{a.cloud_resource_id.slice(-16)}</div>
-                        </td>
-                        <td className="px-4 py-2.5 text-secondary">{a.resource_type}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-danger">{fmtMoney(a.cost)}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-secondary">{fmtMoney(a.mean_cost)}</td>
-                        <td className={`px-4 py-2.5 text-right font-mono ${a.deviation_pct > 0 ? 'text-danger' : 'text-success'}`}>
+                        </Table.Cell>
+                        <Table.Cell className="px-4 py-2.5 text-secondary">{a.resource_type}</Table.Cell>
+                        <Table.Cell className="px-4 py-2.5 text-right font-mono text-danger">{fmtMoney(a.cost)}</Table.Cell>
+                        <Table.Cell className="px-4 py-2.5 text-right font-mono text-secondary">{fmtMoney(a.mean_cost)}</Table.Cell>
+                        <Table.Cell className={`px-4 py-2.5 text-right font-mono ${a.deviation_pct > 0 ? 'text-danger' : 'text-success'}`}>
                           {a.deviation_pct > 0 ? '+' : ''}{a.deviation_pct.toFixed(1)}%
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
+                        </Table.Cell>
+                        <Table.Cell className="px-4 py-2.5 text-right">
                           <span className={`px-2 py-0.5 rounded text-xs font-mono ${a.z_score > 4 ? 'bg-danger/10 text-danger' : 'bg-warning/10 text-warning'}`}>
                             {a.z_score.toFixed(2)}
                           </span>
-                        </td>
-                      </tr>
+                        </Table.Cell>
+                      </Table.Row>
                     ))}
-                  </tbody>
-                </table></div>
+                  </Table.Body>
+                </Table></div>
               </div>
             </>
           )}
@@ -1120,8 +1141,8 @@ export default function Expenses() {
               const isOpen = expandedTagKey === tag.tag_key
               return (
                 <div key={tag.tag_key} className="bg-surface border border-edge rounded-xl overflow-hidden">
-                  <button
-                    className="w-full flex items-center justify-between px-5 py-3 hover:bg-subtle/50 transition-colors"
+                  <Button
+                    className="w-full"
                     onClick={() => setExpandedTagKey(isOpen ? null : tag.tag_key)}
                   >
                     <div className="flex items-center gap-3">
@@ -1130,7 +1151,7 @@ export default function Expenses() {
                       <span className="text-xs text-muted">{t('expenses.tagValueCount', { count: tag.values.length })}</span>
                     </div>
                     <span className="text-sm font-semibold text-primary font-mono">{fmtMoney(tag.total_cost)}</span>
-                  </button>
+                  </Button>
 
                   {isOpen && (
                     <div className="border-t border-edge p-4">
@@ -1144,29 +1165,29 @@ export default function Expenses() {
                           </PieChart>
                         </ResponsiveContainer>
                         <div className="flex-1 overflow-auto">
-                          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                            <thead>
-                              <tr className="text-secondary text-left border-b border-edge">
-                                <th className="pb-2">{t('expenses.colValue')}</th>
-                                <th className="pb-2 text-right">{t('expenses.colCost')}</th>
-                                <th className="pb-2 text-right">%</th>
-                              </tr>
-                            </thead>
-                            <tbody>
+                          <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                            <Table.Header variant="compact">
+                              <Table.Row className="text-secondary text-left border-b border-edge">
+                                <Table.Head className="pb-2">{t('expenses.colValue')}</Table.Head>
+                                <Table.Head className="pb-2 text-right">{t('expenses.colCost')}</Table.Head>
+                                <Table.Head className="pb-2 text-right">%</Table.Head>
+                              </Table.Row>
+                            </Table.Header>
+                            <Table.Body>
                               {tag.values.map((v, i) => (
-                                <tr key={v.tag_value} className="border-b border-edge/40">
-                                  <td className="py-1.5">
+                                <Table.Row key={v.tag_value} className="border-b border-edge/40">
+                                  <Table.Cell className="py-1.5">
                                     <span className="inline-flex items-center gap-2">
                                       <span className="w-2 h-2 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                                       <span className="text-secondary font-mono text-xs">{v.tag_value}</span>
                                     </span>
-                                  </td>
-                                  <td className="py-1.5 text-right text-success font-mono text-xs">{fmtMoney(v.cost)}</td>
-                                  <td className="py-1.5 text-right text-muted text-xs">{v.pct.toFixed(1)}%</td>
-                                </tr>
+                                  </Table.Cell>
+                                  <Table.Cell className="py-1.5 text-right text-success font-mono text-xs">{fmtMoney(v.cost)}</Table.Cell>
+                                  <Table.Cell className="py-1.5 text-right text-muted text-xs">{v.pct.toFixed(1)}%</Table.Cell>
+                                </Table.Row>
                               ))}
-                            </tbody>
-                          </table></div>
+                            </Table.Body>
+                          </Table></div>
                         </div>
                       </div>
                     </div>

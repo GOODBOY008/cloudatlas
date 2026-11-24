@@ -1,3 +1,5 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Button } from '@cloudflare/kumo/components/button'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -12,19 +14,18 @@ export function Pager({ meta, change }: { meta: PageMeta; change: (n: number) =>
   if (meta.total_pages <= 1) return null
   return (
     <div className="storage-pager">
-      <button className="btn-secondary" disabled={meta.page <= 1} onClick={() => change(meta.page - 1)}>
+      <Button disabled={meta.page <= 1} onClick={() => change(meta.page - 1)}>
         {t('storage.previous')}
-      </button>
+      </Button>
       <span>
         {meta.page} / {meta.total_pages}
       </span>
-      <button
-        className="btn-secondary"
+      <Button
         disabled={meta.page >= meta.total_pages}
         onClick={() => change(meta.page + 1)}
       >
         {t('storage.next')}
-      </button>
+      </Button>
     </div>
   )
 }
@@ -69,22 +70,27 @@ export function Bills({
         <p className="storage-muted">{t('storage.noBilling')}</p>
       ) : (
         <>
-          <div className="storage-table-wrap" tabIndex={0} aria-label={t('storage.billEvidence')}>
-            <table>
-              <thead>
-                <tr>
+          <div
+            className="storage-table-wrap"
+            role="region"
+            tabIndex={0}
+            aria-label={t('storage.billEvidence')}
+          >
+            <Table>
+              <Table.Header variant="compact">
+                <Table.Row>
                   {['day', 'source', 'category', 'amount', 'allocation'].map((k) => (
                     <th scope="col" key={k}>
                       {t('storage.' + k)}
                     </th>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
                 {result.data.data.map((b) => (
-                  <tr key={b.expense_id + ':' + b.seq}>
-                    <td>{b.date}</td>
-                    <td>
+                  <Table.Row key={b.expense_id + ':' + b.seq}>
+                    <Table.Cell>{b.date}</Table.Cell>
+                    <Table.Cell>
                       <strong>{b.account_name}</strong>
                       <small>{b.cloud_resource_id}</small>
                       <details>
@@ -114,14 +120,14 @@ export function Bills({
                           </small>
                         )}
                       </details>
-                    </td>
-                    <td>{t('storage.category.' + b.category)}</td>
-                    <td>{fmtMoney(b.cost, b.currency)}</td>
-                    <td>{t('storage.alloc.' + b.allocation)}</td>
-                  </tr>
+                    </Table.Cell>
+                    <Table.Cell>{t('storage.category.' + b.category)}</Table.Cell>
+                    <Table.Cell>{fmtMoney(b.cost, b.currency)}</Table.Cell>
+                    <Table.Cell>{t('storage.alloc.' + b.allocation)}</Table.Cell>
+                  </Table.Row>
                 ))}
-              </tbody>
-            </table>
+              </Table.Body>
+            </Table>
           </div>
           <Pager meta={result.data.meta} change={setPage} />
         </>

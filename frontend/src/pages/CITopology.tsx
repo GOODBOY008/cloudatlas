@@ -1,3 +1,4 @@
+import { SelectField } from '../components/shared/SelectField'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -89,23 +90,22 @@ function TreeNode({
 
       {showParentPicker && (
         <div className="flex items-center gap-2 py-1 pl-8">
-          <select
+          <SelectField
             defaultValue=""
-            onChange={(e) => {
-              if (e.target.value) {
-                onSetParent(node.id, e.target.value)
+            onValueChange={value => {
+              if (value) {
+                onSetParent(node.id, value)
                 setShowParentPicker(false)
               }
             }}
-            className="bg-subtle border border-strong rounded px-2 py-1 text-xs text-primary focus:outline-none"
-          >
-            <option value="">{t('ciTopology.chooseParent')}</option>
-            {candidates
+            aria-label={t('ciTopology.chooseParent')}
+            items={[
+              { value: "", label: t('ciTopology.chooseParent') },
+              ...candidates
               .filter((c) => c.id !== node.id)
-              .map((c) => (
-                <option key={c.id} value={c.id}>{c.display_name || c.name}</option>
-              ))}
-          </select>
+              .map((c) => ({ value: c.id, label: c.display_name || c.name })),
+            ]}
+          />
           <button
             onClick={() => {
               onSetParent(node.id, '')
@@ -199,17 +199,16 @@ export default function CITopology() {
           <h1 className="page-title">{t('ciTopology.title')}</h1>
           <p className="text-sm text-secondary mt-0.5">{t('ciTopology.subtitle')}</p>
         </div>
-        <select
+        <SelectField
           value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className="px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm"
+          onValueChange={setTypeFilter}
           data-testid="ci-topology-type-select"
-        >
-          <option value="">{t('ciTopology.allTypes')}</option>
-          {ciTypes.map((ct) => (
-            <option key={ct.id} value={ct.id}>{ct.display_name}</option>
-          ))}
-        </select>
+          aria-label={t('ciTopology.allTypes')}
+          items={[
+            { value: "", label: t('ciTopology.allTypes') },
+            ...ciTypes.map((ct) => ({ value: ct.id, label: ct.display_name })),
+          ]}
+        />
       </div>
 
       {actionError && (

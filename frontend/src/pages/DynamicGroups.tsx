@@ -1,3 +1,7 @@
+import { Table } from '@cloudflare/kumo/components/table'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Button } from '@cloudflare/kumo/components/button'
+import { SelectField } from '../components/shared/SelectField'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -87,7 +91,7 @@ function GroupResultPanel({
             <h2 className="text-lg font-semibold text-primary">{groupName}</h2>
             <p className="text-xs text-muted mt-0.5">{t('dynamicGroups.executionResults')}</p>
           </div>
-          <button onClick={onClose} aria-label={t('common.close')} className="icon-button">✕</button>
+          <Button variant="ghost" shape="square" onClick={onClose} aria-label={t('common.close')}>✕</Button>
         </div>
 
         <div className="p-5">
@@ -104,31 +108,31 @@ function GroupResultPanel({
                 <p className="text-muted text-sm">{t('dynamicGroups.noCisMatched')}</p>
               ) : (
                 <div className="bg-subtle/50 rounded-lg overflow-hidden">
-                  <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-muted text-xs border-b border-strong">
-                        <th className="px-3 py-2 text-left">{t('cmdb.colCi')}</th>
-                        <th className="px-3 py-2 text-left">{t('common.type')}</th>
-                        <th className="px-3 py-2 text-left">{t('dynamicGroups.colState')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <div role="region" aria-label={t('design.dataTable')} className="table-scroll" tabIndex={0}><Table>
+                    <Table.Header variant="compact">
+                      <Table.Row className="text-muted text-xs border-b border-strong">
+                        <Table.Head className="px-3 py-2 text-left">{t('cmdb.colCi')}</Table.Head>
+                        <Table.Head className="px-3 py-2 text-left">{t('common.type')}</Table.Head>
+                        <Table.Head className="px-3 py-2 text-left">{t('dynamicGroups.colState')}</Table.Head>
+                      </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
                       {result.cis.map(c => (
-                        <tr key={c.id} className="border-b border-strong/50 last:border-0">
-                          <td className="px-3 py-2">
+                        <Table.Row key={c.id} className="border-b border-strong/50 last:border-0">
+                          <Table.Cell className="px-3 py-2">
                             <p className="text-primary font-medium">{c.display_name || c.name}</p>
                             <p className="text-muted text-xs">{c.name}</p>
-                          </td>
-                          <td className="px-3 py-2 text-secondary text-xs">{c.ci_type_name ?? '—'}</td>
-                          <td className="px-3 py-2">
+                          </Table.Cell>
+                          <Table.Cell className="px-3 py-2 text-secondary text-xs">{c.ci_type_name ?? '—'}</Table.Cell>
+                          <Table.Cell className="px-3 py-2">
                             <span className={`text-xs ${LIFECYCLE_STATE_COLORS[c.lifecycle_state] ?? 'text-secondary'}`}>
                               {t(`lifecycle.${c.lifecycle_state}`, { defaultValue: c.lifecycle_state })}
                             </span>
-                          </td>
-                        </tr>
+                          </Table.Cell>
+                        </Table.Row>
                       ))}
-                    </tbody>
-                  </table></div>
+                    </Table.Body>
+                  </Table></div>
                 </div>
               )}
             </>
@@ -222,12 +226,12 @@ export default function DynamicGroups() {
           <h1 className="page-title">{t('dynamicGroups.title')}</h1>
           <p className="text-sm text-secondary mt-1">{t('dynamicGroups.subtitle')}</p>
         </div>
-        <button
+        <Button
+          variant={showForm ? 'secondary' : 'primary'}
           onClick={() => setShowForm(v => !v)}
-          className="btn-primary"
         >
           {showForm ? t('common.cancel') : t('dynamicGroups.newGroup')}
-        </button>
+        </Button>
       </div>
 
       {/* Create form */}
@@ -236,22 +240,22 @@ export default function DynamicGroups() {
           <h2 className="text-sm font-semibold text-primary">{t('dynamicGroups.createTitle')}</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('common.name')} *</label>
-              <input
+              <Input
+                label={`${t('common.name')} *`}
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                className="w-full bg-emphasis text-primary text-sm rounded px-3 py-2 border border-strong focus:outline-none focus:border-accent"
+                className="w-full"
                 placeholder="active-vms"
               />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
-              <input
+              <Input
+                label={t('common.description')}
                 type="text"
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                className="w-full bg-emphasis text-primary text-sm rounded px-3 py-2 border border-strong focus:outline-none focus:border-accent"
+                className="w-full"
                 placeholder={t('dynamicGroups.descPlaceholder')}
               />
             </div>
@@ -272,27 +276,28 @@ export default function DynamicGroups() {
             <div className="space-y-2">
               {conditions.map((cond, i) => (
                 <div key={i} className="flex gap-2 items-center">
-                  <input
+                  <Input
+                    aria-label={t('dynamicGroups.fieldPlaceholder')}
                     list={`fields-${i}`}
                     value={cond.field}
                     onChange={e => updateCondition(i, { field: e.target.value })}
-                    className="flex-1 bg-emphasis text-primary text-xs rounded px-2 py-1.5 border border-strong focus:outline-none focus:border-accent"
+                    className="flex-1"
                     placeholder={t('dynamicGroups.fieldPlaceholder')}
                   />
                   <datalist id={`fields-${i}`}>
                     {COMMON_FIELDS.map(f => <option key={f} value={f} />)}
                   </datalist>
-                  <select
+                  <SelectField
+                    aria-label={t('common.operator')}
                     value={cond.operator}
-                    onChange={e => updateCondition(i, { operator: e.target.value })}
-                    className="bg-emphasis text-primary text-xs rounded px-2 py-1.5 border border-strong focus:outline-none focus:border-accent"
-                  >
-                    {OPERATORS.map(op => <option key={op} value={op}>{opLabel(op)}</option>)}
-                  </select>
-                  <input
+                    onValueChange={value => updateCondition(i, { operator: value })}
+                    items={OPERATORS.map(op => ({ value: op, label: opLabel(op) }))}
+                  />
+                  <Input
+                    aria-label={t('dynamicGroups.valuePlaceholder')}
                     value={cond.value}
                     onChange={e => updateCondition(i, { value: e.target.value })}
-                    className="flex-1 bg-emphasis text-primary text-xs rounded px-2 py-1.5 border border-strong focus:outline-none focus:border-accent"
+                    className="flex-1"
                     placeholder={t('dynamicGroups.valuePlaceholder')}
                   />
                   {conditions.length > 1 && (
@@ -311,20 +316,20 @@ export default function DynamicGroups() {
 
           {formError && <p className="text-sm text-danger">{formError}</p>}
           <div className="flex justify-end gap-3">
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={() => { setShowForm(false); setFormError('') }}
-              className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
             >
               {t('common.cancel')}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
               type="submit"
               disabled={createMutation.isPending}
-              className="btn-primary"
             >
               {createMutation.isPending ? t('dynamicGroups.creating') : t('dynamicGroups.createGroup')}
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -358,22 +363,21 @@ export default function DynamicGroups() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                  <button
+                  <Button
                     onClick={() => {
                       setEditGroup(g)
                       setEditGroupName(g.name)
                       setEditGroupDescription(g.description ?? '')
                     }}
-                    className="btn-secondary"
                   >
                     {t('common.edit')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    size="sm"
                     onClick={() => setSelectedGroup({ id: g.id, name: g.name })}
-                    className="px-3 py-1.5 bg-accent/30 hover:bg-accent-hover/60 text-accent text-xs rounded transition-colors"
                   >
                     {t('dynamicGroups.run')}
-                  </button>
+                  </Button>
                   <button
                     onClick={() => deleteMutation.mutate(g.id)}
                     className="px-3 py-1.5 text-danger/60 hover:text-danger text-xs transition-colors"
@@ -415,37 +419,36 @@ export default function DynamicGroups() {
             className="space-y-4"
           >
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('common.name')} *</label>
-              <input
+              <Input label={`${t('common.name')} *`}
                 autoFocus
                 value={editGroupName}
                 onChange={e => setEditGroupName(e.target.value)}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full"
               />
             </div>
             <div>
-              <label className="block text-xs text-secondary mb-1">{t('common.description')}</label>
-              <input
+              <Input
+                label={t('common.description')}
                 value={editGroupDescription}
                 onChange={e => setEditGroupDescription(e.target.value)}
-                className="w-full px-3 py-2 bg-subtle border border-strong rounded-lg text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full"
               />
             </div>
             <div className="flex justify-end gap-2 pt-1">
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={() => setEditGroup(null)}
-                className="px-3 py-1.5 text-sm text-secondary hover:text-primary transition-colors"
               >
                 {t('common.cancel')}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
                 type="submit"
                 disabled={updateMutation.isPending}
-                className="btn-primary"
               >
                 {updateMutation.isPending ? t('dynamicGroups.saving') : t('common.save')}
-              </button>
+              </Button>
             </div>
           </form>
         </Modal>

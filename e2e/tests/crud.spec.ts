@@ -33,7 +33,7 @@ test.describe('Cloud Accounts @regression', () => {
 
   test('CA-09 — connect AWS account with credentials @smoke', async ({ cloudAccountsPage }) => {
     const name = `e2e-aws-${Date.now()}`;
-    await cloudAccountsPage.addAccountWithCredentials(name, 'aws', '123456789012', {
+    await cloudAccountsPage.addAccountWithCredentials(name, 'AWS', '123456789012', {
       access_key_id: 'AKIAE2E',
       secret_access_key: 'e2e-secret',
     });
@@ -45,7 +45,7 @@ test.describe('Cloud Accounts @regression', () => {
 
   test('CA-10 — edit modal rotates credentials', async ({ cloudAccountsPage }) => {
     const name = `e2e-aws-${Date.now()}`;
-    await cloudAccountsPage.addAccountWithCredentials(name, 'aws', '123456789012', {
+    await cloudAccountsPage.addAccountWithCredentials(name, 'AWS', '123456789012', {
       access_key_id: 'AKIAE2E',
       secret_access_key: 'e2e-secret',
     });
@@ -58,7 +58,7 @@ test.describe('Cloud Accounts @regression', () => {
 
   test('CA-11 — other provider needs no credentials', async ({ cloudAccountsPage }) => {
     const name = `e2e-other-${Date.now()}`;
-    await cloudAccountsPage.addAccount(name, 'other', '999');
+    await cloudAccountsPage.addAccount(name, 'Other', '999');
     await expect(cloudAccountsPage.page.getByText(name)).toBeVisible();
     await cloudAccountsPage.openEdit(name);
     await expect(cloudAccountsPage.page.getByText(/credentials configured/i)).not.toBeVisible();

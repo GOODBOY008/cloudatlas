@@ -1,3 +1,4 @@
+import { Button } from '@cloudflare/kumo/components/button'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -87,12 +88,12 @@ export default function NotificationBell() {
 
   return (
     <div className="relative" ref={panelRef}>
-      <button
+      <Button variant="ghost" shape="square"
         onClick={() => setOpen((v) => !v)}
         title={t('notifications.title')}
         aria-label={t('notifications.title')}
         aria-expanded={open}
-        className="icon-button relative"
+        className="relative"
       >
         <Bell size={18} />
         {unread > 0 && (
@@ -100,7 +101,7 @@ export default function NotificationBell() {
             {unread > 99 ? '99+' : unread}
           </span>
         )}
-      </button>
+      </Button>
 
       {open && (
         <div className="fixed right-4 top-16 w-[360px] max-w-[calc(100dvw-2rem)] bg-surface border border-edge rounded-xl shadow-popover overflow-hidden z-50 sm:absolute sm:right-0 sm:top-11">
