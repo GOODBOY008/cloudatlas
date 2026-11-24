@@ -56,7 +56,7 @@ export default function BillingImport() {
   const { t } = useTranslation()
 
   const [accountId, setAccountId] = useState('')
-  const [days, setDays] = useState(30)
+  const [days, setDays] = useState('30')
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [confirmCancel, setConfirmCancel] = useState(false)
@@ -132,7 +132,7 @@ export default function BillingImport() {
       setError(t('billingImport.selectAccountRequired'))
       return
     }
-    importMutation.mutate({ cloud_account_id: accountId, days })
+    importMutation.mutate({ cloud_account_id: accountId, days: Number(days) })
   }
 
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? id.slice(0, 8)
@@ -183,7 +183,7 @@ export default function BillingImport() {
               min={1}
               max={90}
               value={days}
-              onChange={e => setDays(Number(e.target.value))}
+              onChange={e => setDays(e.target.value)}
               className="w-full"
             />
           </div>

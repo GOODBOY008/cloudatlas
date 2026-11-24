@@ -72,7 +72,7 @@ export default function CIApplyRules() {
 
   // Form state
   const [ciTypeId, setCiTypeId] = useState('')
-  const [priority, setPriority] = useState(0)
+  const [priority, setPriority] = useState('0')
   const [isActive, setIsActive] = useState(true)
   const [conditions, setConditions] = useState<Condition[]>([{ field: 'lifecycle_state', operator: 'eq', value: '' }])
   const [attributes, setAttributes] = useState<AttributePair[]>([{ key: '', value: '' }])
@@ -102,7 +102,7 @@ export default function CIApplyRules() {
   })
 
   function resetForm() {
-    setCiTypeId(''); setPriority(0); setIsActive(true)
+    setCiTypeId(''); setPriority('0'); setIsActive(true)
     setConditions([{ field: 'lifecycle_state', operator: 'eq', value: '' }])
     setAttributes([{ key: '', value: '' }])
     setEditId(null); setFormError(''); setShowForm(false)
@@ -116,7 +116,7 @@ export default function CIApplyRules() {
       ci_type_id: ciTypeId || undefined,
       conditions: cleanConds,
       attributes: cleanAttrs,
-      priority,
+      priority: Number(priority),
       is_active: isActive,
     }
   }
@@ -159,7 +159,7 @@ export default function CIApplyRules() {
 
   function startEdit(r: CIApplyRule) {
     setCiTypeId(r.ci_type_id ?? '')
-    setPriority(r.priority)
+    setPriority(String(r.priority))
     setIsActive(r.is_active)
     setConditions(r.conditions.length > 0 ? r.conditions : [{ field: '', operator: 'eq', value: '' }])
     const attrPairs = Object.entries(r.attributes).map(([k, v]) => ({ key: k, value: String(v) }))
@@ -235,7 +235,7 @@ export default function CIApplyRules() {
                 label={t('ciApplyRules.priorityLabel')}
                 type="number"
                 value={priority}
-                onChange={e => setPriority(Number(e.target.value))}
+                onChange={e => setPriority(e.target.value)}
                 className="w-full"
               />
             </div>

@@ -50,6 +50,10 @@ const eventColors: Record<string, string> = {
   restored:       'text-success',
 }
 
+const defaultPolicyForm = {
+  name: '', description: '', policy_type: 'ttl', ttl_days: '30', idle_days: '14', action: 'flag',
+}
+
 export default function ResourceLifecycle() {
   const { t } = useTranslation()
   const { currentOrg } = useOrgStore()
@@ -59,9 +63,7 @@ export default function ResourceLifecycle() {
   const [activeTab, setActiveTab] = useState<'policies' | 'events'>('policies')
   const [showCreate, setShowCreate] = useState(false)
   const [evaluatingId, setEvaluatingId] = useState<string | null>(null)
-  const [form, setForm] = useState({
-    name: '', description: '', policy_type: 'ttl', ttl_days: 30, idle_days: 14, action: 'flag',
-  })
+  const [form, setForm] = useState(defaultPolicyForm)
 
   const { data: policies, isLoading: policyLoading } = useQuery({
     queryKey: ['lifecycle-policies', orgId],
@@ -80,8 +82,8 @@ export default function ResourceLifecycle() {
       name: form.name,
       description: form.description || undefined,
       policy_type: form.policy_type,
-      ttl_days: form.policy_type === 'ttl' ? form.ttl_days : undefined,
-      idle_days: form.policy_type === 'idle_shutdown' ? form.idle_days : undefined,
+      ttl_days: form.policy_type === 'ttl' ? Number(form.ttl_days || defaultPolicyForm.ttl_days) : undefined,
+      idle_days: form.policy_type === 'idle_shutdown' ? Number(form.idle_days || defaultPolicyForm.idle_days) : undefined,
       action: form.action,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['lifecycle-policies', orgId] }); setShowCreate(false) },
@@ -261,7 +263,7 @@ export default function ResourceLifecycle() {
                 <div>
                   <Input
                     label={t('resourceLifecycle.ttlDaysLabel')} type="number" min={1} value={form.ttl_days}
-                    onChange={e => setForm(p => ({ ...p, ttl_days: parseInt(e.target.value) || 30 }))}
+                    onChange={e => setForm(p => ({ ...p, ttl_days: e.target.value }))}
                     className="w-full" />
                 </div>
               )}
@@ -269,7 +271,7 @@ export default function ResourceLifecycle() {
                 <div>
                   <Input
                     label={t('resourceLifecycle.idleDaysLabel')} type="number" min={1} value={form.idle_days}
-                    onChange={e => setForm(p => ({ ...p, idle_days: parseInt(e.target.value) || 14 }))}
+                    onChange={e => setForm(p => ({ ...p, idle_days: e.target.value }))}
                     className="w-full" />
                 </div>
               )}

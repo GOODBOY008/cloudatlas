@@ -338,11 +338,13 @@ interface FxRate {
   updated_at: string
 }
 
+type FxRateDraft = Omit<FxRate, 'rate'> & { rate: string }
+
 function FxRatesSection() {
   const { t } = useTranslation()
   const { currentOrg } = useOrgStore()
   const orgId = currentOrg?.id
-  const [rates, setRates] = useState<FxRate[]>([])
+  const [rates, setRates] = useState<FxRateDraft[]>([])
   const orgCurrency = useOrgCurrency()
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -354,15 +356,14 @@ function FxRatesSection() {
     api
       .get<{ data: FxRate[]; org_currency: string }>(`/orgs/${orgId}/exchange-rates`)
       .then((res) => {
-        setRates(res.data.data ?? [])
+        setRates((res.data.data ?? []).map(r => ({ ...r, rate: String(r.rate) })))
         setLoaded(true)
       })
       .catch(() => setError(t('settings.fxLoadFailed')))
   }, [orgId, t])
 
   function updateRate(idx: number, value: string) {
-    const v = parseFloat(value)
-    setRates((prev) => prev.map((r, i) => (i === idx ? { ...r, rate: isNaN(v) ? 0 : v } : r)))
+    setRates(prev => prev.map((r, i) => i === idx ? { ...r, rate: value } : r))
   }
 
   async function save() {
@@ -371,7 +372,9 @@ function FxRatesSection() {
     setMessage('')
     setError('')
     try {
-      await api.put(`/orgs/${orgId}/exchange-rates`, { rates })
+      await api.put(`/orgs/${orgId}/exchange-rates`, {
+        rates: rates.map(r => ({ ...r, rate: Number(r.rate) })),
+      })
       setMessage(t('settings.fxSaved'))
     } catch {
       setError(t('settings.fxSaveFailed'))
@@ -430,7 +433,7 @@ function FxRatesSection() {
           <Button
             variant="primary"
             onClick={save}
-            disabled={saving}
+            disabled={saving || rates.some(r => r.rate === '')}
           >
             {saving ? t('common.loading') : t('settings.fxSave')}
           </Button>

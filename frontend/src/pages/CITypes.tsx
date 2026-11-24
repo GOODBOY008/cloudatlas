@@ -34,7 +34,7 @@ interface TypeForm {
   cloud_provider: string
   description: string
   icon: string
-  sort_order: number
+  sort_order: string
 }
 
 /** Payload sent to the API — optional fields omitted when blank. */
@@ -55,7 +55,7 @@ const DEFAULT_TYPE_FORM: TypeForm = {
   cloud_provider: '',
   description: '',
   icon: '📦',
-  sort_order: 100,
+  sort_order: '100',
 }
 
 interface AttrForm {
@@ -181,7 +181,7 @@ export default function CITypes() {
   })
 
   const updateTypeMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<TypeForm> }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateTypePayload> }) =>
       api.put(`/orgs/${orgId}/ci-types/${id}`, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ci-types', orgId] }),
     onError: () => setTypeFormError(t('ciTypes.updateTypeFailed')),
@@ -280,7 +280,7 @@ export default function CITypes() {
     const payload: CreateTypePayload = {
       name: typeForm.name.trim(),
       display_name: typeForm.display_name.trim(),
-      sort_order: typeForm.sort_order,
+      sort_order: Number(typeForm.sort_order),
       ...(typeForm.classification_id ? { classification_id: typeForm.classification_id } : {}),
       ...(typeForm.cloud_provider ? { cloud_provider: typeForm.cloud_provider } : {}),
       ...(typeForm.description.trim() ? { description: typeForm.description.trim() } : {}),
@@ -666,7 +666,7 @@ export default function CITypes() {
                     label={t('ciTypes.sortOrder')}
                     type="number"
                     value={typeForm.sort_order}
-                    onChange={e => setTypeForm({ ...typeForm, sort_order: Number(e.target.value) })}
+                    onChange={e => setTypeForm({ ...typeForm, sort_order: e.target.value })}
                     className="w-full"
                   />
                 </div>

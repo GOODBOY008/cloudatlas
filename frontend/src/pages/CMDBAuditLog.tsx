@@ -117,6 +117,7 @@ export default function CMDBAuditLog() {
           per_page: pp,
           ...(filterOp ? { operation: filterOp } : {}),
           ...(filterResource ? { resource_type: filterResource } : {}),
+          ...(filterCIName ? { ci_name: filterCIName } : {}),
         }),
       { defaultPerPage: 50, enabled: !!orgId },
     )

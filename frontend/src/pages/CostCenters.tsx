@@ -28,6 +28,8 @@ interface CostCenterForm {
   owner: string
 }
 
+type CostCenterPayload = Omit<CostCenterForm, 'parent_id'> & { parent_id: string | null }
+
 const DEFAULT_FORM: CostCenterForm = {
   name: '',
   code: '',
@@ -165,7 +167,7 @@ export default function CostCenters() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (payload: CostCenterForm) =>
+    mutationFn: (payload: CostCenterPayload) =>
       api.post(`/orgs/${orgId}/cost-centers`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cost-centers', orgId] })
@@ -175,7 +177,7 @@ export default function CostCenters() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: CostCenterForm }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: CostCenterPayload }) =>
       api.put(`/cost-centers/${id}`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cost-centers', orgId] })
@@ -253,10 +255,16 @@ export default function CostCenters() {
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError('')
+    const previousCode = costCenters.find(center => center.id === editingId)?.code
+    const payload = {
+      ...form,
+      code: form.code === previousCode ? previousCode : form.code.toUpperCase().replace(/\s/g, '-'),
+      parent_id: form.parent_id || null,
+    }
     if (editingId) {
-      updateMutation.mutate({ id: editingId, payload: form })
+      updateMutation.mutate({ id: editingId, payload })
     } else {
-      createMutation.mutate(form)
+      createMutation.mutate(payload)
     }
   }
 
@@ -340,7 +348,7 @@ export default function CostCenters() {
                   label={t('costCenters.code')}
                   required={!editingId}
                   value={form.code}
-                  onChange={e => setForm({ ...form, code: e.target.value.toUpperCase().replace(/\s/g, '-') })}
+                  onChange={e => setForm({ ...form, code: e.target.value })}
                   className="w-full font-mono"
                   placeholder="ENG-PLATFORM"
                 />

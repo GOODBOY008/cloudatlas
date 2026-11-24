@@ -35,7 +35,7 @@ export default function CIClassifications() {
   const [displayName, setDisplayName] = useState('')
   const [description, setDescription] = useState('')
   const [icon, setIcon] = useState('')
-  const [sortOrder, setSortOrder] = useState(0)
+  const [sortOrder, setSortOrder] = useState('0')
 
   const { data: classifications = [], isLoading } = useQuery<Classification[]>({
     queryKey: ['ci-classifications', orgId],
@@ -53,7 +53,7 @@ export default function CIClassifications() {
     setDisplayName('')
     setDescription('')
     setIcon('')
-    setSortOrder(0)
+    setSortOrder('0')
     setEditingId(null)
     setFormError('')
     setShowForm(false)
@@ -64,7 +64,7 @@ export default function CIClassifications() {
     setDisplayName(c.display_name)
     setDescription(c.description ?? '')
     setIcon(c.icon ?? '')
-    setSortOrder(c.sort_order)
+    setSortOrder(String(c.sort_order))
     setEditingId(c.id)
     setShowForm(true)
   }
@@ -76,7 +76,7 @@ export default function CIClassifications() {
         display_name: displayName.trim(),
         description: description.trim() || undefined,
         icon: icon || undefined,
-        sort_order: sortOrder,
+        sort_order: Number(sortOrder),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ci-classifications', orgId] })
@@ -91,7 +91,7 @@ export default function CIClassifications() {
         display_name: displayName.trim(),
         description: description.trim() || undefined,
         icon: icon || undefined,
-        sort_order: sortOrder,
+        sort_order: Number(sortOrder),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ci-classifications', orgId] })
@@ -185,7 +185,7 @@ export default function CIClassifications() {
                 label={t('ciClassifications.sortOrder')}
                 type="number"
                 value={sortOrder}
-                onChange={e => setSortOrder(Number(e.target.value))}
+                onChange={e => setSortOrder(e.target.value)}
                 className="w-full"
               />
             </div>

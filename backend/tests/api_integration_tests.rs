@@ -449,6 +449,46 @@ async fn full_api_flow() {
     assert_eq!(body["data"][0]["ci_id"], local_ci.unwrap().to_string());
     assert_eq!(body["data"].as_array().unwrap().len(), 1);
 
+    sqlx::query(
+        "INSERT INTO ci_audit_logs (organization_id, ci_id, operation)
+         VALUES ($1, $2, 'update'), ($1, $2, 'update')",
+    )
+    .bind(org_id.parse::<uuid::Uuid>().unwrap())
+    .bind(local_ci)
+    .execute(&pool)
+    .await
+    .expect("instance audit fixtures");
+    for (filter, total, name) in [
+        ("ci_name=OCaL&operation=update&page=2", 2, Some("local")),
+        (
+            "ci_name=IT-SER&resource_type=service&operation=create",
+            1,
+            Some("it-service"),
+        ),
+        ("ci_name=it_service&resource_type=service", 0, None),
+    ] {
+        let (status, body) = send(
+            &app,
+            Method::GET,
+            &format!("/api/v1/orgs/{org_id}/cmdb/audit-logs?per_page=1&{filter}"),
+            Some(&token),
+            None,
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "{filter}: {body}");
+        assert_eq!(body["meta"]["total"], total, "{filter}");
+        let rows = body["data"].as_array().unwrap();
+        assert_eq!(rows.len(), usize::from(name.is_some()), "{filter}");
+        if let Some(name) = name {
+            assert_eq!(
+                rows[0]["ci_name"]
+                    .as_str()
+                    .or(rows[0]["resource_name"].as_str()),
+                Some(name)
+            );
+        }
+    }
+
     // ── Auth guard: unauthenticated requests are rejected ───────────────────
     let (status, _) = send(
         &app,

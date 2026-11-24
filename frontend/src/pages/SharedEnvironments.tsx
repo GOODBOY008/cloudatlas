@@ -43,6 +43,8 @@ function minutesUntil(iso: string, t: TFunction) {
   return t('sharedEnvironments.durationHoursMinutes', { h: Math.floor(diff / 60), m: diff % 60 })
 }
 
+const defaultEnvironmentForm = { name: '', description: '', auto_release_hours: '8' }
+
 export default function SharedEnvironments() {
   const { t } = useTranslation()
   const { currentOrg } = useOrgStore()
@@ -53,7 +55,7 @@ export default function SharedEnvironments() {
   const [bookingEnv, setBookingEnv] = useState<Environment | null>(null)
 
   // Create form state
-  const [form, setForm] = useState({ name: '', description: '', auto_release_hours: 8 })
+  const [form, setForm] = useState(defaultEnvironmentForm)
   const [bookForm, setBookForm] = useState({ start_time: '', end_time: '', notes: '' })
 
   const { data, isLoading } = useQuery({
@@ -67,9 +69,9 @@ export default function SharedEnvironments() {
     mutationFn: () => api.post(`/orgs/${orgId}/shared-environments`, {
       name: form.name,
       description: form.description || undefined,
-      auto_release_hours: form.auto_release_hours,
+      auto_release_hours: Number(form.auto_release_hours || defaultEnvironmentForm.auto_release_hours),
     }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['shared-envs', orgId] }); setShowCreate(false); setForm({ name: '', description: '', auto_release_hours: 8 }) },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['shared-envs', orgId] }); setShowCreate(false); setForm(defaultEnvironmentForm) },
   })
 
   const bookEnv = useMutation({
@@ -195,7 +197,7 @@ export default function SharedEnvironments() {
               <div>
                 <Input
                   label={t('sharedEnvironments.autoReleaseLabel')} type="number" min={1} max={72} value={form.auto_release_hours}
-                  onChange={e => setForm(p => ({ ...p, auto_release_hours: parseInt(e.target.value) || 8 }))}
+                  onChange={e => setForm(p => ({ ...p, auto_release_hours: e.target.value }))}
                   className="w-full" />
               </div>
             </div>

@@ -20,16 +20,18 @@ const CONDITION_TYPES = [
 
 interface RuleForm {
   name: string
-  priority: number
+  priority: string
   pool_id: string
   logic_operator: 'AND' | 'OR'
   is_active: boolean
   conditions: RuleCondition[]
 }
 
+type RulePayload = Omit<RuleForm, 'priority'> & { priority: number }
+
 const DEFAULT_FORM: RuleForm = {
   name: '',
-  priority: 10,
+  priority: '10',
   pool_id: '',
   logic_operator: 'AND',
   is_active: true,
@@ -114,7 +116,7 @@ export default function Rules() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (payload: RuleForm) =>
+    mutationFn: (payload: RulePayload) =>
       api.post(`/orgs/${orgId}/assignment-rules`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignment-rules', orgId] })
@@ -124,7 +126,7 @@ export default function Rules() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: RuleForm }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: RulePayload }) =>
       api.put(`/orgs/${orgId}/assignment-rules/${id}`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignment-rules', orgId] })
@@ -153,7 +155,7 @@ export default function Rules() {
     setEditingId(rule.id)
     setForm({
       name: rule.name,
-      priority: rule.priority,
+      priority: String(rule.priority),
       pool_id: rule.pool_id,
       logic_operator: rule.logic_operator,
       is_active: rule.is_active,
@@ -191,10 +193,11 @@ export default function Rules() {
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError('')
+    const payload = { ...form, priority: Number(form.priority || DEFAULT_FORM.priority) }
     if (editingId) {
-      updateMutation.mutate({ id: editingId, payload: form })
+      updateMutation.mutate({ id: editingId, payload })
     } else {
-      createMutation.mutate(form)
+      createMutation.mutate(payload)
     }
   }
 
@@ -342,7 +345,7 @@ export default function Rules() {
                     min={1}
                     max={100}
                     value={form.priority}
-                    onChange={e => setForm({ ...form, priority: parseInt(e.target.value) || 10 })}
+                    onChange={e => setForm({ ...form, priority: e.target.value })}
                     className="w-full"
                   />
                 </div>

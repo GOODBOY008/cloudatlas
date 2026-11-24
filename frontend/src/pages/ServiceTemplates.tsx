@@ -65,7 +65,7 @@ export default function ServiceTemplates() {
   const [iCITypeId, setICITypeId] = useState('')
   const [iRole, setIRole] = useState('')
   const [iRequired, setIRequired] = useState(true)
-  const [iMin, setIMin] = useState(1)
+  const [iMin, setIMin] = useState('1')
   const [iMax, setIMax] = useState<string>('')
   const [iError, setIError] = useState('')
 
@@ -156,14 +156,14 @@ export default function ServiceTemplates() {
         ci_type_id: iCITypeId,
         role: iRole.trim() || undefined,
         is_required: iRequired,
-        min_count: iMin,
+        min_count: Number(iMin),
         max_count: iMax ? Number(iMax) : undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-template-detail', orgId, selectedTemplate?.id] })
       queryClient.invalidateQueries({ queryKey: ['service-templates', orgId] })
       setShowItemForm(false)
-      setICITypeId(''); setIRole(''); setIRequired(true); setIMin(1); setIMax(''); setIError('')
+      setICITypeId(''); setIRole(''); setIRequired(true); setIMin('1'); setIMax(''); setIError('')
     },
     onError: () => setIError(t('serviceTemplates.addItemFailed')),
   })
@@ -388,7 +388,7 @@ export default function ServiceTemplates() {
                       type="number"
                       value={iMin}
                       min={0}
-                      onChange={e => setIMin(Number(e.target.value))}
+                      onChange={e => setIMin(e.target.value)}
                       className="w-full"
                     />
                   </div>

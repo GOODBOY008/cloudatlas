@@ -15,14 +15,14 @@ import type { AlertEvaluationSummary, BudgetAlert, Pool } from '../types'
 interface AlertForm {
   pool_id: string
   alert_type: 'ABSOLUTE' | 'PERCENTAGE'
-  threshold: number
+  threshold: string
   description: string
 }
 
 const DEFAULT_FORM: AlertForm = {
   pool_id: '',
   alert_type: 'PERCENTAGE',
-  threshold: 80,
+  threshold: '80',
   description: '',
 }
 
@@ -111,7 +111,7 @@ export default function Alerts() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (payload: AlertForm) => api.post(`/orgs/${orgId}/alerts`, payload),
+    mutationFn: (draft: AlertForm) => api.post(`/orgs/${orgId}/alerts`, { ...draft, threshold: Number(draft.threshold) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts', orgId] })
       closeModal()
@@ -346,7 +346,7 @@ export default function Alerts() {
                   step={form.alert_type === 'PERCENTAGE' ? 1 : 0.01}
                   max={form.alert_type === 'PERCENTAGE' ? 100 : undefined}
                   value={form.threshold}
-                  onChange={e => setForm({ ...form, threshold: parseFloat(e.target.value) || 0 })}
+                  onChange={e => setForm({ ...form, threshold: e.target.value })}
                   className="w-full"
                   placeholder={form.alert_type === 'PERCENTAGE' ? '80' : '5000'}
                 />

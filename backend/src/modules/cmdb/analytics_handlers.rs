@@ -396,6 +396,7 @@ pub async fn bulk_import_cis(
 #[derive(Deserialize)]
 pub struct AuditLogQuery {
     pub ci_id: Option<Uuid>,
+    pub ci_name: Option<String>,
     pub operation: Option<String>,
     /// T4: filter by audit target kind — ci | ci_type | ci_attribute |
     /// ci_classification | ci_association_kind | ci_object_association |
@@ -417,6 +418,11 @@ pub async fn list_cmdb_audit_logs(
     let (limit, offset) = (bounds.limit, bounds.offset);
 
     // LEFT JOINs: model-layer audit rows (T4) have ci_id NULL.
+    let ci_name = q
+        .ci_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
     let rows = sqlx::query(
         r#"SELECT al.id, al.ci_id, al.user_id, al.operation,
                   al.field_changes, al.source, al.created_at,
@@ -432,29 +438,34 @@ pub async fn list_cmdb_audit_logs(
              AND ($2::uuid IS NULL OR al.ci_id = $2)
              AND ($3::text IS NULL OR al.operation = $3)
              AND ($4::text IS NULL OR al.resource_type = $4)
-           ORDER BY al.created_at DESC
-           LIMIT $5 OFFSET $6"#,
+             AND ($5::text IS NULL OR strpos(lower(COALESCE(c.name, al.resource_name)), lower($5)) > 0)
+           ORDER BY al.created_at DESC, al.id
+           LIMIT $6 OFFSET $7"#,
     )
     .bind(org_id)
     .bind(q.ci_id)
     .bind(&q.operation)
     .bind(&q.resource_type)
+    .bind(ci_name)
     .bind(limit)
     .bind(offset)
     .fetch_all(&state.db)
     .await?;
 
     let total: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*) FROM ci_audit_logs
-           WHERE organization_id = $1
-             AND ($2::uuid IS NULL OR ci_id = $2)
-             AND ($3::text IS NULL OR operation = $3)
-             AND ($4::text IS NULL OR resource_type = $4)"#,
+        r#"SELECT COUNT(*) FROM ci_audit_logs al
+           LEFT JOIN cis c ON c.id = al.ci_id
+           WHERE al.organization_id = $1
+             AND ($2::uuid IS NULL OR al.ci_id = $2)
+             AND ($3::text IS NULL OR al.operation = $3)
+             AND ($4::text IS NULL OR al.resource_type = $4)
+             AND ($5::text IS NULL OR strpos(lower(COALESCE(c.name, al.resource_name)), lower($5)) > 0)"#,
     )
     .bind(org_id)
     .bind(q.ci_id)
     .bind(&q.operation)
     .bind(&q.resource_type)
+    .bind(ci_name)
     .fetch_one(&state.db)
     .await?;
 
