@@ -7,6 +7,7 @@ interface Props {
   children: ReactNode
   fallback?: ReactNode
   embedded?: boolean
+  resetKey?: string
   t: TFunction
 }
 
@@ -27,6 +28,12 @@ class ErrorBoundaryInner extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
     console.error('[ErrorBoundary] Caught error:', error, info.componentStack)
+  }
+
+  componentDidUpdate(previous: Props, previousState: State) {
+    if (previousState.hasError && this.state.hasError && previous.resetKey !== this.props.resetKey) {
+      this.handleReset()
+    }
   }
 
   handleReset = () => {

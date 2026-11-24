@@ -136,6 +136,11 @@ export default function Layout() {
   }, [setOrganizations])
 
   const workspaceId = currentOrg?.id
+  // Resolving the first workspace keeps the mounted page and its focused
+  // inputs. Switching or clearing an established workspace discards its drafts.
+  const [firstWorkspaceId, setFirstWorkspaceId] = useState(workspaceId)
+  if (firstWorkspaceId === undefined && workspaceId !== undefined) setFirstWorkspaceId(workspaceId)
+  const pageScope = workspaceId === firstWorkspaceId ? 'initial' : workspaceId ?? 'none'
   const workspaceCurrency = currentOrg?.settings?.currency
   useLayoutEffect(() => {
     setOrgCurrency(workspaceCurrency ?? 'USD')
@@ -340,8 +345,8 @@ export default function Layout() {
                 </div>
               }
             >
-              <ErrorBoundary key={`${currentOrg?.id ?? 'none'}:${pathname}`} embedded>
-                <Outlet key={currentOrg?.id} />
+              <ErrorBoundary key={`${pageScope}:${pathname}`} resetKey={workspaceId} embedded>
+                <Outlet />
               </ErrorBoundary>
             </Suspense>
           </div>

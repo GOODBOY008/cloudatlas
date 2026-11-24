@@ -21,12 +21,12 @@ const organizations: Organization[] = [
 ]
 const originalScrollTo = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollTo')
 
-function renderLayout() {
+function renderLayout(content = <h1>Workspace content</h1>) {
   return render(
     <MemoryRouter initialEntries={['/dashboard']}>
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/dashboard" element={<h1>Workspace content</h1>} />
+          <Route path="/dashboard" element={content} />
         </Route>
         <Route path="/login" element={<Link to="/dashboard">Sign back in</Link>} />
       </Routes>
@@ -103,6 +103,30 @@ describe('workspace selection in Layout', () => {
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/organizations/org-001'))
     expect(screen.getByRole('button', { name: 'Switch workspace' })).toHaveTextContent('Acme Corp')
   })
+
+  it('discards drafts when leaving a selected workspace', async () => {
+    renderLayout(<input aria-label="Draft" />)
+    await waitFor(() => expect(useOrgStore.getState().currentOrg?.id).toBe(organizations[0].id))
+    const draft = () => screen.getByRole('textbox', { name: 'Draft' })
+    await userEvent.type(draft(), 'Acme draft')
+    act(() => useOrgStore.getState().setCurrentOrg(organizations[1]))
+    expect(draft()).toHaveValue('')
+    await userEvent.type(draft(), 'Beta draft')
+    act(() => useOrgStore.getState().clearOrg())
+    expect(draft()).toHaveValue('')
+  })
+
+  it('recovers a failed page when the first workspace becomes available', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    function NeedsWorkspace() {
+      const org = useOrgStore(state => state.currentOrg)
+      if (!org) throw new Error('Missing workspace')
+      return <h1>{org.name}</h1>
+    }
+    renderLayout(<NeedsWorkspace />)
+    expect(await screen.findByRole('heading', { name: 'Acme Corp' })).toBeVisible()
+  })
+
   it('ignores a late currency response after switching workspaces', async () => {
     let finishFirst!: (value: unknown) => void
     const first = new Promise((resolve) => { finishFirst = resolve })

@@ -21,6 +21,32 @@ test('help search preserves fast typing, article links and browser history', asy
   await expect(page.getByRole('heading', { name: 'Get started', exact: true })).toBeVisible();
 });
 
+test('help search keeps its selection when the first workspace loads', async ({ page }) => {
+  await page.addInitScript(() => localStorage.removeItem('cloudatlas-org'));
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/v1/organizations', async route => {
+    await pending;
+    await route.continue();
+  });
+  const loaded = page.waitForResponse(r => new URL(r.url()).pathname === '/api/v1/organizations');
+  await page.goto('/help?article=cmdb&q=cost');
+  const field = page.getByRole('searchbox');
+  try {
+    await expect(field).toHaveValue('cost');
+    await field.focus();
+    await field.press('ControlOrMeta+a');
+  } finally {
+    release();
+  }
+  const { data: [org] } = await (await loaded).json();
+  await expect(page.getByRole('button', { name: 'Switch workspace' })).toContainText(org.workspace?.name ?? org.name);
+  await expect(field).toBeFocused();
+  await page.keyboard.type('missing-guide');
+  await expect(field).toHaveValue('missing-guide');
+  await expect(page).toHaveURL(/article=cmdb&q=missing-guide$/);
+});
+
 test('CI audit name waits for submission and clears its server filter', async ({ page }) => {
   const names: (string | null)[] = [];
   await page.route('**/cmdb/audit-logs?*', route => {
