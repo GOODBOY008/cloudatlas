@@ -2,6 +2,7 @@ import { cloudServiceLabel } from '../lib/objectStorage'
 import { chartColors, chartPalette, chartAxis, chartTooltipStyle, providerChartColors } from '../lib/chartTheme'
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Globe, Map as MapIcon } from 'lucide-react'
 import {
   ComposableMap,
   Geographies,
@@ -25,6 +26,8 @@ import api from '../lib/api'
 import { billingDateRange } from '../lib/billingDates'
 import { fmtMoney, useOrgCurrency } from '../lib/format'
 import { ReportQueryState } from '../components/shared/ReportQueryState'
+import { CostGlobe } from '../features/cost-map/CostGlobe'
+import { hasMapLocation, type RegionExpense, type WorldGeography } from '../features/cost-map/regions'
 import { useOrgStore } from '../store/orgStore'
 import { useThemeStore } from '../store/themeStore'
 
@@ -44,17 +47,7 @@ const VIEW_TABS = ['World Map', 'Treemap', 'Unit Economics', 'Budget Matrix']
 // Scale bubble radius based on sqrt of cost fraction — clamp to [6, 48]
 function bubbleRadius(cost: number, maxCost: number): number {
   if (maxCost <= 0) return 6
-  return Math.max(6, Math.min(48, Math.sqrt(cost / maxCost) * 48))
-}
-
-interface RegionExpense {
-  region: string
-  cloud_type: string
-  total_cost: number
-  resource_count: number
-  pct: number
-  coordinates: { lat: number; lon: number }
-  label: string
+  return Math.max(6, Math.min(48, Math.sqrt(Math.max(0, cost) / maxCost) * 48))
 }
 
 interface RegionExpensesResponse {
@@ -252,6 +245,12 @@ export default function CostMap() {
 
   const [activeRange, setActiveRange] = useState(1)
   const [activeTab, setActiveTab] = useState('World Map')
+  const [projection, setProjection] = useState<'flat' | 'globe'>('flat')
+  const [globeUnavailable, setGlobeUnavailable] = useState(false)
+  const handleGlobeUnavailable = useCallback(() => {
+    setProjection('flat')
+    setGlobeUnavailable(true)
+  }, [])
   const [hoveredRegion, setHoveredRegion] = useState<RegionExpense | null>(null)
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
   const [primaryDim, setPrimaryDim] = useState('service')
@@ -283,10 +282,9 @@ export default function CostMap() {
     queryFn: async ({ signal }) => {
       const response = await fetch(worldGeographyUrl, { signal })
       if (!response.ok) throw new Error('World geography could not be loaded')
-      const geography: unknown = await response.json()
-      if (!geography || typeof geography !== 'object' || !('type' in geography) || geography.type !== 'Topology'
-        || !('objects' in geography) || !geography.objects || typeof geography.objects !== 'object'
-        || !('countries' in geography.objects)) {
+      const geography: WorldGeography | null = await response.json()
+      if (geography?.type !== 'Topology' || !Array.isArray(geography.arcs)
+        || geography.objects?.countries?.type !== 'GeometryCollection' || !Array.isArray(geography.objects.countries.geometries)) {
         throw new Error('Invalid world geography')
       }
       return geography
@@ -347,13 +345,14 @@ export default function CostMap() {
   }, [])
 
   const expenses = useMemo(() => regionData?.expenses ?? [], [regionData])
-  const maxCost = Math.max(...expenses.map((e) => e.total_cost), 1)
+  const mappedRegions = useMemo(() => expenses.filter(hasMapLocation), [expenses])
+  const maxCost = Math.max(...mappedRegions.map((e) => e.total_cost), 1)
 
   // ── Auto-fit: derive zoom + center from bounding box of loaded regions ───────
   const { autoZoom, autoCenter } = useMemo((): { autoZoom: number; autoCenter: [number, number] } => {
-    if (expenses.length === 0) return { autoZoom: 1.0, autoCenter: [0, 20] }
-    const lons = expenses.map((e) => e.coordinates.lon)
-    const lats = expenses.map((e) => e.coordinates.lat)
+    if (mappedRegions.length === 0) return { autoZoom: 1.0, autoCenter: [0, 20] }
+    const lons = mappedRegions.map((e) => e.coordinates.lon)
+    const lats = mappedRegions.map((e) => e.coordinates.lat)
     const minLon = Math.min(...lons), maxLon = Math.max(...lons)
     const minLat = Math.min(...lats), maxLat = Math.max(...lats)
     const centerLon = (minLon + maxLon) / 2
@@ -366,7 +365,7 @@ export default function CostMap() {
     const zFromLat = 170 / (latSpan * 1.6)
     const zoom = Math.max(1.0, Math.min(6, Math.min(zFromLon, zFromLat)))
     return { autoZoom: zoom, autoCenter: [centerLon, centerLat] }
-  }, [expenses])
+  }, [mappedRegions])
 
   // Sync map view whenever auto-fit values change (new data or date range)
   useEffect(() => {
@@ -460,7 +459,19 @@ export default function CostMap() {
                 {/* Map */}
                 <div className="bg-surface rounded-xl border border-edge p-2 relative">
                   <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
-                    <p className="text-xs font-medium text-secondary">{t('costMap.cloudRegionSpend')}</p>
+                    <p className="text-sm font-semibold text-primary">{t('costMap.cloudRegionSpend')}</p>
+                    <div role="group" aria-label={t('costMap.mapView')} className="segmented-control">
+                      <button type="button" className="segment inline-flex items-center gap-1.5" aria-pressed={projection === 'flat'}
+                        onClick={() => { setGlobeUnavailable(false); setProjection('flat') }}>
+                        <MapIcon size={15} />{t('costMap.flatMap')}
+                      </button>
+                      <button type="button" className="segment inline-flex items-center gap-1.5" aria-pressed={projection === 'globe'}
+                        onClick={() => { setHoveredRegion(null); setGlobeUnavailable(false); setProjection('globe') }}>
+                        <Globe size={15} />{t('costMap.globe')}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="px-3 pb-3">
                     <div className="flex flex-wrap gap-x-3 gap-y-2">
                       {Object.entries(PROVIDER_COLORS).filter(([k]) => k !== 'unknown').map(([k, c]) => (
                         <span key={k} className="flex items-center gap-1.5 text-xs text-secondary">
@@ -470,12 +481,15 @@ export default function CostMap() {
                       ))}
                     </div>
                   </div>
+                  {globeUnavailable && <p role="status" className="px-3 pb-2 text-xs text-secondary">{t('costMap.globeUnavailable')}</p>}
                   <ReportQueryState
                     query={geographyQuery}
                     errorMessage={t('costMap.geographyLoadFailed')}
                     loadingPlaceholder={<div className="skeleton h-[420px]" role="status" aria-label={t('common.loading')} />}
                   >
-                    {geographyQuery.data && (
+                    {geographyQuery.data && (projection === 'globe' ? (
+                      <CostGlobe geography={geographyQuery.data} regions={mappedRegions} currency={currency} onUnavailable={handleGlobeUnavailable} />
+                    ) : (
                       <div
                         className="relative overflow-hidden rounded-lg"
                         onMouseMove={handleMapMouseMove as unknown as React.MouseEventHandler<HTMLDivElement>}
@@ -512,7 +526,7 @@ export default function CostMap() {
                               }
                             </Geographies>
 
-                            {expenses.map((entry) => {
+                            {mappedRegions.map((entry) => {
                               const r = bubbleRadius(entry.total_cost, maxCost)
                               const color = PROVIDER_COLORS[entry.cloud_type] ?? chartColors.muted
                               return (
@@ -569,7 +583,7 @@ export default function CostMap() {
                           </button>
                         </div>
                       </div>
-                    )}
+                    ))}
                   </ReportQueryState>
                 </div>
 
