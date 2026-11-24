@@ -34,6 +34,12 @@ pub struct WorkloadListParams {
     pub page: crate::utils::pagination::PageQuery,
 }
 
+#[derive(Deserialize, Default)]
+pub struct RightsizingScope {
+    pub cluster_id: Option<Uuid>,
+    pub namespace: Option<String>,
+}
+
 #[derive(Deserialize)]
 pub struct UpsertClusterRequest {
     pub name: String,
@@ -84,9 +90,11 @@ pub async fn list_clusters(
         r#"SELECT c.id, c.name, c.region, c.provider, c.node_count,
                   c.total_vcpu::float8, c.total_memory_gb::float8, c.monthly_cost::float8, c.last_synced_at,
                   COUNT(w.id)                       AS workload_count,
-                  COALESCE(SUM(w.potential_savings), 0)::float8 AS total_savings
+                  COALESCE(SUM(w.potential_savings), 0)::float8 AS total_savings,
+                  COALESCE(array_agg(DISTINCT w.namespace::text ORDER BY w.namespace::text)
+                      FILTER (WHERE w.namespace IS NOT NULL), ARRAY[]::text[]) AS namespaces
            FROM k8s_clusters c
-           LEFT JOIN k8s_workload_metrics w ON w.cluster_id = c.id
+           LEFT JOIN k8s_workload_metrics w ON w.cluster_id = c.id AND w.organization_id = c.organization_id
            WHERE c.organization_id = $1
            GROUP BY c.id
            ORDER BY total_savings DESC NULLS LAST, c.id DESC
@@ -102,10 +110,9 @@ pub async fn list_clusters(
         sqlx::query_scalar("SELECT COUNT(*) FROM k8s_clusters WHERE organization_id = $1")
             .bind(org_id)
             .fetch_one(&state.db)
-            .await
-            .unwrap_or(0);
+            .await?;
 
-    let data: Vec<Value> = rows.iter().map(|r| json!({
+    let data = rows.iter().map(|r| Ok(json!({
         "id":             r.try_get::<Uuid, _>("id").ok(),
         "name":           r.try_get::<String, _>("name").unwrap_or_default(),
         "region":         r.try_get::<Option<String>, _>("region").unwrap_or(None),
@@ -116,8 +123,9 @@ pub async fn list_clusters(
         "monthly_cost":   r.try_get::<Option<f64>, _>("monthly_cost").unwrap_or(None),
         "workload_count": r.try_get::<i64, _>("workload_count").unwrap_or(0),
         "total_savings":  r.try_get::<f64, _>("total_savings").unwrap_or(0.0),
+        "namespaces":     r.try_get::<Vec<String>, _>("namespaces")?,
         "last_synced_at": r.try_get::<Option<chrono::DateTime<Utc>>, _>("last_synced_at").unwrap_or(None),
-    })).collect();
+    }))).collect::<Result<Vec<_>, sqlx::Error>>()?;
 
     Ok(Json(
         json!({ "data": data, "meta": crate::utils::pagination::page_meta_json(total, &bounds) }),
@@ -323,20 +331,33 @@ pub async fn rightsizing_summary(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
     Path(org_id): Path<Uuid>,
+    Query(scope): Query<RightsizingScope>,
 ) -> AppResult<Json<Value>> {
     let user_id = claims.user_id()?;
     ensure_org_member(&state.db, org_id, user_id).await?;
 
     let totals = sqlx::query(
-        r#"SELECT COUNT(DISTINCT cluster_id)                         AS cluster_count,
-                  COUNT(DISTINCT (cluster_id, namespace))            AS namespace_count,
-                  COUNT(*)                                           AS workload_count,
-                  COALESCE(SUM(potential_savings), 0)::float8        AS total_savings,
-                  COALESCE(SUM(monthly_cost), 0)::float8             AS total_cost
-           FROM k8s_workload_metrics
-           WHERE organization_id = $1"#,
+        r#"WITH per_cluster AS (
+               SELECT cluster_id, COUNT(DISTINCT namespace) AS namespace_count,
+                      COUNT(*) AS workload_count, COALESCE(SUM(potential_savings), 0) AS savings,
+                      COALESCE(SUM(monthly_cost), 0) AS cost
+               FROM k8s_workload_metrics
+               WHERE organization_id = $1
+                 AND ($2::uuid IS NULL OR cluster_id = $2)
+                 AND ($3::text IS NULL OR namespace = $3)
+               GROUP BY cluster_id
+           )
+           SELECT COUNT(*) AS cluster_count, COALESCE(SUM(namespace_count), 0)::bigint AS namespace_count,
+                  COALESCE(SUM(workload_count), 0)::bigint AS workload_count,
+                  COALESCE(SUM(savings), 0)::float8 AS total_savings,
+                  COALESCE(SUM(cost), 0)::float8 AS total_cost,
+                  COALESCE(jsonb_object_agg(cluster_id, jsonb_build_object(
+                      'workload_count', workload_count, 'total_savings', savings)), '{}'::jsonb) AS cluster_totals
+           FROM per_cluster"#,
     )
     .bind(org_id)
+    .bind(scope.cluster_id)
+    .bind(scope.namespace.as_deref())
     .fetch_one(&state.db)
     .await?;
 
@@ -346,11 +367,15 @@ pub async fn rightsizing_summary(
                   COALESCE(SUM(potential_savings), 0)::float8 AS namespace_savings
            FROM k8s_workload_metrics
            WHERE organization_id = $1
+             AND ($2::uuid IS NULL OR cluster_id = $2)
+             AND ($3::text IS NULL OR namespace = $3)
            GROUP BY namespace, cluster_id
-           ORDER BY namespace_savings DESC
+           ORDER BY namespace_savings DESC, namespace, cluster_id
            LIMIT 10"#,
     )
     .bind(org_id)
+    .bind(scope.cluster_id)
+    .bind(scope.namespace.as_deref())
     .fetch_all(&state.db)
     .await?;
 
@@ -372,6 +397,7 @@ pub async fn rightsizing_summary(
         "workload_count":  totals.try_get::<i64, _>("workload_count").unwrap_or(0),
         "total_savings":   totals.try_get::<f64, _>("total_savings").unwrap_or(0.0),
         "total_cost":      totals.try_get::<f64, _>("total_cost").unwrap_or(0.0),
+        "cluster_totals":  totals.try_get::<Value, _>("cluster_totals")?,
         "top_namespaces":  ns_data,
     })))
 }

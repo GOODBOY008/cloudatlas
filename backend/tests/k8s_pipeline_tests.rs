@@ -278,6 +278,97 @@ async fn k8s_sync_links_paginated_owners_and_refreshes_pod_placement() {
     server.abort();
 }
 
+#[tokio::test]
+async fn rightsizing_scope_uses_all_namespaces_and_matches_the_workload_filter() {
+    let Some((app, pool)) = setup().await else {
+        return;
+    };
+    let (token, org_id) = register_and_org(&app).await;
+    let org: Uuid = org_id.parse().unwrap();
+    let east = Uuid::new_v4();
+    let west = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO k8s_clusters (id, organization_id, name) VALUES ($1,$3,'east'),($2,$3,'west')",
+    )
+    .bind(east)
+    .bind(west)
+    .bind(org)
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO k8s_workload_metrics (organization_id, cluster_id, namespace, workload_name, monthly_cost, potential_savings)
+         SELECT $1, $2, 'apps', 'api-' || i, 10, 8 FROM generate_series(1, 51) i
+         UNION ALL SELECT $1, $2, 'shared', 'dns-east', 4, 1
+         UNION ALL SELECT $1, $3, 'shared', 'dns-west', 6, 2",
+    )
+    .bind(org).bind(east).bind(west).execute(&pool).await.unwrap();
+    let base = format!("/api/v1/orgs/{org}/k8s");
+    let (status, clusters) = send(
+        &app,
+        Method::GET,
+        &format!("{base}/clusters"),
+        Some(&token),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(clusters["data"][0]["namespaces"], json!(["apps", "shared"]));
+    assert_eq!(clusters["data"][1]["namespaces"], json!(["shared"]));
+
+    let scope = format!("cluster_id={east}&namespace=shared");
+    let (status, summary) = send(
+        &app,
+        Method::GET,
+        &format!("{base}/summary?{scope}"),
+        Some(&token),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let (_, workloads) = send(
+        &app,
+        Method::GET,
+        &format!("{base}/workloads?{scope}"),
+        Some(&token),
+        None,
+    )
+    .await;
+    assert_eq!(workloads["meta"]["total"], 1);
+    assert_eq!(summary["workload_count"], workloads["meta"]["total"]);
+    assert_eq!(summary["total_cost"].as_f64(), Some(4.0));
+    assert_eq!(summary["total_savings"].as_f64(), Some(1.0));
+    assert_eq!(summary["top_namespaces"].as_array().unwrap().len(), 1);
+    assert_eq!(summary["top_namespaces"][0]["namespace"], "shared");
+    assert_eq!(
+        summary["cluster_totals"][east.to_string()]["workload_count"],
+        1
+    );
+    assert!(summary["cluster_totals"].get(west.to_string()).is_none());
+
+    let (_, both) = send(
+        &app,
+        Method::GET,
+        &format!("{base}/summary?namespace=shared"),
+        Some(&token),
+        None,
+    )
+    .await;
+    assert_eq!(both["cluster_count"], 2);
+    assert_eq!(both["total_savings"].as_f64(), Some(3.0));
+    let (_, empty) = send(
+        &app,
+        Method::GET,
+        &format!("{base}/summary?cluster_id={west}&namespace=apps"),
+        Some(&token),
+        None,
+    )
+    .await;
+    assert_eq!(empty["cluster_count"], 0);
+    assert_eq!(empty["cluster_totals"], json!({}));
+    assert_eq!(empty["top_namespaces"], json!([]));
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn k8s_pipeline_persists_and_recomputes() {
     let Some((app, pool)) = setup().await else {

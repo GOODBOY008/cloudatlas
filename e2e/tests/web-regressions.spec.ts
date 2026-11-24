@@ -76,15 +76,16 @@ test('Kubernetes estimates retain their USD pricing in a CNY workspace', async (
   });
   await page.route('**/k8s/summary', route => route.fulfill({ json: {
     cluster_count: 1, namespace_count: 1, workload_count: 1, total_cost: 32.85, total_savings: 6.25,
+    cluster_totals: { prod: { workload_count: 1, total_savings: 6.25 } },
     top_namespaces: [{ namespace: 'payments', cluster_id: 'prod', workload_count: 1, potential_savings: 6.25 }],
   } }));
   await page.route('**/k8s/clusters', route => route.fulfill({ json: { data: [
-    { id: 'prod', name: 'Production', workload_count: 1, total_savings: 6.25 },
-  ] } }));
+    { id: 'prod', name: 'Production', namespaces: ['payments'], workload_count: 1, total_savings: 6.25 },
+  ], meta: { total: 1, total_pages: 1, per_page: 50 } } }));
   await page.route('**/k8s/workloads*', route => route.fulfill({ json: { data: [
     { id: 'api', cluster_id: 'prod', cluster_name: 'Production', namespace: 'payments', workload_name: 'API',
       workload_type: 'Deployment', observation_days: 14, potential_savings: 6.25 },
-  ] } }));
+  ], meta: { total: 1, total_pages: 1, per_page: 50 } } }));
   await page.goto('/k8s-rightsizing');
   await expect(page.getByText('of $32.85/mo total')).toBeVisible();
   await expect(page.getByText('$6.25', { exact: true })).toHaveCount(2);
@@ -93,6 +94,51 @@ test('Kubernetes estimates retain their USD pricing in a CNY workspace', async (
   await expect(page.locator('.recharts-tooltip-wrapper')).toContainText('$6.25');
   await page.getByRole('button', { name: 'Table', exact: true }).click();
   await expect(page.getByRole('row', { name: /API/ }).getByRole('cell', { name: '$6.25' })).toBeVisible();
+});
+
+test('Kubernetes filters keep the namespace choices and scope both views', async ({ page }) => {
+  const clusters = [
+    { id: 'east', name: 'East cluster', namespaces: ['east-only', 'shared'] },
+    { id: 'west', name: 'West cluster', namespaces: ['shared', 'west-only'] },
+  ];
+  await page.route('**/k8s/clusters*', async route => {
+    const index = Number(new URL(route.request().url()).searchParams.get('page') ?? 1) - 1;
+    await route.fulfill({ json: { data: [clusters[index]], meta: { per_page: 1, total_pages: 2 } } });
+  });
+  await page.route('**/k8s/summary*', route => {
+    const params = new URL(route.request().url()).searchParams;
+    const scoped = clusters.filter(c => !params.has('cluster_id') || c.id === params.get('cluster_id'));
+    const totals = Object.fromEntries(scoped.map(c => [c.id, {
+      workload_count: params.has('namespace') ? 1 : c.namespaces.length, total_savings: 0,
+    }]));
+    return route.fulfill({ json: { cluster_count: scoped.length, total_cost: 0, total_savings: 0,
+      workload_count: Object.values(totals).reduce((n, c) => n + c.workload_count, 0),
+      top_namespaces: [], cluster_totals: totals } });
+  });
+  await page.route('**/k8s/workloads*', route => {
+    const params = new URL(route.request().url()).searchParams;
+    return route.fulfill({ json: { data: [{ id: 'dns', cluster_name: params.get('cluster_id'),
+      namespace: params.get('namespace'), workload_name: 'dns', workload_type: 'Deployment' }],
+      meta: { total: 1, total_pages: 1, per_page: 50 } } });
+  });
+  await page.goto('/k8s-rightsizing');
+  const cluster = page.getByRole('combobox', { name: 'Cluster', exact: true });
+  const namespace = page.getByRole('combobox', { name: 'Namespace', exact: true });
+  await namespace.selectOption('east-only');
+  await cluster.selectOption('west');
+  await expect(namespace).toHaveValue('');
+  await expect(namespace.locator('option')).toHaveText(['All namespaces', 'shared', 'west-only']);
+  await namespace.selectOption('shared');
+  const workloadMetric = page.getByText('Workloads', { exact: true }).locator('..');
+  await expect(workloadMetric.getByText('1', { exact: true })).toBeVisible();
+  await expect(namespace.locator('option')).toHaveCount(3);
+  await page.getByRole('button', { name: 'Table', exact: true }).click();
+  const row = page.getByRole('row').filter({ has: page.getByRole('cell', { name: /dns/ }) });
+  await expect(row.getByRole('cell', { name: 'shared', exact: true })).toBeVisible();
+  await expect(row.getByRole('cell', { name: 'west', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Reset filters' }).click();
+  await expect(cluster).toHaveValue('');
+  await expect(namespace).toHaveValue('');
 });
 
 test('desktop Copilot floats, remembers drag and resize, and stays beneath search', async ({ page }) => {

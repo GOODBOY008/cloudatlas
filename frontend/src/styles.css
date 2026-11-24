@@ -132,6 +132,29 @@
   .btn-danger:hover:not(:disabled) { @apply border-danger bg-danger/10 text-danger; }
   .text-link { @apply inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:underline; text-underline-offset: 3px; }
   .filter-bar { @apply mb-5 flex flex-wrap items-center gap-3 rounded-md border border-edge bg-surface p-3; }
+  .rightsizing-select {
+    @apply block h-10 w-full cursor-pointer appearance-none truncate rounded border border-strong bg-surface py-2 pl-3 pr-9 text-sm text-primary;
+  }
+  .rightsizing-select:hover:enabled { @apply border-accent; }
+  .rightsizing-select:disabled { @apply cursor-default bg-subtle text-muted; }
+  @media (pointer: coarse) {
+    .filter-bar .rightsizing-select { min-height: 44px; }
+  }
+  @supports (appearance: base-select) {
+    @media (hover: hover) and (pointer: fine) {
+      .rightsizing-select, .rightsizing-select::picker(select) { appearance: base-select; }
+      .rightsizing-select::picker-icon { display: none; }
+      .rightsizing-select::picker(select) {
+        @apply rounded-md border border-strong bg-surface p-1 text-sm text-primary shadow-popover;
+        margin-block: 4px;
+        max-block-size: min(18rem, 45dvh);
+        overflow-y: auto;
+      }
+      .rightsizing-select option { @apply min-h-8 cursor-pointer gap-2 rounded px-2 py-1.5; overflow-wrap: anywhere; }
+      .rightsizing-select option:checked { @apply bg-accent-soft font-medium text-accent; }
+      .rightsizing-select option:is(:hover, :focus-visible) { @apply bg-emphasis text-primary; }
+    }
+  }
   .page-tabs { @apply mb-5 flex gap-0 overflow-x-auto border-b border-edge; scrollbar-width: thin; }
   .page-tab { @apply flex min-h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 py-2 text-[13px] font-medium text-secondary; }
   .page-tab:hover { @apply bg-subtle text-primary; }
