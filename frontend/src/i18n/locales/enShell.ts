@@ -75,7 +75,7 @@ export default {
   'nav.showback': 'Showback',
   'nav.budgetsQuotas': 'Budgets & Quotas',
   'nav.costComparison': 'Cost Comparison',
-  'nav.s3Duplicates': 'S3 Duplicates',
+  'nav.objectStorage': 'Object Storage',
   'nav.biExport': 'BI Export',
   'nav.resources': 'Resources',
   'nav.pools': 'Pools',

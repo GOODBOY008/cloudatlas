@@ -37,6 +37,12 @@ use utoipa::OpenApi;
         expense::handlers::summary,
         expense::reporting::data_flow,
         // ── CMDB ─────────────────────────────────────────────────────────────
+        crate::modules::object_storage::overview,
+        crate::modules::object_storage::detail,
+        crate::modules::object_storage::bills,
+        crate::modules::object_storage::allocate,
+        crate::modules::object_storage::opportunities,
+        crate::modules::object_storage::inventory::upload,
         cmdb::catalog::get,
         cmdb::catalog::create_team,
         cmdb::catalog::update_team,

@@ -6,6 +6,8 @@
 //!
 //! Run locally: `DATABASE_URL=postgres://cloudatlas:cloudatlas@localhost:5432/cloudatlas_test cargo test --test api_integration_tests`
 
+#[path = "support/object_storage.rs"]
+mod object_storage;
 #[path = "support/workspace_environment.rs"]
 mod workspace_environment;
 

@@ -14,6 +14,7 @@ pub mod jobs;
 pub mod k8s;
 pub mod lifecycle;
 pub mod notifications;
+pub mod object_storage;
 pub mod power_schedule;
 pub mod recommendation;
 pub mod resources;

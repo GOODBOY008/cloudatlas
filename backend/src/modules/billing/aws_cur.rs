@@ -25,6 +25,8 @@ pub struct CurLineItem {
     pub usage_date: NaiveDate,
     pub region: Option<String>,
     pub resource_type: Option<String>,
+    #[serde(default)]
+    pub billing_item: Option<String>,
     pub cost_usd: f64,
     pub currency: String,
     pub tags: serde_json::Value,
@@ -159,7 +161,7 @@ async fn build_s3_client(creds: &serde_json::Value, region: &str) -> AppResult<a
 fn classify_resource_type(usage_type: &str, product_name: &str) -> Option<String> {
     let ut = usage_type.to_lowercase();
     let pn = product_name.to_lowercase();
-    if pn.contains("s3") || ut.contains("s3") {
+    if pn.contains("s3") || pn == "amazon simple storage service" || ut.contains("s3") {
         Some("bucket".into())
     } else if pn.contains("rds") || ut.contains("rds") {
         Some("rds_instance".into())
@@ -211,20 +213,32 @@ fn parse_cur_csv(text: &str) -> AppResult<Vec<CurLineItem>> {
             }
         };
 
+        let usage_type = get(&record, "lineItem/UsageType").unwrap_or_default();
+        let product_name = get(&record, "product/ProductName")
+            .or_else(|| get(&record, "lineItem/ProductName"))
+            .unwrap_or_default();
+
+        let resource_type = classify_resource_type(&usage_type, &product_name);
+        let object_storage = resource_type.as_deref() == Some("bucket");
         let line_item_type = get(&record, "lineItem/LineItemType")
             .unwrap_or_default()
             .to_lowercase();
-        if matches!(
-            line_item_type.as_str(),
-            "tax" | "credit" | "discount" | "refund" | "fee"
-        ) {
+        if !object_storage
+            && matches!(
+                line_item_type.as_str(),
+                "tax" | "credit" | "discount" | "refund" | "fee"
+            )
+        {
             continue;
         }
 
-        let cost = get(&record, "lineItem/UnblendedCost")
+        let Some(cost) = get(&record, "lineItem/UnblendedCost")
             .and_then(|v| v.parse::<f64>().ok())
-            .unwrap_or(0.0);
-        if cost <= 0.0 {
+            .filter(|v| v.is_finite())
+        else {
+            continue;
+        };
+        if !object_storage && cost <= 0.0 {
             continue;
         }
 
@@ -241,11 +255,6 @@ fn parse_cur_csv(text: &str) -> AppResult<Vec<CurLineItem>> {
         let usage_date = get(&record, "lineItem/UsageStartDate")
             .and_then(|d| NaiveDate::parse_from_str(&d[..10], "%Y-%m-%d").ok())
             .unwrap_or_else(|| chrono::Utc::now().date_naive());
-
-        let usage_type = get(&record, "lineItem/UsageType").unwrap_or_default();
-        let product_name = get(&record, "product/ProductName")
-            .or_else(|| get(&record, "lineItem/ProductName"))
-            .unwrap_or_default();
 
         // resourceTags/user:* → tags map
         let mut tags = serde_json::Map::new();
@@ -276,7 +285,8 @@ fn parse_cur_csv(text: &str) -> AppResult<Vec<CurLineItem>> {
                 }
                 r
             }),
-            resource_type: classify_resource_type(&usage_type, &product_name),
+            resource_type,
+            billing_item: Some(usage_type),
             cost_usd: cost,
             currency: get(&record, "lineItem/CurrencyCode").unwrap_or_else(|| "USD".into()),
             tags: serde_json::Value::Object(tags),
@@ -356,6 +366,7 @@ pub fn generate_mock_cur_data_for_day(offset: i64) -> Vec<CurLineItem> {
             usage_date: date,
             region: Some("us-east-1".into()),
             resource_type: Some(rtype.to_string()),
+            billing_item: None,
             cost_usd: base_cost * (0.9 + rand_factor(offset)),
             currency: "USD".into(),
             tags: serde_json::json!({ "env": "mock", "team": "platform" }),
@@ -372,6 +383,19 @@ fn rand_factor(seed: i64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn storage_credits_and_zero_usage_keep_their_bill_evidence() {
+        let csv = concat!("lineItem/LineItemType,lineItem/ResourceId,lineItem/UsageStartDate,lineItem/UsageType,lineItem/UnblendedCost,product/ProductName\n",
+            "Credit,example,2026-10-12T00:00:00Z,Requests,-2,Amazon Simple Storage Service\n",
+            "Usage,example,2026-10-12T00:00:00Z,Retrieval,0,Amazon Simple Storage Service\n");
+        let items = parse_cur_csv(csv).unwrap();
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0].cost_usd, -2.0);
+        assert_eq!(items[1].cost_usd, 0.0);
+        assert_eq!(items[0].resource_type.as_deref(), Some("bucket"));
+        assert_eq!(items[0].billing_item.as_deref(), Some("Requests"));
+    }
 
     #[test]
     fn parse_cur_csv_extracts_line_items() {

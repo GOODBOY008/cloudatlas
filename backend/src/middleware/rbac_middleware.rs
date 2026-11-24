@@ -61,6 +61,8 @@ pub fn required_permission(method: &Method, segments: &[&str]) -> Option<Permiss
 
         // ── Cloud accounts & billing ────────────────────────────────────────
         "cloud-accounts" if mutating => Some(ManageCloudAccounts),
+        "object-storage" if mutating && rest.last() == Some(&"allocations") => Some(ManagePools),
+        "object-storage" if mutating => Some(ManageCloudAccounts),
         "billing" if mutating => Some(ManageCloudAccounts), // import
         "power-schedules" if mutating => Some(ManageCloudAccounts),
         "k8s" if mutating => Some(ManageCloudAccounts),

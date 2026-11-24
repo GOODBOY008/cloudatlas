@@ -1,3 +1,4 @@
+import { cloudServiceLabel } from '../lib/objectStorage'
 import { chartColors, chartPalette, chartAxis, chartTooltipStyle, providerChartColors } from '../lib/chartTheme'
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -385,9 +386,9 @@ export default function CostMap() {
     .sort((a, b) => b.cost - a.cost)
 
   const treemapNodes = (costMapData?.nodes ?? []).map((n, i) => ({
-    name: n.label,
+    name: primaryDim === 'service' ? cloudServiceLabel(n.label) : n.label,
     value: n.cost,
-    children: n.children?.map((c, j) => ({ name: c.label, value: c.cost, index: j })),
+    children: n.children?.map((c, j) => ({ name: secondaryDim === 'service' ? cloudServiceLabel(c.label) : c.label, value: c.cost, index: j })),
     index: i,
   }))
 
@@ -699,7 +700,7 @@ export default function CostMap() {
                 <div className="flex items-center gap-2 ml-auto">
                   <span className="text-xs text-muted">{t('costMap.filteredBy')}</span>
                   <span className="px-2 py-0.5 rounded bg-accent-soft/60 text-accent text-xs font-medium">
-                    {dimLabels[drillFilter.dim] ?? drillFilter.dim}: {drillFilter.val}
+                    {dimLabels[drillFilter.dim] ?? drillFilter.dim}: {drillFilter.dim === 'service' ? cloudServiceLabel(drillFilter.val) : drillFilter.val}
                   </span>
                   <button
                     onClick={() => setDrillFilter(null)}
@@ -755,7 +756,7 @@ export default function CostMap() {
                           className="border-b border-edge/50 hover:bg-subtle/40 cursor-pointer transition-colors"
                           onClick={() => setDrillFilter({ dim: primaryDim, val: n.key })}
                         >
-                          <td className="px-5 py-3 text-primary">{n.label}</td>
+                          <td className="px-5 py-3 text-primary">{primaryDim === 'service' ? cloudServiceLabel(n.label) : n.label}</td>
                           <td className="px-5 py-3 text-right text-secondary">{n.resource_count}</td>
                           <td className="px-5 py-3 text-right font-semibold text-primary">
                             {formatCost(n.cost)}

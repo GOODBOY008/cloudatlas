@@ -1,7 +1,7 @@
 //! Inventory HTTP endpoints. Authentication is applied once by the parent router.
 
 use crate::{
-    modules::{cloud, expense, jobs, k8s, resources},
+    modules::{cloud, expense, jobs, k8s, object_storage, resources},
     state::AppState,
 };
 use axum::{
@@ -70,8 +70,37 @@ pub(super) fn router() -> Router<AppState> {
             patch(resources::handlers::patch_resource_tags),
         )
         .route(
+            "/api/v1/orgs/{org_id}/object-storage",
+            get(object_storage::overview),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/object-storage/bills",
+            get(object_storage::bills),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/object-storage/buckets/{id}",
+            get(object_storage::detail),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/object-storage/buckets/{id}/opportunities",
+            get(object_storage::opportunities),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/object-storage/buckets/{id}/allocations",
+            put(object_storage::allocate),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/object-storage/buckets/{id}/inventories",
+            post(object_storage::inventory::upload)
+                .layer(axum::extract::DefaultBodyLimit::max(32 * 1024 * 1024)),
+        )
+        .route(
+            "/api/v1/orgs/{org_id}/object-storage/duplicates",
+            get(resources::handlers::object_storage_duplicate_analysis),
+        )
+        .route(
             "/api/v1/orgs/{org_id}/s3-duplicates",
-            get(resources::handlers::s3_duplicate_analysis),
+            get(resources::handlers::object_storage_duplicate_analysis),
         )
         .route(
             "/api/v1/orgs/{org_id}/resources/{resource_id}/recommendations",

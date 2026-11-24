@@ -58,3 +58,4 @@ playwright-report/
 /docs/*
 !/docs/product-architecture-review.md
 !/docs/ui-design-system.md
+!/docs/object-storage.md

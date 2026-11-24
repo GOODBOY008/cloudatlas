@@ -1,3 +1,4 @@
+import { cloudServiceLabel, recommendationTitle, storageRecommendationType } from '../lib/objectStorage'
 import { chartColors, chartAxis, chartGrid } from '../lib/chartTheme'
 import { useMoneyFormatter } from '../lib/format'
 import { useId, useState } from 'react'
@@ -201,7 +202,7 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
             {[
               [t('common.type'), r.resource_type],
               [t('cmdb.provider'), providerLabel(r.provider)],
-              [t('resources.metaService'), r.service_name ?? '—'],
+              [t('resources.metaService'), cloudServiceLabel(r.service_name)],
               [t('cmdb.region'), r.cloud_region],
               [t('resources.metaFirstSeen'), r.first_seen?.slice(0, 10) ?? '—'],
               [t('resources.metaLastSeen'), r.last_seen?.slice(0, 10) ?? '—'],
@@ -224,13 +225,13 @@ function ResourceDetailPanel({ resource, orgId, onClose }: { resource: Resource;
                 {recommendations.map((rec) => (
                   <div key={rec.id} className="bg-subtle rounded-lg p-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-primary">{rec.title}</p>
+                      <p className="text-sm text-primary">{recommendationTitle(rec)}</p>
                       <span className="text-xs font-medium text-success">
                         {fmt(rec.potential_savings)}/mo
                       </span>
                     </div>
                     <p className="text-xs text-muted mt-1">
-                      {rec.rec_type} · {rec.status} · {new Date(rec.created_at).toLocaleDateString()}
+                      {storageRecommendationType(rec.rec_type)} · {rec.status} · {new Date(rec.created_at).toLocaleDateString()}
                     </p>
                   </div>
                 ))}
@@ -463,7 +464,7 @@ export default function Resources() {
                   </td>
                   <td className="px-4 py-3"><ProviderBadge provider={r.provider} /></td>
                   <td className="px-4 py-3 text-secondary">{r.cloud_region}</td>
-                  <td className="px-4 py-3 text-secondary">{r.service_name ?? '—'}</td>
+                  <td className="px-4 py-3 text-secondary">{cloudServiceLabel(r.service_name)}</td>
                   <td className="px-4 py-3 text-secondary text-xs">{r.pool_id ? r.pool_id.slice(0, 8) + '…' : t('resources.unassigned')}</td>
                   <td className="px-4 py-3 font-semibold text-accent">{fmt(r.total_cost ?? 0)}</td>
                   <td className="px-4 py-3 text-secondary">{fmt(r.last_month_cost ?? 0)}</td>

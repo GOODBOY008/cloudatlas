@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -15,7 +16,7 @@ import ExternalCMDB from '../pages/ExternalCMDB'
 import CITypes from '../pages/CITypes'
 import BIExport from '../pages/BIExport'
 import Integrations from '../pages/Integrations'
-import S3Duplicates from '../pages/S3Duplicates'
+import ObjectStorage from '../pages/ObjectStorage'
 import AICenter from '../pages/AICenter'
 
 // Mock the API layer: list endpoints return empty arrays; the checklist
@@ -35,17 +36,8 @@ vi.mock('../lib/api', () => ({
           },
         })
       }
-      if (url.includes('/s3-duplicates')) {
-        return Promise.resolve({
-          data: {
-            data: {
-              buckets: [],
-              matrix: [],
-              duplicate_groups: [],
-              summary: { bucket_count: 0, pair_count: 0, duplicate_group_count: 0, potential_savings: 0 },
-            },
-          },
-        })
+      if (url.endsWith('/object-storage')) {
+        return Promise.resolve({ data: {data: {buckets:[],accounts:[],allocation:[],bucket_count:0,unclaimed_count:0,billed_count:0,period_cost:null,currency:'CNY'},meta:{page:1,total_pages:0,total:0,per_page:20}} })
       }
       return Promise.resolve({ data: { data: [] } })
     }),
@@ -148,9 +140,9 @@ describe('page smoke tests', () => {
     expect(await screen.findByText(/No connections yet/)).toBeInTheDocument()
   })
 
-  it('S3 Duplicates page renders heading', async () => {
-    renderPage(<S3Duplicates />)
-    expect(await screen.findByText('S3 Duplicate Finder')).toBeInTheDocument()
+  it('Object Storage page uses the shared navigation label as its heading', async () => {
+    renderPage(<MemoryRouter><ObjectStorage /></MemoryRouter>)
+    expect(await screen.findByRole('heading', { name: 'Object Storage' })).toBeInTheDocument()
   })
 
   it('AI Center page renders heading and tabs', async () => {

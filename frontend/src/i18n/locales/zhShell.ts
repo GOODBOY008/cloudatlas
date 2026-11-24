@@ -75,7 +75,7 @@ export default {
   'nav.showback': '成本分摊',
   'nav.budgetsQuotas': '预算与配额',
   'nav.costComparison': '成本对比',
-  'nav.s3Duplicates': 'S3 重复检测',
+  'nav.objectStorage': '对象存储',
   'nav.biExport': 'BI 导出',
   'nav.resources': '资源',
   'nav.pools': '资源池',

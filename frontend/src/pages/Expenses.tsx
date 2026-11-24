@@ -1,3 +1,4 @@
+import { cloudServiceLabel } from '../lib/objectStorage'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { chartColors, chartPalette, chartAxis, chartGrid, chartTooltipStyle } from '../lib/chartTheme'
 import { useState, useMemo, useCallback } from 'react'
@@ -200,7 +201,7 @@ function ResourceHistoryPanel({
                   data.resource![k] != null ? (
                     <div key={k}>
                       <p className="text-muted capitalize">{t(META_FIELD_LABELS[k])}</p>
-                      <p className="text-primary font-medium">{data.resource![k]}</p>
+                      <p className="text-primary font-medium">{k === 'service_name' ? cloudServiceLabel(data.resource![k]) : data.resource![k]}</p>
                     </div>
                   ) : null
                 )}
@@ -325,7 +326,7 @@ export default function Expenses() {
     },
   })
 
-  const { data: byService = [], isLoading: byServiceLoading } = useQuery<AggItem[]>({
+  const { data: serviceRows = [], isLoading: byServiceLoading } = useQuery<AggItem[]>({
     queryKey: ['expenses-by-service', orgId, startDate, endDate],
     enabled: !!orgId && activeTab === 'By Service',
     queryFn: async () => {
@@ -335,6 +336,8 @@ export default function Expenses() {
       return (res.data ?? []).map((row) => normalizeAgg(row as unknown as Record<string, unknown>))
     },
   })
+
+  const byService = serviceRows.map(row => ({ ...row, name: cloudServiceLabel(row.name) }))
 
   // Region breakdown drives both the By Region tab and the region filter
   // options (the line-items list no longer loads every row to derive them).
@@ -630,7 +633,7 @@ export default function Expenses() {
                       onClick={() => setSelectedResource(e.cloud_resource_id)}>
                       <td className="px-4 py-3 text-secondary">{e.date}</td>
                       <td className="px-4 py-3 text-primary hover:text-accent">{e.resource_name ?? e.cloud_resource_id}</td>
-                      <td className="px-4 py-3 text-secondary">{e.service_name}</td>
+                      <td className="px-4 py-3 text-secondary">{cloudServiceLabel(e.service_name)}</td>
                       <td className="px-4 py-3 text-secondary">{e.cloud_region}</td>
                       <td className="px-4 py-3 text-right font-mono text-success">{fmtMoney(e.cost, e.currency)}</td>
                     </tr>

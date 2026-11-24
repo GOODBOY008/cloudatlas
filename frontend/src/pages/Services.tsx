@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { fmtMoney } from '../lib/format'
 import { useState } from 'react'
@@ -125,6 +126,7 @@ function ServiceDetailPanel({
           <div>
             <h2 className="text-lg font-semibold text-primary">{service.display_name || service.name}</h2>
             <p className="text-xs text-muted mt-0.5">{service.name}</p>
+            <Link to={'/object-storage?service=' + service.id} className="text-sm text-accent">{t('storage.serviceBuckets')}</Link>
           </div>
           <button onClick={onClose} aria-label={t('common.close')} className="icon-button">✕</button>
         </div>

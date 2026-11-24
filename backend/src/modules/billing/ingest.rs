@@ -52,7 +52,12 @@ pub async fn import_daily(
                 ))
             })?;
         let key = (line.resource_id.clone(), line.date);
-        let evidence = line.evidence.clone();
+        let mut evidence = line.evidence.clone();
+        evidence["workspace_cost"] = json!(cost);
+        evidence["original_amount"] = json!(line.amount);
+        evidence["original_currency"] = json!(line.currency);
+        evidence["line_service"] = json!(line.service);
+        evidence["line_resource_type"] = json!(line.resource_type);
         if let Some(day) = days.get_mut(&key) {
             day.cost += cost;
             day.services.insert(line.service);

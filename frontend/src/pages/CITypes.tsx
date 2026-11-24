@@ -408,7 +408,7 @@ export default function CITypes() {
                   </div>
                   <div className="col-span-2 md:col-span-3">
                     <dt className="text-xs text-muted">{t('common.description')}</dt>
-                    <dd className="text-secondary">{selected.description ?? '—'}</dd>
+                    <dd className="text-secondary">{selected.is_builtin && selected.name === 'cloud_bucket' && selected.description === 'S3/OSS bucket' ? t('objectStorage.bucketDescription') : selected.description ?? '—'}</dd>
                   </div>
                 </dl>
                 {!selected.is_builtin && (

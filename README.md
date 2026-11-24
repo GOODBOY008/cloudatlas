@@ -65,7 +65,7 @@ The UI is fully bilingual — **English / 中文** — with a slate-and-teal des
 | 📅 **Power Schedules** | Automated start/stop schedules for idle resource savings |
 | 🎯 **Recommendations** | 25+ detection modules: idle, orphan, rightsizing, RI/savings-plan coverage, security — with savings estimates |
 | ⚠️ **Anomaly Detection** | Rolling-baseline spend anomaly alerts |
-| 🪣 **S3 Duplicates** | Similar/duplicate bucket detection with cleanup savings estimate |
+| 🪣 **Object Storage** | Bucket inventory, CMDB ownership, cost reconciliation and evidence-based duplicate analysis. [Inventory formats and allocation](docs/object-storage.md) |
 | 📤 **BI Export** | Recurring CSV/JSON exports of expenses, resources, and recommendations for external BI tools |
 | 🧮 **Cost Comparison** | Side-by-side period comparison by service, region, cloud, or pool |
 | ☸️ **Kubernetes** | Cluster cost sync, container rightsizing, and K8s objects (cluster/ns/node/workload/pod) modeled as CIs |

@@ -70,6 +70,7 @@ fn line(resource: &str, service: &str, amount: f64) -> aws_cur::CurLineItem {
         usage_date: Utc::now().date_naive(),
         region: Some("region-a".into()),
         resource_type: None,
+        billing_item: None,
         cost_usd: amount,
         currency: "CNY".into(),
         tags: json!({"team":"platform"}),

@@ -1,3 +1,4 @@
+import { recommendationTitle, recommendationDescription } from '../lib/objectStorage'
 import { NativeDialog } from '../components/shared/NativeDialog'
 import { fmtMoney, useMoneyFormatter, useOrgCurrency } from '../lib/format'
 import { useDeferredValue, useMemo, useState } from 'react'
@@ -107,7 +108,7 @@ function RecModal({
   const { t } = useTranslation()
   const steps = getActionSteps(rec.rec_type).map((k) => t(`recommendations.actionStep.${k}`))
   return (
-    <NativeDialog className="items-center justify-center p-4" label={rec.title} onClose={onClose}>
+    <NativeDialog className="items-center justify-center p-4" label={recommendationTitle(rec)} onClose={onClose}>
       <div className="dialog-panel w-full max-w-lg">
         <div className="p-5 border-b border-edge flex items-start justify-between">
           <div>
@@ -119,13 +120,13 @@ function RecModal({
                 {t(`recType.${rec.rec_type}`, { defaultValue: rec.rec_type })}
               </span>
             </div>
-            <h3 className="text-lg font-semibold text-primary">{rec.title}</h3>
+            <h3 className="text-lg font-semibold text-primary">{recommendationTitle(rec)}</h3>
           </div>
           <button onClick={onClose} aria-label={t('common.close')} className="icon-button ml-4">✕</button>
         </div>
 
         <div className="p-5 space-y-4">
-          <p className="text-secondary text-sm">{rec.description}</p>
+          <p className="text-secondary text-sm">{recommendationDescription(rec)}</p>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-subtle/60 rounded-lg p-3">
@@ -509,8 +510,8 @@ export default function Recommendations() {
                       {t(`recType.${rec.rec_type}`, { defaultValue: rec.rec_type })}
                     </span>
                   </div>
-                  <h3 className="font-semibold text-primary">{rec.title}</h3>
-                  <p className="text-sm text-secondary mt-1 line-clamp-2">{rec.description}</p>
+                  <h3 className="font-semibold text-primary">{recommendationTitle(rec)}</h3>
+                  <p className="text-sm text-secondary mt-1 line-clamp-2">{recommendationDescription(rec)}</p>
                   {rec.status === 'dismissed' && (
                     <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted">
                       <span>{t('recommendations.dismissedAtLabel', { date: formatTimestamp(rec.dismissed_at) })}</span>

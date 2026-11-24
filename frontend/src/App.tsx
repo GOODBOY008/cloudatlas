@@ -18,7 +18,7 @@ const Layout = lazy(() => import('./components/Layout'))
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const authenticated = useAuthStore((state) => !!state.accessToken)
   const location = useLocation()
-  return authenticated ? <>{children}</> : <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />
+  return authenticated ? <>{children}</> : <Navigate to="/login" state={{ from: location.pathname + location.search + location.hash }} replace />
 }
 
 function RedirectIfAuth({ children }: { children: React.ReactNode }) {
@@ -32,7 +32,7 @@ function PageFallback() {
 
 export default function App() {
   const theme = useThemeStore((state) => state.theme)
-  const { pathname } = useLocation()
+  const { pathname, search, hash } = useLocation()
   const [restoringSso, setRestoringSso] = useState(() => (
     pathname !== SSO_COMPLETE_PATH && auth.hasSsoSession() && !auth.isAuthenticated()
   ))
@@ -68,6 +68,7 @@ export default function App() {
             }
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="/s3-duplicates" element={<Navigate replace to={{ pathname: '/object-storage', search, hash }} />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />
             {productRoutes.map(({ path, component: Page }) => (
               <Route key={path} path={path} element={<Page />} />

@@ -225,8 +225,8 @@ async fn detect_s3_intelligent_tiering(state: &AppState, org_id: Uuid) -> AppRes
             current_monthly_cost, potential_savings, savings_percent, details)
            SELECT $1, cloud_resource_id,
                's3_intelligent_tiering'::recommendation_type, 'active'::recommendation_status,
-               'Enable S3 Intelligent-Tiering: ' || COALESCE(resource_name, cloud_resource_id),
-               'Enable Intelligent-Tiering to automatically move data to lower-cost tiers',
+               'Enable automatic object storage tiering: ' || COALESCE(resource_name, cloud_resource_id),
+               'Enable automatic tiering to move infrequently accessed objects to lower-cost tiers',
                avg_daily_cost * 30, avg_daily_cost * 30 * 0.25, 25.0,
                jsonb_build_object('avg_daily_cost', avg_daily_cost)
            FROM s3_costs
@@ -345,8 +345,8 @@ async fn detect_s3_abandoned_buckets(state: &AppState, org_id: Uuid) -> AppResul
             current_monthly_cost, potential_savings, savings_percent, details)
            SELECT $1, cloud_resource_id,
                'abandoned_s3_bucket'::recommendation_type, 'active'::recommendation_status,
-               'Abandoned S3 Bucket: ' || COALESCE(resource_name, cloud_resource_id),
-               'S3 bucket has minimal activity — consider archiving or deleting',
+               'Idle object storage bucket: ' || COALESCE(resource_name, cloud_resource_id),
+               'Object storage bucket has minimal activity — consider archiving or deleting',
                avg_daily_cost * 30, avg_daily_cost * 30, 100.0,
                jsonb_build_object('avg_daily_cost', avg_daily_cost)
            FROM low_s3
@@ -664,7 +664,7 @@ async fn detect_s3_public_buckets(state: &AppState, org_id: Uuid) -> AppResult<u
         SELECT DISTINCT ON (r.cloud_resource_id)
             $1, r.cloud_resource_id,
             's3_public_bucket'::recommendation_type, 'active'::recommendation_status,
-            'Public S3 Bucket: ' || COALESCE(r.name, r.cloud_resource_id),
+            'Public object storage bucket: ' || COALESCE(r.name, r.cloud_resource_id),
             'Bucket policy or ACL allows public access',
             r.total_cost, 0, 0,
             jsonb_build_object('public', r.meta->>'public')

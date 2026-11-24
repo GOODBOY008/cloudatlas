@@ -84,11 +84,11 @@ async fn main() -> anyhow::Result<()> {
     // Build app state
     let state = state::AppState::new(pool, cfg.clone());
 
-    // Start background scheduler
-    let scheduler_state = state.clone();
-    tokio::spawn(async move {
-        modules::scheduler::start(scheduler_state).await;
-    });
+    // User-requested inventory imports must run even when periodic cloud jobs are disabled.
+    tokio::spawn(modules::object_storage::inventory::worker(state.db.clone()));
+    if cfg.scheduler_enabled {
+        tokio::spawn(modules::scheduler::start(state.clone()));
+    }
 
     // Build Axum router
     let app = routes::build_router(state);

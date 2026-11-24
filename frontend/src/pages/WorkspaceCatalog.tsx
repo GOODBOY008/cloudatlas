@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -146,6 +147,7 @@ export function WorkspaceCatalog({ org, openDeployment }: {
               <div className="flex gap-2"><dt className="text-muted">{t('catalog.system')}</dt><dd>{item.system_name || '—'}</dd></div>
               <div className="flex gap-2"><dt className="text-muted">{t('services.ownerTeam')}</dt><dd>{teams.find(x => x.id === item.team_id)?.name || '—'}</dd></div>
             </dl>
+            <Link className="text-sm text-accent" to={'/object-storage?service=' + item.id}>{t('storage.serviceBuckets')}</Link>
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-edge pt-3">
               <h4 className="text-sm font-medium text-secondary">{t('catalog.envDeployment', { env })}</h4>
               {writable && <button className="btn-secondary" onClick={() => edit({ kind: 'bind', service: item })}>{t('services.addCi')}</button>}

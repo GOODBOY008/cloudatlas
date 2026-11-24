@@ -1,3 +1,4 @@
+import { storageRecommendationType } from '../lib/objectStorage'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../lib/api'
@@ -175,7 +176,7 @@ export default function Checklist() {
             {modules.map((m) => (
               <tr key={m.name} className="border-b border-strong last:border-0 hover:bg-subtle/40 transition-colors">
                 <td className="px-4 py-3">
-                  <span className="text-sm text-primary font-mono">{m.name}</span>
+                  <span className="text-sm text-primary font-mono">{storageRecommendationType(m.name)}</span>
                 </td>
                 <td className="px-4 py-3">
                   <button

@@ -1,3 +1,4 @@
+import { recommendationTitle, storageRecommendationType } from '../lib/objectStorage'
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -45,7 +46,7 @@ export default function GlobalSearch({ open, onOpenChange: setOpen }: {
 
   const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean)
   const pages = productRoutes.filter((route) => route.navigation !== false && terms.every((term) =>
-    [t(route.labelKey), t(route.labelKey, { lng: 'en' }), t(route.labelKey, { lng: 'zh' }), t(route.section), route.path]
+    [t(route.labelKey), t(route.labelKey, { lng: 'en' }), t(route.labelKey, { lng: 'zh' }), t(route.section), route.path, ...(route.searchTerms ?? [])]
       .join(' ').toLocaleLowerCase().includes(term),
   )).slice(0, terms.length ? 8 : 6)
   const groups: Array<{ label: string; items: SearchItem[] }> = [
@@ -54,7 +55,7 @@ export default function GlobalSearch({ open, onOpenChange: setOpen }: {
     })) },
     { label: t('search.groupCis'), items: results.cis.map((r) => ({ key: `ci:${r.id}`, label: r.display_name || r.name, sub: r.name, path: '/cmdb' })) },
     { label: t('nav.resources'), items: results.resources.map((r) => ({ key: `resource:${r.id}`, label: r.name ?? r.id, sub: `${r.resource_type ?? ''} · ${fmtMoney(r.cost)}`, path: '/resources' })) },
-    { label: t('nav.recommendations'), items: results.recommendations.map((r) => ({ key: `rec:${r.id}`, label: r.title, sub: `${r.rec_type} · ${fmtMoney(r.savings)}`, path: '/recommendations' })) },
+    { label: t('nav.recommendations'), items: results.recommendations.map((r) => ({ key: `rec:${r.id}`, label: recommendationTitle(r), sub: `${storageRecommendationType(r.rec_type)} · ${fmtMoney(r.savings)}`, path: '/recommendations' })) },
     { label: t('nav.services'), items: results.services.map((r) => ({ key: `service:${r.id}`, label: r.display_name || r.name, sub: r.name, path: '/services' })) },
     { label: t('nav.pools'), items: results.pools.map((r) => ({ key: `pool:${r.id}`, label: r.name, sub: '', path: '/pools' })) },
   ].filter((group) => group.items.length > 0)

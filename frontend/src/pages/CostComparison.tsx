@@ -1,3 +1,4 @@
+import { cloudServiceLabel } from '../lib/objectStorage'
 import { chartColors, chartAxis, chartGrid } from '../lib/chartTheme'
 import { fmtMoney, fmtMoneyShort, useOrgCurrency } from '../lib/format'
 import { useState } from 'react'
@@ -59,14 +60,18 @@ export default function CostComparison() {
   const mapA = Object.fromEntries((dataA ?? []).map(d => [d.name, d.total_cost]))
   const mapB = Object.fromEntries((dataB ?? []).map(d => [d.name, d.total_cost]))
 
-  const merged = allKeys.map(k => ({
-    name: k?.slice(0, 16) ?? t('status.unknown'),
-    full_name: k,
-    period_a: mapA[k] ?? 0,
-    period_b: mapB[k] ?? 0,
-    delta: (mapB[k] ?? 0) - (mapA[k] ?? 0),
-    delta_pct: mapA[k] > 0 ? (((mapB[k] ?? 0) - mapA[k]) / mapA[k]) * 100 : 0,
-  })).sort((a, b) => b.period_b - a.period_b)
+  const merged = allKeys.map(k => {
+    const label = dim.endpoint === 'by-service' ? cloudServiceLabel(k) : k
+    return {
+      key: k,
+      name: label?.slice(0, 16) ?? t('status.unknown'),
+      full_name: label,
+      period_a: mapA[k] ?? 0,
+      period_b: mapB[k] ?? 0,
+      delta: (mapB[k] ?? 0) - (mapA[k] ?? 0),
+      delta_pct: mapA[k] > 0 ? (((mapB[k] ?? 0) - mapA[k]) / mapA[k]) * 100 : 0,
+    }
+  }).sort((a, b) => b.period_b - a.period_b)
 
   const totalA = (dataA ?? []).reduce((s, d) => s + d.total_cost, 0)
   const totalB = (dataB ?? []).reduce((s, d) => s + d.total_cost, 0)
@@ -168,8 +173,8 @@ export default function CostComparison() {
             <tbody className="divide-y divide-edge">
               {merged.length === 0 ? (
                 <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">{t('costComparison.noData')}</td></tr>
-              ) : merged.map((r, i) => (
-                <tr key={i} className="hover:bg-subtle">
+              ) : merged.map((r) => (
+                <tr key={r.key} className="hover:bg-subtle">
                   <td className="px-4 py-3 font-medium text-primary">{r.full_name ?? r.name}</td>
                   <td className="px-4 py-3 text-accent">{fmt(r.period_a)}</td>
                   <td className="px-4 py-3 text-primary">{fmt(r.period_b)}</td>

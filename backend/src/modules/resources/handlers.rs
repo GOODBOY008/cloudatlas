@@ -301,10 +301,8 @@ fn resource_row_to_json(r: &sqlx::postgres::PgRow) -> Value {
     })
 }
 
-// ─── S3 Duplicate Finder ──────────────────────────────────────────────────────
+// ─── Object storage duplicate analysis ──────────────────────────────────────────────────────
 
-/// Analyze S3 buckets (from the resources table) for potential duplicates.
-///
 /// Optional bound for the display matrix; the complete analysis is retained.
 #[derive(Debug, Default, Deserialize)]
 pub struct DuplicateAnalysisQuery {
@@ -333,7 +331,7 @@ fn truncate_similarity_matrix(matrix: &mut Vec<Value>, requested: Option<usize>)
 
 /// Analyze bucket-name similarity and return a bounded display matrix.
 /// Grouping and summary totals use all pairs, independently of `matrix_limit`.
-pub async fn s3_duplicate_analysis(
+pub async fn object_storage_duplicate_analysis(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
     Path(org_id): Path<Uuid>,
@@ -342,15 +340,9 @@ pub async fn s3_duplicate_analysis(
     ensure_org_member(&state.db, org_id, claims.user_id()?).await?;
 
     let rows = sqlx::query(
-        r#"SELECT id, name, cloud_resource_id, cloud_region AS region, total_cost::float8 AS total_cost, tags, meta
-           FROM resources
-           WHERE organization_id = $1
-             AND (
-                 resource_type IN ('bucket', 'volume', 'snapshot')
-                 OR service_name ILIKE '%s3%'
-                 OR service_name ILIKE '%storage%'
-             )
-           ORDER BY total_cost DESC"#,
+        r#"SELECT b.id,b.name,b.cloud_resource_id,b.region,r.total_cost::float8 AS total_cost,b.tags,b.meta
+           FROM storage_bucket_assets b JOIN resources r ON r.id=b.id
+           WHERE b.organization_id=$1 ORDER BY r.total_cost DESC,b.id"#,
     )
     .bind(org_id)
     .fetch_all(&state.db)
@@ -363,10 +355,7 @@ pub async fn s3_duplicate_analysis(
             .or_else(|| r.get::<Option<String>, _>("cloud_resource_id"))
             .unwrap_or_default();
         let meta: Value = r.get("meta");
-        let object_count = meta
-            .get("object_count")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0);
+        let object_count = meta.get("object_count").and_then(|v| v.as_i64());
 
         buckets.push(json!({
             "id": r.get::<Uuid, _>("id"),
@@ -408,6 +397,8 @@ pub async fn s3_duplicate_analysis(
             let score = jaccard(a, b);
             if score > 0.0 {
                 matrix.push(json!({
+                    "bucket_a_id": buckets[i]["id"],
+                    "bucket_b_id": buckets[j]["id"],
                     "bucket_a": a,
                     "bucket_b": b,
                     "similarity": (score * 100.0).round() / 100.0,
@@ -416,67 +407,7 @@ pub async fn s3_duplicate_analysis(
         }
     }
 
-    // Duplicate groups: union-find over pairs with similarity >= 0.8.
-    let mut groups: Vec<Vec<String>> = Vec::new();
-    let mut index: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-    for pair in &matrix {
-        let a = pair["bucket_a"].as_str().unwrap_or_default().to_string();
-        let b = pair["bucket_b"].as_str().unwrap_or_default().to_string();
-        if pair["similarity"].as_f64().unwrap_or(0.0) < 0.8 {
-            continue;
-        }
-        let ia = *index.entry(a.clone()).or_insert_with(|| {
-            groups.push(vec![a.clone()]);
-            groups.len() - 1
-        });
-        let ib = *index.entry(b.clone()).or_insert_with(|| {
-            groups.push(vec![b.clone()]);
-            groups.len() - 1
-        });
-        if ia != ib {
-            let merged = groups[ia].clone();
-            let other = groups[ib].clone();
-            groups[ia] = merged
-                .iter()
-                .chain(other.iter())
-                .cloned()
-                .collect::<Vec<_>>();
-            groups[ib] = Vec::new();
-        } else if !groups[ia].contains(&b) {
-            groups[ia].push(b);
-        }
-    }
-    groups.retain(|g| g.len() >= 2);
-
-    // Savings estimate: within each group, all but the most expensive bucket
-    // are treated as redundant.
-    let mut potential_savings = 0.0f64;
-    let mut dup_groups: Vec<Value> = Vec::new();
-    for group in &groups {
-        let members: Vec<Value> = buckets
-            .iter()
-            .filter(|b| group.contains(&b["name"].as_str().unwrap_or_default().to_string()))
-            .cloned()
-            .collect();
-        if members.is_empty() {
-            continue;
-        }
-        let redundant = members.len().saturating_sub(1) as f64;
-        let group_cost: f64 = members
-            .iter()
-            .map(|m| m["total_cost"].as_f64().unwrap_or(0.0))
-            .sum();
-        let redundant_cost = group_cost * (redundant / members.len() as f64);
-        potential_savings += redundant_cost;
-        dup_groups.push(json!({
-            "buckets": members,
-            "redundant_count": redundant,
-            "redundant_cost": (redundant_cost * 100.0).round() / 100.0,
-        }));
-    }
-
-    // Grouping and savings above deliberately use the complete pair set. Only
-    // the display matrix is limited; a million pairs must not reach the browser.
+    // Names alone do not establish redundant copies or a monetary saving.
     let matrix_meta = truncate_similarity_matrix(&mut matrix, query.matrix_limit);
 
     Ok(Json(json!({
@@ -484,12 +415,12 @@ pub async fn s3_duplicate_analysis(
             "buckets": buckets,
             "matrix": matrix,
             "matrix_meta": matrix_meta,
-            "duplicate_groups": dup_groups,
+            "duplicate_groups": [],
             "summary": {
                 "bucket_count": buckets.len(),
                 "pair_count": matrix_meta["total"],
-                "duplicate_group_count": dup_groups.len(),
-                "potential_savings": (potential_savings * 100.0).round() / 100.0,
+                "duplicate_group_count": 0,
+                "potential_savings": null,
             },
         }
     })))

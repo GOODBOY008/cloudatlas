@@ -9,6 +9,7 @@ export interface ProductRoute {
   icon: LucideIcon
   component: LazyExoticComponent<ComponentType>
   help: string
+  searchTerms?: string[]
   navigation?: false
 }
 
@@ -23,7 +24,7 @@ export const productRoutes: ProductRoute[] = [
   { path: '/showback', labelKey: 'nav.showback', section: 'nav.section.costManagement', icon: ArrowLeftRight, component: lazy(() => import('../pages/Showback')), help: 'allocation' },
   { path: '/quotas-budgets', labelKey: 'nav.budgetsQuotas', section: 'nav.section.costManagement', icon: Wallet, component: lazy(() => import('../pages/QuotasBudgets')), help: 'finops' },
   { path: '/cost-comparison', labelKey: 'nav.costComparison', section: 'nav.section.costManagement', icon: Scale, component: lazy(() => import('../pages/CostComparison')), help: 'finops' },
-  { path: '/s3-duplicates', labelKey: 'nav.s3Duplicates', section: 'nav.section.costManagement', icon: Database, component: lazy(() => import('../pages/S3Duplicates')), help: 'finops' },
+  { path: '/object-storage', labelKey: 'nav.objectStorage', searchTerms: ['S3', 'OSS', 'bucket', 'duplicates', '存储桶', '重复检测'], section: 'nav.section.costManagement', icon: Database, component: lazy(() => import('../pages/ObjectStorage')), help: 'finops' },
   { path: '/bi-export', labelKey: 'nav.biExport', section: 'nav.section.costManagement', icon: FileSpreadsheet, component: lazy(() => import('../pages/BIExport')), help: 'finops' },
   { path: '/resources', labelKey: 'nav.resources', section: 'nav.section.resourceManagement', icon: Boxes, component: lazy(() => import('../pages/Resources')), help: 'start' },
   { path: '/pools', labelKey: 'nav.pools', section: 'nav.section.resourceManagement', icon: Layers, component: lazy(() => import('../pages/Pools')), help: 'allocation' },

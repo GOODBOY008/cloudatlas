@@ -996,6 +996,8 @@ dependencies = [
  "hmac 0.13.0",
  "jsonwebtoken",
  "lettre",
+ "md-5",
+ "percent-encoding",
  "quick-xml",
  "rand 0.10.3",
  "redis",

@@ -1,3 +1,4 @@
+import { storageRecommendationType } from '../lib/objectStorage'
 import { useMoneyFormatter } from '../lib/format'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -94,7 +95,7 @@ export default function Archive() {
               ) : recs.map(r => (
                 <tr key={r.id} className="hover:bg-subtle">
                   <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 bg-emphasis text-secondary rounded text-xs">{t(`archive.recType.${r.rec_type}`, { defaultValue: r.rec_type })}</span>
+                    <span className="px-2 py-0.5 bg-emphasis text-secondary rounded text-xs">{t(`archive.recType.${r.rec_type}`, { defaultValue: storageRecommendationType(r.rec_type) })}</span>
                   </td>
                   <td className="px-4 py-3 text-secondary font-mono text-xs">{r.resource_id?.slice(0, 24)}…</td>
                   <td className="px-4 py-3 text-success font-semibold">{fmt(r.saving ?? 0)}</td>
