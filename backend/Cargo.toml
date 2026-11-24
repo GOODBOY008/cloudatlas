@@ -86,7 +86,7 @@ utoipa         = { version = "6", features = ["axum_extras", "uuid", "chrono"] }
 utoipa-swagger-ui = { version = "10", features = ["axum"] }
 
 # ── Crypto (credential encryption) ────────────────────────────
-aes-gcm        = "0.10"
+aes-gcm        = "0.11"
 base64         = "0.23"
 
 # ── Numeric ───────────────────────────────────────────────────
