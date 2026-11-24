@@ -1,332 +1,177 @@
-import { chartColors } from '../lib/chartTheme'
-import { useRef, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import api from '../lib/api'
-import { useOrgStore } from '../store/orgStore'
-import { useThemeStore } from '../store/themeStore'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import {
+  ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, Box, Boxes, CircleDollarSign, Cloud, Container,
+  Database, FolderTree, Globe, HardDrive, Layers, List, Network, Server, Waypoints, Workflow,
+} from 'lucide-react'
+import api from '../lib/api'
+import { defaultModel, modelComponent, relationLabel, typeLabel, type ModelEdge, type ModelGraph, type ModelType } from '../lib/modelTopology'
+import { useOrgStore } from '../store/orgStore'
+import type { CI, Organization } from '../types'
+import { ModelInstances } from './ModelInstances'
+import './modelTopology.css'
 
-interface TopoNode {
-  id: string
-  name: string
-  display_name: string
-  ci_count: number
-  classification_name?: string
-  classification_display?: string
-  icon?: string
-  color?: string
+const icons = {
+  k8s_cluster: Network, k8s_namespace: FolderTree, k8s_workload: Boxes, k8s_pod: Box, k8s_node: Server,
+  cloud_instance: Server, cloud_bucket: Container, cloud_ip: Globe, cloud_lb: Waypoints, cloud_rds: Database,
+  cloud_snapshot: Layers, cloud_volume: HardDrive, on_prem_server: Server, reserved_instance: Cloud,
+  savings_plan: CircleDollarSign,
 }
 
-interface TopoEdge {
-  id: string
-  src_ci_type_id: string
-  dst_ci_type_id: string
-  kind_display: string
-  cardinality: string
-  is_directional: boolean
-  instance_count: number
+function TypeButton({ node, selected, onSelect }: { node: ModelType; selected: boolean; onSelect: (id: string) => void }) {
+  const { t, i18n } = useTranslation()
+  const Icon = node.is_builtin ? icons[node.name as keyof typeof icons] ?? Layers : Layers
+  return <button type="button" className="model-type-card" aria-pressed={selected} onClick={() => onSelect(node.id)}>
+    <Icon size={21} aria-hidden="true" />
+    <span className="model-type-name">{typeLabel(node, t)}</span>
+    <span className="model-type-count">{t('modelTopology.instances', { count: node.ci_count, value: node.ci_count.toLocaleString(i18n.language) })}</span>
+  </button>
 }
 
-interface Topology {
-  nodes: TopoNode[]
-  edges: TopoEdge[]
+function Connector({ edge, reverse = false }: { edge: ModelEdge; reverse?: boolean }) {
+  const { t } = useTranslation()
+  const Arrow = !edge.directed ? ArrowLeftRight : reverse ? ArrowLeft : ArrowRight
+  return <div className="model-connector">
+    <span>{relationLabel(edge, t)}</span>
+    <Arrow size={25} role="img" aria-label={t(!edge.directed ? 'modelTopology.symmetric' : reverse ? 'modelTopology.reverse' : 'modelTopology.directed')} />
+    <small>{t(`modelTopology.cardinality.${edge.cardinality}`, { defaultValue: edge.cardinality })}</small>
+  </div>
 }
 
-const CLASSIFICATION_COLORS: Record<string, string> = {
-  hardware: chartColors.blue,
-  network: chartColors.green,
-  software: chartColors.orange,
-  cloud: chartColors.cyan,
-  security: chartColors.danger,
-  storage: chartColors.purple,
-  default: chartColors.muted,
-}
-
-function getColor(name?: string) {
-  if (!name) return CLASSIFICATION_COLORS.default
-  return CLASSIFICATION_COLORS[name.toLowerCase()] ?? CLASSIFICATION_COLORS.default
-}
-
-// Simple circular layout
-function computeLayout(nodes: TopoNode[], width: number, height: number) {
-  const cx = width / 2
-  const cy = height / 2
-  const r = Math.min(width, height) * 0.38
-  return nodes.map((n, i) => {
-    const angle = (2 * Math.PI * i) / nodes.length - Math.PI / 2
-    return {
-      ...n,
-      x: cx + r * Math.cos(angle),
-      y: cy + r * Math.sin(angle),
-    }
+function ModelConnections({ edges, nodes, onSelect }: {
+  edges: ModelEdge[]; nodes: Map<string, ModelType>; onSelect: (id: string) => void
+}) {
+  const { t, i18n } = useTranslation()
+  const ordered = [...edges].sort((a, b) => {
+    const label = (edge: ModelEdge) => [typeLabel(nodes.get(edge.source)!, t), relationLabel(edge, t), typeLabel(nodes.get(edge.target)!, t)].join(' ')
+    return label(a).localeCompare(label(b), i18n.language) || a.id.localeCompare(b.id)
   })
+  return <table className="model-relations-table">
+    <caption className="sr-only">{t('modelTopology.definedRelations')}</caption>
+    <thead><tr><th scope="col">{t('modelTopology.sourceType')}</th><th scope="col">{t('modelTopology.relation')}</th><th scope="col">{t('modelTopology.targetType')}</th></tr></thead>
+    <tbody>{ordered.map(edge => {
+      const Icon = edge.directed ? ArrowRight : ArrowLeftRight
+      return <tr key={edge.id}>
+        <td><button onClick={() => onSelect(edge.source)}>{typeLabel(nodes.get(edge.source)!, t)}</button></td>
+        <td><span className="model-inline-verb">{relationLabel(edge, t)} <Icon size={16} role="img" aria-label={t(edge.directed ? 'modelTopology.directed' : 'modelTopology.symmetric')} /></span>
+          <small>{t(`modelTopology.cardinality.${edge.cardinality}`, { defaultValue: edge.cardinality })}</small></td>
+        <td><button onClick={() => onSelect(edge.target)}>{typeLabel(nodes.get(edge.target)!, t)}</button></td>
+      </tr>
+    })}</tbody>
+  </table>
 }
 
-const SVG_W = 800
-const SVG_H = 600
-const NODE_R = 36
+function Explorer({ org, graph }: { org: Organization; graph: ModelGraph }) {
+  const { t } = useTranslation()
+  const [params, setParams] = useSearchParams()
+  const [all, setAll] = useState(false)
+  const requestedCi = params.get('ci')
+  const detail = useQuery({
+    queryKey: ['model-instance', org.id, requestedCi],
+    enabled: !!requestedCi,
+    retry: false,
+    staleTime: 30_000,
+    queryFn: async ({ signal }) => (await api.get<{ data: CI }>(`/orgs/${org.id}/cis/${encodeURIComponent(requestedCi!)}`, { signal })).data.data,
+  })
+  const nodes = useMemo(() => new Map(graph.nodes.map(n => [n.id, n])), [graph.nodes])
+  const edges = useMemo(() => graph.edges.filter(e => nodes.has(e.source) && nodes.has(e.target)), [graph.edges, nodes])
+  const focus = nodes.get(detail.data?.ci_type_id ?? params.get('type') ?? '') ?? defaultModel(graph)
+  const component = useMemo(() => focus ? modelComponent(nodes, edges, focus) : null, [nodes, edges, focus])
+  function selectType(id: string) {
+    setAll(false)
+    setParams({ type: id }, { preventScrollReset: true })
+  }
+  if (!focus || !component) return <p className="model-notice">{t('modelTopology.noCiTypes')}</p>
+
+  const groups = new Map<string, ModelType[]>()
+  for (const node of nodes.values()) {
+    const key = node.classification || 'other'
+    const group = groups.get(key)
+    if (group) group.push(node)
+    else groups.set(key, [node])
+  }
+  const isContainerPath = !!component.path.length && component.path.every(({ node }) => node.is_builtin && node.name.startsWith('k8s_'))
+  const direct = component.relations.filter(e => e.source === focus.id || e.target === focus.id)
+  const directTypes = new Set([focus.id, ...direct.flatMap(e => [e.source, e.target])])
+  const shownTypes = component.path.length ? component.size : directTypes.size
+  const shownEdges = component.path.length ? component.relations.length : direct.length
+  const countLabel = [t('modelTopology.typeTotal', { count: all ? nodes.size : shownTypes }),
+    t('modelTopology.definitionTotal', { count: all ? edges.length : shownEdges })].join(' · ')
+  const hint = <figcaption><span>{t('modelTopology.pathHint')}</span>
+    <a href="#model-assets-heading">{t('modelTopology.jumpToAssets', { type: typeLabel(focus, t) })} <ArrowDown size={14} aria-hidden="true" /></a></figcaption>
+
+  return <>
+    <section className="model-panel" aria-labelledby="model-map-heading">
+      <header className="model-panel-header">
+        <div className="min-w-0">
+          <h2 id="model-map-heading" className="model-heading"><Workflow size={20} aria-hidden="true" />
+            {t(all ? 'modelTopology.definedRelations' : isContainerPath ? 'modelTopology.containerPath' : 'modelTopology.typeRelations')}
+          </h2>
+          <p className="model-meta">{countLabel}</p>
+        </div>
+        <div className="model-tools">
+          <label className="model-type-select"><span>{t('modelTopology.selectType')}</span>
+            <select value={focus.id} onChange={e => selectType(e.target.value)}>
+              {[...groups].map(([key, types]) => <optgroup key={key} label={t(`modelTopology.groups.${key}`, { defaultValue: key })}>
+                {types.map(n => <option key={n.id} value={n.id}>{typeLabel(n, t)}</option>)}
+              </optgroup>)}
+            </select>
+          </label>
+          <button type="button" className="model-view-button" aria-pressed={all} onClick={() => setAll(!all)}>
+            {all ? <Workflow size={15} /> : <List size={15} />}
+            {t(all ? 'modelTopology.showMap' : 'modelTopology.showAll')}
+          </button>
+        </div>
+      </header>
+      {all ? edges.length ? <ModelConnections edges={edges} nodes={nodes} onSelect={selectType} />
+        : <p className="model-notice">{t('modelTopology.noDefinitions')}</p>
+        : component.path.length ? <figure className="model-path-surface">
+          <div className="model-path" aria-label={t('modelTopology.typeRelations')}>
+            {component.path.map(({ node, edge }) => <Fragment key={node.id}>
+                <TypeButton node={node} selected={node.id === focus.id} onSelect={selectType} />
+                {edge && <Connector edge={edge} reverse={edge.source !== node.id} />}
+              </Fragment>)}
+          </div>
+          {hint}
+        </figure>
+        : direct.length ? <figure className="model-path-surface">
+          <ul className="model-branches">{direct.map(edge => <li key={edge.id} className="model-path">
+            <TypeButton node={nodes.get(edge.source)!} selected={edge.source === focus.id} onSelect={selectType} />
+            <Connector edge={edge} />
+            <TypeButton node={nodes.get(edge.target)!} selected={edge.target === focus.id} onSelect={selectType} />
+          </li>)}</ul>
+          {hint}
+        </figure>
+        : <div className="model-isolated"><TypeButton node={focus} selected onSelect={selectType} />
+          <p>{t('modelTopology.noTypeRelations', { type: typeLabel(focus, t) })}</p></div>}
+    </section>
+
+    {requestedCi && detail.isPending ? <p role="status" className="model-notice">{t('modelTopology.loadingInstance')}</p>
+      : requestedCi && (detail.isError || !nodes.has(detail.data?.ci_type_id ?? '')) ? <div className="model-notice" role="alert">
+        {t('modelTopology.instanceUnavailable')} <button className="text-accent" onClick={() => selectType(focus.id)}>{t('modelTopology.showInstances')}</button>
+      </div>
+      : <ModelInstances key={org.id + '/' + focus.id} org={org} model={focus} definitions={edges} requested={detail.data} />}
+  </>
+}
 
 export default function ModelTopology() {
-  const dark = useThemeStore((state) => state.theme === 'dark')
-  const graphTheme = {
-    edge: 'rgb(var(--border-strong))',
-    accent: 'rgb(var(--accent))',
-    label: 'rgb(var(--text-primary))',
-    surface: 'rgb(var(--surface))',
-  }
-  const { currentOrg } = useOrgStore()
-  const orgId = currentOrg?.id
   const { t } = useTranslation()
-  const [hovered, setHovered] = useState<string | null>(null)
-  const [selected, setSelected] = useState<TopoNode | null>(null)
-  const svgRef = useRef<SVGSVGElement>(null)
-
-  const { data, isLoading, isError } = useQuery<Topology>({
-    queryKey: ['model-topology', orgId],
-    enabled: !!orgId,
-    queryFn: async () => {
-      const { data: res } = await api.get<{ data: Topology }>(
-        `/orgs/${orgId}/cmdb/model-topology`
-      )
-      return res.data
-    },
+  const org = useOrgStore(s => s.currentOrg)
+  const graph = useQuery({
+    queryKey: ['model-topology', org?.id],
+    enabled: !!org,
+    queryFn: async ({ signal }) => (await api.get<{ data: ModelGraph }>(`/orgs/${org!.id}/cmdb/model-topology`, { signal })).data.data,
   })
-
-  const nodes = data?.nodes ?? []
-  const edges = data?.edges ?? []
-
-  const laid = computeLayout(nodes, SVG_W, SVG_H)
-  const nodeMap = Object.fromEntries(laid.map(n => [n.id, n]))
-
-  // Build edge paths using quadratic curves to avoid straight overlap
-  function edgePath(src: { x: number; y: number }, dst: { x: number; y: number }, i: number, total: number) {
-    const dx = dst.x - src.x
-    const dy = dst.y - src.y
-    const mx = (src.x + dst.x) / 2
-    const my = (src.y + dst.y) / 2
-    const curve = total > 1 ? (i - (total - 1) / 2) * 30 : 0
-    const nx = -dy / Math.sqrt(dx * dx + dy * dy) * curve
-    const ny = dx / Math.sqrt(dx * dx + dy * dy) * curve
-    return `M${src.x},${src.y} Q${mx + nx},${my + ny} ${dst.x},${dst.y}`
-  }
-
-  // Group edges by src+dst pair for curve offset
-  const pairEdges: Record<string, TopoEdge[]> = {}
-  edges.forEach(e => {
-    const key = [e.src_ci_type_id, e.dst_ci_type_id].sort().join('|')
-    pairEdges[key] = [...(pairEdges[key] ?? []), e]
-  })
-
-  const selectedEdges = selected
-    ? edges.filter(e => e.src_ci_type_id === selected.id || e.dst_ci_type_id === selected.id)
-    : []
-
-  return (
-    <div className="space-y-4" data-theme={dark ? 'dark' : 'light'}>
-      <div className="page-heading">
-        <h1 className="page-title">{t('modelTopology.title')}</h1>
-        <p className="text-sm text-secondary mt-0.5">
-          {t('modelTopology.subtitle')}
-        </p>
-      </div>
-
-      {isLoading && (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted text-sm">{t('modelTopology.loading')}</p>
-        </div>
-      )}
-      {isError && (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-danger text-sm">{t('modelTopology.loadFailed')}</p>
-        </div>
-      )}
-
-      {!isLoading && !isError && (
-        <div className="flex flex-col gap-4 xl:flex-row">
-          {/* SVG Canvas */}
-          <div className="flex-1 bg-surface rounded-xl border border-edge overflow-hidden relative">
-            {nodes.length === 0 ? (
-              <div className="flex items-center justify-center h-96 text-muted">
-                <div className="text-center">
-                  <p className="text-4xl mb-3">🗺</p>
-                  <p className="text-sm">{t('modelTopology.noCiTypes')}</p>
-                </div>
-              </div>
-            ) : (
-              <svg
-                ref={svgRef}
-                viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-                width="100%"
-                style={{ minHeight: 480 }}
-              >
-                <defs>
-                  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
-                    markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill={graphTheme.edge} />
-                  </marker>
-                  <marker id="arrow-hot" viewBox="0 0 10 10" refX="9" refY="5"
-                    markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill={graphTheme.accent} />
-                  </marker>
-                </defs>
-
-                {/* Edges */}
-                {edges.map((e, _idx) => {
-                  const src = nodeMap[e.src_ci_type_id]
-                  const dst = nodeMap[e.dst_ci_type_id]
-                  if (!src || !dst) return null
-                  const key = [e.src_ci_type_id, e.dst_ci_type_id].sort().join('|')
-                  const group = pairEdges[key]
-                  const pos = group.indexOf(e)
-                  const isHot = selected
-                    ? (e.src_ci_type_id === selected.id || e.dst_ci_type_id === selected.id)
-                    : hovered === e.src_ci_type_id || hovered === e.dst_ci_type_id
-                  const path = edgePath(src, dst, pos, group.length)
-
-                  return (
-                    <g key={e.id}>
-                      <path
-                        d={path}
-                        fill="none"
-                        stroke={isHot ? graphTheme.accent : graphTheme.edge}
-                        strokeWidth={isHot ? 2 : 1.2}
-                        markerEnd={e.is_directional ? (isHot ? 'url(#arrow-hot)' : 'url(#arrow)') : undefined}
-                        strokeDasharray={isHot ? undefined : '4 3'}
-                        opacity={selected && !isHot ? 0.2 : 1}
-                      />
-                      {/* Edge label */}
-                      {isHot && (() => {
-                        const mx = (src.x + dst.x) / 2
-                        const my = (src.y + dst.y) / 2
-                        return (
-                          <text x={mx} y={my} textAnchor="middle" fill={graphTheme.accent}
-                            fontSize={10} dy={-6}>
-                            {e.kind_display}
-                          </text>
-                        )
-                      })()}
-                    </g>
-                  )
-                })}
-
-                {/* Nodes */}
-                {laid.map(n => {
-                  const color = getColor(n.classification_name)
-                  const isSelected = selected?.id === n.id
-                  const isHot = isSelected || hovered === n.id
-                  const dim = selected && !isSelected && !selectedEdges.some(
-                    e => e.src_ci_type_id === n.id || e.dst_ci_type_id === n.id
-                  )
-
-                  return (
-                    <g
-                      key={n.id}
-                      transform={`translate(${n.x},${n.y})`}
-                      className="cursor-pointer"
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`${n.display_name} · ${t('modelTopology.ciCount', { count: n.ci_count })}`}
-                      aria-pressed={isSelected}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault()
-                          setSelected(s => s?.id === n.id ? null : n)
-                        }
-                      }}
-                      onMouseEnter={() => setHovered(n.id)}
-                      onMouseLeave={() => setHovered(null)}
-                      onClick={() => setSelected(s => s?.id === n.id ? null : n)}
-                      opacity={dim ? 0.25 : 1}
-                    >
-                      <circle
-                        r={NODE_R + (isHot ? 4 : 0)}
-                        fill={graphTheme.surface}
-                        stroke={isSelected ? graphTheme.accent : color}
-                        strokeWidth={isSelected ? 2 : 1}
-                        style={{ transition: 'all 0.15s' }}
-                      />
-                      <text textAnchor="middle" fill={graphTheme.label} fontSize={11} fontWeight={600} dy={-4}>
-                        {n.icon ?? '📦'}
-                      </text>
-                      <text textAnchor="middle" fill={graphTheme.label} fontSize={10} dy={10} fontWeight={500}>
-                        {n.display_name.length > 12
-                          ? n.display_name.slice(0, 11) + '…'
-                          : n.display_name}
-                      </text>
-                      <text textAnchor="middle" fill={graphTheme.label} fontSize={9} dy={22}>
-                        {t('modelTopology.ciCount', { count: n.ci_count })}
-                      </text>
-                    </g>
-                  )
-                })}
-              </svg>
-            )}
-          </div>
-
-          {/* Side Panel */}
-          {selected && (
-            <div className="w-full xl:w-64 bg-surface rounded-xl border border-edge p-4 space-y-4 self-start">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-primary">{selected.display_name}</h2>
-                <button onClick={() => setSelected(null)} className="text-muted hover:text-secondary text-xs">✕</button>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted">{t('common.name')}</p>
-                <p className="text-xs text-primary font-mono">{selected.name}</p>
-              </div>
-              {selected.classification_display && (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted">{t('modelTopology.classification')}</p>
-                  <p className="text-xs text-primary">{selected.classification_display}</p>
-                </div>
-              )}
-              <div className="space-y-1">
-                <p className="text-xs text-muted">{t('modelTopology.ciCountLabel')}</p>
-                <p className="text-2xl font-semibold text-accent">{selected.ci_count}</p>
-              </div>
-              {selectedEdges.length > 0 && (
-                <div>
-                  <p className="text-xs text-muted mb-2">{t('modelTopology.connections', { count: selectedEdges.length })}</p>
-                  <div className="space-y-2">
-                    {selectedEdges.map(e => {
-                      const other = e.src_ci_type_id === selected.id
-                        ? nodeMap[e.dst_ci_type_id]
-                        : nodeMap[e.src_ci_type_id]
-                      const arrow = e.src_ci_type_id === selected.id ? '→' : '←'
-                      return (
-                        <div key={e.id} className="flex items-center gap-2 text-xs">
-                          <span className="text-secondary">{arrow}</span>
-                          <span className="text-primary truncate">{other?.display_name}</span>
-                          <span className="text-muted ml-auto shrink-0">{e.kind_display}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Legend */}
-      {!isLoading && nodes.length > 0 && (
-        <div className="flex flex-wrap gap-3">
-          {Object.entries(CLASSIFICATION_COLORS)
-            .filter(([k]) => k !== 'default')
-            .map(([cls, color]) => (
-              <div key={cls} className="flex items-center gap-1.5 text-xs text-muted">
-                <span className="w-3 h-3 rounded-full inline-block" style={{ background: color }} />
-                {t(`modelTopology.classification.${cls}`, { defaultValue: cls.charAt(0).toUpperCase() + cls.slice(1) })}
-              </div>
-            ))
-          }
-          <div className="flex items-center gap-1.5 text-xs text-muted">
-            <span className="w-3 h-3 rounded-full inline-block bg-emphasis" />
-            {t('modelTopology.other')}
-          </div>
-        </div>
-      )}
-    </div>
-  )
+  return <div className="model-explorer">
+    <header className="model-page-header">
+      <div><h1 className="page-title">{t('modelTopology.title')}</h1><p>{t('modelTopology.subtitle')}</p></div>
+      {org?.workspace && <Link to="/services" className="model-catalog-link">{t('modelTopology.serviceCatalog')} <ArrowRight size={15} aria-hidden="true" /></Link>}
+    </header>
+    {!org ? <p className="model-notice">{t('modelTopology.pickWorkspace')}</p>
+      : graph.isPending ? <p role="status" className="model-notice">{t('modelTopology.loading')}</p>
+      : graph.isError ? <div role="alert" className="model-notice">{t('modelTopology.loadFailed')} <button className="text-accent" onClick={() => graph.refetch()}>{t('modelTopology.retry')}</button></div>
+      : <Explorer key={org.id} org={org} graph={graph.data} />}
+  </div>
 }
